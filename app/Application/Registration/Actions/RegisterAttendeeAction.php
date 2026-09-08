@@ -11,12 +11,10 @@ use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Events\Models\Event;
 use App\Domain\Registration\Exceptions\RegistrationClosedException;
 use App\Domain\Registration\Models\Attendee;
-use App\Domain\Registration\Models\Contact;
 use App\Domain\Registration\Models\Registration;
 use App\Domain\Registration\Models\RegistrationForm;
 use App\Domain\Tenancy\Context\TenantContext;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * Public flow: a person registers for an event. There is no tenant session — the
@@ -35,6 +33,7 @@ final class RegisterAttendeeAction
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly AnalyticsCollector $analytics,
+        private readonly IssueAttendeeAction $issueAttendee,
         private readonly TenantContext $tenantContext,
     ) {}
 
@@ -59,30 +58,16 @@ final class RegisterAttendeeAction
                 throw new RegistrationClosedException;
             }
 
-            $rawToken = Str::random(48);
-
-            return DB::transaction(function () use ($event, $data, $rawToken): array {
-                $email = Str::lower(trim($data->email));
-
-                $contact = Contact::query()->firstOrCreate(
-                    ['workspace_id' => $event->workspace_id, 'email' => $email],
-                    ['name' => $data->name],
-                );
+            return DB::transaction(function () use ($event, $data): array {
+                $issued = $this->issueAttendee->execute($event, $data->name, $data->email);
+                $attendee = $issued['attendee'];
 
                 $registration = Registration::query()->updateOrCreate(
-                    ['event_id' => $event->getKey(), 'contact_id' => $contact->getKey()],
+                    ['event_id' => $event->getKey(), 'contact_id' => $issued['contact']->getKey()],
                     ['answers' => $data->answers],
                 );
 
-                $attendee = Attendee::query()->updateOrCreate(
-                    ['event_id' => $event->getKey(), 'contact_id' => $contact->getKey()],
-                    [
-                        'registration_id' => $registration->getKey(),
-                        'name' => $data->name,
-                        'email' => $email,
-                        'join_token_hash' => hash('sha256', $rawToken),
-                    ],
-                );
+                $attendee->forceFill(['registration_id' => $registration->getKey()])->save();
 
                 $this->audit->log('registration.registered', tenant: $event->tenant, auditable: $attendee, context: [
                     'event' => $event->ulid,
@@ -96,7 +81,7 @@ final class RegisterAttendeeAction
                 return [
                     'attendee' => $attendee,
                     'registration' => $registration,
-                    'token' => $rawToken,
+                    'token' => $issued['token'],
                 ];
             });
         });

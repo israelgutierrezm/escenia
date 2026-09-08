@@ -78,6 +78,33 @@ function makeWebinarHost(string $title = 'Webinar'): array
 }
 
 /**
+ * A tenant owner acting via Sanctum, with an event and a connected `fake`
+ * payment gateway (webhook secret `whsec_test`). Returns owner, tenant, event,
+ * host headers and the connected account payload.
+ *
+ * @return array{0: User, 1: Tenant, 2: Event, 3: array<string, string>, 4: array<string, mixed>}
+ */
+function makeCommerceHost(string $title = 'Paid Event'): array
+{
+    [$user, $tenant, $event] = makeEventOwner($title);
+    Sanctum::actingAs($user);
+    $headers = ['X-Tenant-Id' => $tenant->ulid];
+
+    $account = test()->withHeaders($headers)
+        ->putJson('/api/v1/payment-accounts', [
+            'gateway' => 'fake',
+            'display_name' => 'Test Gateway',
+            'currency' => 'USD',
+            'credentials' => [],
+            'webhook_secret' => 'whsec_test',
+        ])
+        ->assertOk()
+        ->json('data');
+
+    return [$user, $tenant, $event, $headers, $account];
+}
+
+/**
  * Register a public attendee for an event and return their raw join token
  * (the credential for attendee-facing endpoints).
  */

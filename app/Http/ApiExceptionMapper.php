@@ -6,6 +6,10 @@ namespace App\Http;
 
 use App\Domain\Broadcasting\Exceptions\BroadcastTransitionConflictException;
 use App\Domain\Broadcasting\Exceptions\InvalidBroadcastTransitionException;
+use App\Domain\Commerce\Exceptions\CheckoutUnavailableException;
+use App\Domain\Commerce\Exceptions\InvalidOrderTransitionException;
+use App\Domain\Commerce\Exceptions\OrderTransitionConflictException;
+use App\Domain\Commerce\Exceptions\WebhookVerificationException;
 use App\Domain\Engagement\Exceptions\AlreadyVotedException;
 use App\Domain\Engagement\Exceptions\InvalidPollTransitionException;
 use App\Domain\Engagement\Exceptions\PollNotOpenException;
@@ -53,6 +57,10 @@ final class ApiExceptionMapper
             $e instanceof PollTransitionConflictException => [409, 'poll_conflict', $e->getMessage(), null],
             $e instanceof PollNotOpenException => [422, 'poll_not_open', $e->getMessage(), null],
             $e instanceof AlreadyVotedException => [409, 'already_voted', $e->getMessage(), null],
+            $e instanceof CheckoutUnavailableException => [422, 'checkout_unavailable', $e->getMessage(), null],
+            $e instanceof InvalidOrderTransitionException => [422, 'invalid_order_transition', $e->getMessage(), null],
+            $e instanceof OrderTransitionConflictException => [409, 'order_conflict', $e->getMessage(), null],
+            $e instanceof WebhookVerificationException => [403, 'webhook_verification_failed', $e->getMessage(), null],
             $e instanceof AuthenticationException => [401, 'unauthenticated', 'Unauthenticated.', null],
             $e instanceof AuthorizationException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],
             $e instanceof AccessDeniedHttpException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],

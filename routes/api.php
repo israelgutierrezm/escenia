@@ -9,6 +9,14 @@ use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\Broadcasting\BroadcastController;
 use App\Http\Controllers\Api\V1\Broadcasting\StreamDestinationController;
+use App\Http\Controllers\Api\V1\Commerce\Attendee\CtaController as AttendeeCtaController;
+use App\Http\Controllers\Api\V1\Commerce\Host\CommerceReportController;
+use App\Http\Controllers\Api\V1\Commerce\Host\CtaController as HostCtaController;
+use App\Http\Controllers\Api\V1\Commerce\Host\OrderController as HostOrderController;
+use App\Http\Controllers\Api\V1\Commerce\Host\PaymentAccountController;
+use App\Http\Controllers\Api\V1\Commerce\Host\TicketController as HostTicketController;
+use App\Http\Controllers\Api\V1\Commerce\PublicCheckoutController;
+use App\Http\Controllers\Api\V1\Commerce\WebhookController;
 use App\Http\Controllers\Api\V1\Engagement\Attendee\ChatController as AttendeeChatController;
 use App\Http\Controllers\Api\V1\Engagement\Attendee\PollController as AttendeePollController;
 use App\Http\Controllers\Api\V1\Engagement\Attendee\PresenceController as AttendeePresenceController;
@@ -53,6 +61,12 @@ Route::prefix('v1')->group(function (): void {
     Route::get('events/{event}/registration', [PublicRegistrationController::class, 'show'])->middleware('throttle:60,1');
     Route::post('events/{event}/register', [PublicRegistrationController::class, 'store'])->middleware('throttle:20,1');
 
+    // ---- Public checkout (Fase 7 — Commerce). Event resolved unscoped. ----
+    Route::get('events/{event}/tickets', [PublicCheckoutController::class, 'tickets'])->middleware('throttle:60,1');
+    Route::post('events/{event}/checkout', [PublicCheckoutController::class, 'store'])->middleware('throttle:20,1');
+    // Gateway webhook (authenticity from the signature, not the URL).
+    Route::post('checkout/webhooks/{account}', [WebhookController::class, 'handle'])->middleware('throttle:120,1');
+
     // ---- Attendee live surface (the join token is the credential) ----
     Route::middleware(['attendee', 'throttle:120,1'])->prefix('attend')->group(function (): void {
         Route::post('presence/join', [AttendeePresenceController::class, 'join']);
@@ -70,6 +84,9 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('resources', [AttendeeResourceController::class, 'index']);
         Route::post('resources/{resource}/download', [AttendeeResourceController::class, 'download']);
+
+        Route::get('ctas', [AttendeeCtaController::class, 'index']);
+        Route::post('ctas/{cta}/click', [AttendeeCtaController::class, 'click']);
     });
 
     // ---- Authenticated (any tenant) ----
@@ -176,6 +193,17 @@ Route::prefix('v1')->group(function (): void {
             Route::get('events/{event}/analytics/attendance', [AnalyticsController::class, 'attendance']);
             Route::get('events/{event}/analytics/engagement', [AnalyticsController::class, 'engagement']);
             Route::get('events/{event}/analytics/attribution', [AnalyticsController::class, 'attribution']);
+
+            // ---- Commerce host side (Fase 7) ----
+            Route::get('payment-accounts', [PaymentAccountController::class, 'index']);
+            Route::put('payment-accounts', [PaymentAccountController::class, 'save']);
+
+            Route::get('events/{event}/commerce/tickets', [HostTicketController::class, 'index']);
+            Route::post('events/{event}/commerce/tickets', [HostTicketController::class, 'store']);
+            Route::get('events/{event}/commerce/orders', [HostOrderController::class, 'index']);
+            Route::get('events/{event}/commerce/ctas', [HostCtaController::class, 'index']);
+            Route::post('events/{event}/commerce/ctas', [HostCtaController::class, 'store']);
+            Route::get('events/{event}/commerce/revenue', [CommerceReportController::class, 'revenue']);
         });
     });
 });

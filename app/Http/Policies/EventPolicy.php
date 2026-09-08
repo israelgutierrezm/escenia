@@ -63,4 +63,14 @@ class EventPolicy
     {
         return $user->can(Permission::AnalyticsView->value);
     }
+
+    public function viewCommerce(User $user, Event $event): bool
+    {
+        return $user->can(Permission::CommerceView->value);
+    }
+
+    public function manageCommerce(User $user, Event $event): bool
+    {
+        return $user->can(Permission::CommerceManage->value);
+    }
 }

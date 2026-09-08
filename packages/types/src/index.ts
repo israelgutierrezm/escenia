@@ -477,3 +477,99 @@ export interface AttributionSource {
 export interface AttributionReport {
   sources: AttributionSource[]
 }
+
+// ---- Commerce (Fase 7) ----
+
+export type PaymentGatewayName = 'fake' | 'stripe' | 'mercadopago'
+export type OrderStatus = 'pending' | 'paid' | 'canceled' | 'refunded'
+
+/** Money as integer minor units + ISO-4217 currency. Never a float. */
+export interface Money {
+  minor_units: number
+  currency: string
+}
+
+export interface Ticket {
+  id: string
+  name: string
+  description: string | null
+  price: Money
+  compare_at: Money | null
+  capacity: number | null
+  remaining: number | null
+  on_sale: boolean
+  position: number
+}
+
+export interface OrderItem {
+  id: string
+  ticket_name: string
+  quantity: number
+  subtotal: Money
+}
+
+export interface Order {
+  id: string
+  status: OrderStatus
+  buyer_name: string
+  buyer_email: string
+  total: Money
+  gateway: string
+  paid_at: string | null
+  created_at: string | null
+  items?: OrderItem[]
+}
+
+/** Returned once at checkout — how the client completes payment. */
+export interface PaymentIntent {
+  reference: string
+  status: string
+  client_secret: string | null
+  redirect_url: string | null
+}
+
+export interface CheckoutResult {
+  order: Order
+  attendee: Attendee
+  /** The buyer's attendee join token, returned once. */
+  token: string
+  payment: PaymentIntent
+}
+
+export interface Cta {
+  id: string
+  title: string
+  body: string | null
+  url: string | null
+  ticket?: string
+  is_active: boolean
+  live: boolean
+  clicks_count: number
+  position: number
+}
+
+export interface PaymentAccount {
+  id: string
+  gateway: PaymentGatewayName
+  display_name: string
+  currency: string
+  is_active: boolean
+  webhook_url: string
+}
+
+export interface RevenueByTicket {
+  name: string
+  units: number
+  revenue_minor: number
+}
+
+export interface RevenueReport {
+  currency: string
+  gross_minor: number
+  refunded_minor: number
+  net_minor: number
+  orders_paid: number
+  avg_order_minor: number
+  by_ticket: RevenueByTicket[]
+  cta: { clicks: number; unique_clickers: number }
+}

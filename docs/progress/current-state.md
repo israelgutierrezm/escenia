@@ -14,7 +14,9 @@
 
 **Fase 5 — Webinar — COMPLETED** (2026-09-08), en `main` (hito comercializable).
 
-**Fase 6 — Analytics — COMPLETED** (2026-09-08), en `main`. No avanzar a Fase 7 — Commerce sin instrucción explícita.
+**Fase 6 — Analytics — COMPLETED** (2026-09-08), en `main`.
+
+**Fase 7 — Commerce — COMPLETED** (2026-09-08), en `main` (incluye el Outbox de ADR-007). No avanzar a Fase 8 — Automation sin instrucción explícita.
 
 ## Stack instalado
 
@@ -83,19 +85,29 @@
 - Tabla: `analytics_events`.
 - **Diferido**: doble escritura síncrona → async/ClickHouse; agregación en PHP → warehouse; retención de `analytics_events`; unificación con el Outbox (ADR-007).
 
+### Commerce (Fase 7 — `app/Domain/{Commerce,Outbox}`, `app/Application/{Commerce,Outbox}`, `app/Infrastructure/Payments`)
+- **Tickets** con precio en `Money` (int minor units + ISO-4217, nunca float); cupo, ventana de venta, `compare_at` para ofertas. `Order`/`OrderItem` (precio snapshoteado), `Payment`, `Cta`/`CtaClick` — ADR-024.
+- **Gateways detrás de `PaymentGateway`** (nunca el SDK en el dominio): `FakePaymentGateway` (default, testeado) + adaptadores `Stripe` y `MercadoPago` (firma HMAC + intent, sin tests de integración → deuda). Selección por `PaymentGatewayFactory`/`config/payments.php`. **Credenciales cifradas** por tenant (`PaymentAccount`, `$hidden`).
+- **Checkout público**: evento sin scope, tenant derivado; emite el asistente del comprador (join token una vez, `IssueAttendeeAction` compartido con el registro), crea `Order` pending + intent (llamada externa fuera de la transacción). `Order` guardado (`pending→paid→refunded`/`canceled`) con optimistic locking; `sold_count` avanza en el cobro. **Webhooks** públicos verificados por firma (`/checkout/webhooks/{account}`).
+- **Outbox (ADR-007) implementado**: `outbox_events` append-only + `DispatchOutboxAction` + comando `outbox:dispatch` (agendado, at-least-once, idempotente). `order.paid` se escribe en la misma transacción; `FulfillPaidOrderHandler` registra revenue y sella `fulfilled_at`.
+- **CTAs** in-event (host publica; asistente ve las live y clickea → `commerce.cta_clicked`). **Revenue analytics** (`EventCommerceReport`) leído del ledger OLTP (dinero exacto): bruto/refunded/neto, órdenes, ticket medio, por ticket, CTR de CTA.
+- Permisos `commerce.view`/`commerce.manage` (`EventPolicy`); `PaymentAccount` es tenant-level. Contratos de frontend: host `ApiClient` + `AttendeeClient` (checkout público + CTAs); tipos en `@escenia/types`.
+- Tablas: `tickets`, `orders`, `order_items`, `payments`, `payment_accounts`, `ctas`, `cta_clicks`, `outbox_events`.
+- **Diferido**: adaptadores Stripe/MP sin integración; `createIntent` externo síncrono; posible oversell bajo concurrencia; refunds solo por webhook; códigos de descuento.
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 115 passed / 497 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, gating de capacidades, guest links, tokens de media, versionado de escenas, vision mixer, broadcast multistream, cifrado de stream keys, registro público idempotente + auth por token de asistente, engagement chat/Q&A/polls/recursos con idempotencia y conflictos, y analítica: summary/attendance/heatmap/attribution + captura versionada) — `php artisan test`.
+- **Backend**: 132 passed / 600 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, gating de capacidades, guest links, tokens de media, versionado de escenas, vision mixer, broadcast multistream, cifrado de stream keys, registro público idempotente + auth por token de asistente, engagement chat/Q&A/polls/recursos, analítica summary/attendance/heatmap/attribution, y commerce: checkout completo con webhook + Outbox idempotente, cifrado de credenciales de gateway, revenue del ledger) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 
 ## No implementar todavía
 
-LiveKit productivo · Commerce · Analytics avanzado · AI · Conferences · ClickHouse · Qdrant · Horizon · Reverb · reminders/notificaciones — salvo contratos/stubs estrictamente necesarios.
+LiveKit productivo · Automation/workflows · Analytics avanzado (ClickHouse) · AI · Conferences · Qdrant · Horizon · Reverb · reminders/notificaciones — salvo contratos/stubs estrictamente necesarios.
 
 ## Deuda técnica
 
@@ -103,4 +115,4 @@ Ver `docs/progress/technical-debt.md`.
 
 ## Última actualización
 
-2026-09-08 — Fase 6 (Analytics) implementada y verificada en `main`.
+2026-09-08 — Fase 7 (Commerce + Outbox) implementada y verificada en `main`.

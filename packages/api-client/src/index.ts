@@ -22,7 +22,14 @@ import type {
   BrandKit,
   BroadcastHealth,
   BroadcastSession,
+  CheckoutResult,
+  Cta,
   DestinationProtocol,
+  Order,
+  PaymentAccount,
+  PaymentGatewayName,
+  RevenueReport,
+  Ticket,
   GuestJoinResult,
   GuestLinkCreated,
   ParticipantRole,
@@ -283,6 +290,42 @@ export function createApiClient(options: ApiClientOptions = {}) {
       request<ApiResource<EngagementReport>>('GET', `/events/${eventId}/analytics/engagement`),
     analyticsAttribution: (eventId: string) =>
       request<ApiResource<AttributionReport>>('GET', `/events/${eventId}/analytics/attribution`),
+
+    // ---- Commerce host side (Fase 7) ----
+    tickets: (eventId: string) =>
+      request<ApiCollection<Ticket>>('GET', `/events/${eventId}/commerce/tickets`),
+    createTicket: (
+      eventId: string,
+      data: {
+        name: string
+        amount_minor: number
+        currency: string
+        description?: string
+        compare_at_minor?: number
+        capacity?: number
+        sales_start_at?: string
+        sales_end_at?: string
+      },
+    ) => request<ApiResource<Ticket>>('POST', `/events/${eventId}/commerce/tickets`, data),
+    orders: (eventId: string) =>
+      request<ApiCollection<Order>>('GET', `/events/${eventId}/commerce/orders`),
+    ctas: (eventId: string) =>
+      request<ApiCollection<Cta>>('GET', `/events/${eventId}/commerce/ctas`),
+    createCta: (
+      eventId: string,
+      data: { title: string; body?: string; url?: string; ticket?: string; starts_at?: string; ends_at?: string },
+    ) => request<ApiResource<Cta>>('POST', `/events/${eventId}/commerce/ctas`, data),
+    revenue: (eventId: string) =>
+      request<ApiResource<RevenueReport>>('GET', `/events/${eventId}/commerce/revenue`),
+    paymentAccounts: () => request<ApiCollection<PaymentAccount>>('GET', '/payment-accounts'),
+    savePaymentAccount: (data: {
+      gateway: PaymentGatewayName
+      display_name: string
+      currency: string
+      credentials?: Record<string, string>
+      webhook_secret?: string
+      is_active?: boolean
+    }) => request<ApiResource<PaymentAccount>>('PUT', '/payment-accounts', data),
   }
 }
 
@@ -375,6 +418,17 @@ export function createAttendeeClient(options: AttendeeClientOptions = {}) {
     resources: () => request<ApiCollection<EventResource>>('GET', '/attend/resources'),
     downloadResource: (resourceId: string) =>
       request<ApiResource<EventResource>>('POST', `/attend/resources/${resourceId}/download`),
+
+    // ---- Commerce: public checkout (no token) ----
+    tickets: (eventId: string) => request<ApiCollection<Ticket>>('GET', `/events/${eventId}/tickets`),
+    checkout: (
+      eventId: string,
+      data: { buyer_name: string; buyer_email: string; items: Array<{ ticket: string; quantity: number }> },
+    ) => request<ApiResource<CheckoutResult>>('POST', `/events/${eventId}/checkout`, data),
+
+    // ---- Commerce: attendee CTAs (token required) ----
+    ctas: () => request<ApiCollection<Cta>>('GET', '/attend/ctas'),
+    clickCta: (ctaId: string) => request<ApiResource<Cta>>('POST', `/attend/ctas/${ctaId}/click`),
   }
 }
 

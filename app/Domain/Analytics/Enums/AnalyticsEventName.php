@@ -21,6 +21,8 @@ enum AnalyticsEventName: string
     case EngagementQuestionVoted = 'engagement.question_voted';
     case EngagementPollVoted = 'engagement.poll_voted';
     case EngagementResourceDownloaded = 'engagement.resource_downloaded';
+    case CommerceCtaClicked = 'commerce.cta_clicked';
+    case CommerceOrderPaid = 'commerce.order_paid';
 
     /**
      * Current schema version of this event's `properties` payload.
