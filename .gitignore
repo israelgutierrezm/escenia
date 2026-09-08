@@ -29,3 +29,6 @@ dist/
 *.tsbuildinfo
 coverage/
 .eslintcache
+
+# Local, machine-specific Claude Code settings
+.claude/settings.local.json
