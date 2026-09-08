@@ -319,3 +319,104 @@ export interface BroadcastSession {
   ended_at: string | null
   destinations?: BroadcastDestination[]
 }
+
+// ---- Registration & Engagement (Fase 5 — Webinar) ----
+
+export type FieldType = 'text' | 'email' | 'textarea' | 'select' | 'checkbox'
+
+export interface RegistrationField {
+  key: string
+  label: string
+  type: FieldType
+  required?: boolean
+  options?: string[]
+}
+
+export interface RegistrationForm {
+  id: string
+  is_open: boolean
+  fields: RegistrationField[]
+}
+
+/** The public registration surface for an event (form + minimal event info). */
+export interface PublicRegistration {
+  event: { id: string; title: string }
+  form: RegistrationForm
+}
+
+export interface Attendee {
+  id: string
+  name: string
+  email: string | null
+}
+
+export interface AttendeeRegistered {
+  attendee: Attendee
+  /**
+   * The join token — the attendee's credential for every attendee-facing
+   * endpoint. Returned exactly once at registration; persist it client-side.
+   */
+  token: string
+}
+
+/** Host view of a registrant. */
+export interface Registrant {
+  id: string
+  answers: Record<string, unknown>
+  registered_at: string | null
+  contact: { name?: string; email?: string }
+}
+
+export interface AttendeeSession {
+  id: string
+  joined_at: string | null
+  left_at: string | null
+  last_seen_at: string | null
+}
+
+export interface ChatMessage {
+  id: string
+  author_name: string
+  is_host: boolean
+  body: string
+  created_at: string | null
+}
+
+export type QuestionStatus = 'open' | 'answered'
+
+export interface Question {
+  id: string
+  author_name: string
+  body: string
+  status: QuestionStatus
+  answer: string | null
+  votes_count: number
+  answered_at: string | null
+  created_at: string | null
+}
+
+export type PollStatus = 'draft' | 'open' | 'closed'
+
+export interface PollOption {
+  id: string
+  label: string
+  position: number
+  votes_count: number
+}
+
+export interface Poll {
+  id: string
+  question: string
+  status: PollStatus
+  options?: PollOption[]
+  created_at: string | null
+}
+
+/** A downloadable handout attached to an event. */
+export interface EventResource {
+  id: string
+  title: string
+  url: string
+  position: number
+  downloads_count: number
+}

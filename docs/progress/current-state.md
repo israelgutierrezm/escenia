@@ -10,7 +10,9 @@
 
 **Fase 3 — Production Engine — COMPLETED** (2026-09-08), mergeada a `main`.
 
-**Fase 4 — Broadcast — COMPLETED** (2026-09-08), en la rama `feature/broadcast` (pendiente de revisión/merge). No avanzar a Fase 5 — Webinar sin instrucción explícita.
+**Fase 4 — Broadcast — COMPLETED** (2026-09-08), mergeada a `main`.
+
+**Fase 5 — Webinar — COMPLETED** (2026-09-08), en `main` (hito comercializable). No avanzar a Fase 6 — Analytics sin instrucción explícita.
 
 ## Stack instalado
 
@@ -61,19 +63,28 @@
 - Permisos `broadcast.*` + StudioPolicy; contratos de frontend en sync.
 - Tablas: `stream_destinations`, `broadcast_sessions`, `broadcast_destinations`.
 
+### Webinar (Fase 5 — `app/Domain/{Registration,Engagement}`, `app/Application/{Registration,Engagement}`)
+- **Registro público**: `RegistrationForm` por evento (fields custom validados), `RegisterAttendeeAction` idempotente por `(event, email)` que crea/reutiliza `Contact` (CRM de audiencia, único por `workspace+email`) + `Registration` y **rota el join token** del `Attendee`. Evento resuelto sin scope; tenant derivado con `TenantContext::runFor` (nunca del request) — ADR-022.
+- **Autenticación de asistente**: token de join en cabecera `X-Attendee-Token` (solo hash SHA-256 en DB, `$hidden`), middleware `ResolveAttendee` + `AttendeeContext`. Superficie pública rate-limited `/api/v1/attend/*`; host bajo `auth:sanctum` + tenant + RBAC.
+- **Engagement en vivo**: chat (asistente/host, `author_name` denormalizado), Q&A (asistente pregunta/upvota idempotente, host responde), **polls** con máquina de estados guardada `draft→open→closed` + optimistic locking (`422 invalid_poll_transition` / `409 poll_conflict`), voto único y final por `(poll, attendee)` (`409 already_voted`, `422 poll_not_open`), recursos descargables con tally idempotente, y presencia (`AttendeeSession` join/heartbeat/leave).
+- Permisos `engagement.view` / `engagement.manage` colgando de `EventPolicy` (`viewEngagement` / `manageEngagement`).
+- Contratos de frontend: `ApiClient` de host ampliado + **`AttendeeClient`** nuevo (superficie pública + token) en `@escenia/api-client`; tipos en `@escenia/types`.
+- Tablas: `registration_forms`, `contacts`, `registrations`, `attendees`, `attendee_sessions`, `chat_messages`, `questions`, `question_votes`, `polls`, `poll_options`, `poll_votes`, `resources`, `resource_downloads`.
+- **Diferido**: reminders/notificaciones (Fase 8), CTAs/commerce (Fase 7), tiempo real vía Reverb (hoy polling/REST).
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 76 passed / 271 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, gating de capacidades, guest links, tokens de media, versionado de escenas, vision mixer, broadcast multistream y cifrado de stream keys) — `php artisan test`.
+- **Backend**: 107 passed / 432 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, gating de capacidades, guest links, tokens de media, versionado de escenas, vision mixer, broadcast multistream, cifrado de stream keys, registro público idempotente + auth por token de asistente, y engagement chat/Q&A/polls/recursos con idempotencia y conflictos) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 
 ## No implementar todavía
 
-LiveKit productivo · Studio · Broadcast · Webinars · Commerce · Analytics avanzado · AI · Conferences · ClickHouse · Qdrant · Horizon · Reverb — salvo contratos/stubs estrictamente necesarios.
+LiveKit productivo · Commerce · Analytics avanzado · AI · Conferences · ClickHouse · Qdrant · Horizon · Reverb · reminders/notificaciones — salvo contratos/stubs estrictamente necesarios.
 
 ## Deuda técnica
 
@@ -81,4 +92,4 @@ Ver `docs/progress/technical-debt.md`.
 
 ## Última actualización
 
-2026-09-08 — Foundation implementada y verificada.
+2026-09-08 — Fase 5 (Webinar) implementada y verificada en `main`.

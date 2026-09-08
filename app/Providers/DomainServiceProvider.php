@@ -9,6 +9,7 @@ use App\Domain\Billing\Contracts\EntitlementResolver;
 use App\Domain\Events\Models\Event;
 use App\Domain\FeatureManagement\Contracts\FeatureFlagResolver;
 use App\Domain\Production\Contracts\SceneDefinitionMigrator;
+use App\Domain\Registration\Context\AttendeeContext;
 use App\Domain\Studio\Models\Studio;
 use App\Domain\Tenancy\Context\TenantContext;
 use App\Domain\Workspaces\Models\Workspace;
@@ -45,6 +46,7 @@ class DomainServiceProvider extends ServiceProvider
         // Reset per request (Octane-safe) and shared across a single request.
         $this->app->scoped(TenantContext::class);
         $this->app->scoped(RequestContext::class);
+        $this->app->scoped(AttendeeContext::class);
     }
 
     public function boot(): void

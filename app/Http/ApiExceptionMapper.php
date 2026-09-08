@@ -6,9 +6,14 @@ namespace App\Http;
 
 use App\Domain\Broadcasting\Exceptions\BroadcastTransitionConflictException;
 use App\Domain\Broadcasting\Exceptions\InvalidBroadcastTransitionException;
+use App\Domain\Engagement\Exceptions\AlreadyVotedException;
+use App\Domain\Engagement\Exceptions\InvalidPollTransitionException;
+use App\Domain\Engagement\Exceptions\PollNotOpenException;
+use App\Domain\Engagement\Exceptions\PollTransitionConflictException;
 use App\Domain\Events\Exceptions\CapabilityNotEntitledException;
 use App\Domain\Events\Exceptions\EventTransitionConflictException;
 use App\Domain\Events\Exceptions\InvalidEventTransitionException;
+use App\Domain\Registration\Exceptions\RegistrationClosedException;
 use App\Domain\Studio\Exceptions\GuestLinkInvalidException;
 use App\Domain\Studio\Exceptions\InvalidParticipantStageTransitionException;
 use App\Domain\Studio\Exceptions\ParticipantStageConflictException;
@@ -43,6 +48,11 @@ final class ApiExceptionMapper
             $e instanceof InvalidBroadcastTransitionException => [422, 'invalid_broadcast_transition', $e->getMessage(), null],
             $e instanceof BroadcastTransitionConflictException => [409, 'broadcast_conflict', $e->getMessage(), null],
             $e instanceof CapabilityNotEntitledException => [403, 'capability_not_entitled', $e->getMessage(), null],
+            $e instanceof RegistrationClosedException => [422, 'registration_closed', $e->getMessage(), null],
+            $e instanceof InvalidPollTransitionException => [422, 'invalid_poll_transition', $e->getMessage(), null],
+            $e instanceof PollTransitionConflictException => [409, 'poll_conflict', $e->getMessage(), null],
+            $e instanceof PollNotOpenException => [422, 'poll_not_open', $e->getMessage(), null],
+            $e instanceof AlreadyVotedException => [409, 'already_voted', $e->getMessage(), null],
             $e instanceof AuthenticationException => [401, 'unauthenticated', 'Unauthenticated.', null],
             $e instanceof AuthorizationException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],
             $e instanceof AccessDeniedHttpException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],

@@ -8,6 +8,15 @@ use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\Broadcasting\BroadcastController;
 use App\Http\Controllers\Api\V1\Broadcasting\StreamDestinationController;
+use App\Http\Controllers\Api\V1\Engagement\Attendee\ChatController as AttendeeChatController;
+use App\Http\Controllers\Api\V1\Engagement\Attendee\PollController as AttendeePollController;
+use App\Http\Controllers\Api\V1\Engagement\Attendee\PresenceController as AttendeePresenceController;
+use App\Http\Controllers\Api\V1\Engagement\Attendee\QuestionController as AttendeeQuestionController;
+use App\Http\Controllers\Api\V1\Engagement\Attendee\ResourceController as AttendeeResourceController;
+use App\Http\Controllers\Api\V1\Engagement\Host\ChatController as HostChatController;
+use App\Http\Controllers\Api\V1\Engagement\Host\PollController as HostPollController;
+use App\Http\Controllers\Api\V1\Engagement\Host\QuestionController as HostQuestionController;
+use App\Http\Controllers\Api\V1\Engagement\Host\ResourceController as HostResourceController;
 use App\Http\Controllers\Api\V1\Events\EventCapabilityController;
 use App\Http\Controllers\Api\V1\Events\EventController;
 use App\Http\Controllers\Api\V1\Events\EventScheduleController;
@@ -20,6 +29,9 @@ use App\Http\Controllers\Api\V1\Production\BrandKitController;
 use App\Http\Controllers\Api\V1\Production\ProductionMixerController;
 use App\Http\Controllers\Api\V1\Production\RunOfShowController;
 use App\Http\Controllers\Api\V1\Production\SceneController;
+use App\Http\Controllers\Api\V1\Registration\PublicRegistrationController;
+use App\Http\Controllers\Api\V1\Registration\RegistrantController;
+use App\Http\Controllers\Api\V1\Registration\RegistrationFormController;
 use App\Http\Controllers\Api\V1\Studio\GuestJoinController;
 use App\Http\Controllers\Api\V1\Studio\StudioController;
 use App\Http\Controllers\Api\V1\Studio\StudioGuestLinkController;
@@ -35,6 +47,29 @@ Route::prefix('v1')->group(function (): void {
 
     // ---- Public guest join (the guest-link token is the credential) ----
     Route::post('studio/guest/{token}/join', GuestJoinController::class)->middleware('throttle:30,1');
+
+    // ---- Public registration (Fase 5 — Webinar). Event resolved unscoped. ----
+    Route::get('events/{event}/registration', [PublicRegistrationController::class, 'show'])->middleware('throttle:60,1');
+    Route::post('events/{event}/register', [PublicRegistrationController::class, 'store'])->middleware('throttle:20,1');
+
+    // ---- Attendee live surface (the join token is the credential) ----
+    Route::middleware(['attendee', 'throttle:120,1'])->prefix('attend')->group(function (): void {
+        Route::post('presence/join', [AttendeePresenceController::class, 'join']);
+        Route::post('presence/leave', [AttendeePresenceController::class, 'leave']);
+
+        Route::get('chat', [AttendeeChatController::class, 'index']);
+        Route::post('chat', [AttendeeChatController::class, 'store']);
+
+        Route::get('questions', [AttendeeQuestionController::class, 'index']);
+        Route::post('questions', [AttendeeQuestionController::class, 'store']);
+        Route::post('questions/{question}/vote', [AttendeeQuestionController::class, 'vote']);
+
+        Route::get('polls', [AttendeePollController::class, 'index']);
+        Route::post('polls/{poll}/vote', [AttendeePollController::class, 'vote']);
+
+        Route::get('resources', [AttendeeResourceController::class, 'index']);
+        Route::post('resources/{resource}/download', [AttendeeResourceController::class, 'download']);
+    });
 
     // ---- Authenticated (any tenant) ----
     Route::middleware(['auth:sanctum', 'share.user'])->group(function (): void {
@@ -115,6 +150,25 @@ Route::prefix('v1')->group(function (): void {
             Route::post('events/{event}/studio/broadcast/start', [BroadcastController::class, 'start']);
             Route::post('broadcasts/{broadcast}/stop', [BroadcastController::class, 'stop']);
             Route::post('broadcasts/{broadcast}/health', [BroadcastController::class, 'health']);
+
+            // ---- Registration & Engagement host side (Fase 5 — Webinar) ----
+            Route::get('events/{event}/registration-form', [RegistrationFormController::class, 'show']);
+            Route::put('events/{event}/registration-form', [RegistrationFormController::class, 'save']);
+            Route::get('events/{event}/registrations', [RegistrantController::class, 'index']);
+
+            Route::get('events/{event}/engagement/chat', [HostChatController::class, 'index']);
+            Route::post('events/{event}/engagement/chat', [HostChatController::class, 'store']);
+
+            Route::get('events/{event}/engagement/questions', [HostQuestionController::class, 'index']);
+            Route::post('questions/{question}/answer', [HostQuestionController::class, 'answer']);
+
+            Route::get('events/{event}/engagement/polls', [HostPollController::class, 'index']);
+            Route::post('events/{event}/engagement/polls', [HostPollController::class, 'store']);
+            Route::post('polls/{poll}/open', [HostPollController::class, 'open']);
+            Route::post('polls/{poll}/close', [HostPollController::class, 'close']);
+
+            Route::get('events/{event}/engagement/resources', [HostResourceController::class, 'index']);
+            Route::post('events/{event}/engagement/resources', [HostResourceController::class, 'store']);
         });
     });
 });

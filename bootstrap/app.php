@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\ApiExceptionMapper;
 use App\Http\Middleware\AssignRequestContext;
 use App\Http\Middleware\RequireTenant;
+use App\Http\Middleware\ResolveAttendee;
 use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\ShareUserContext;
 use App\Infrastructure\Logging\RequestContext;
@@ -37,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant' => ResolveTenant::class,
             'tenant.required' => RequireTenant::class,
             'share.user' => ShareUserContext::class,
+            'attendee' => ResolveAttendee::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

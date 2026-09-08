@@ -48,4 +48,14 @@ class EventPolicy
     {
         return $user->can(Permission::EventsManageCapabilities->value);
     }
+
+    public function viewEngagement(User $user, Event $event): bool
+    {
+        return $user->can(Permission::EngagementView->value);
+    }
+
+    public function manageEngagement(User $user, Event $event): bool
+    {
+        return $user->can(Permission::EngagementManage->value);
+    }
 }
