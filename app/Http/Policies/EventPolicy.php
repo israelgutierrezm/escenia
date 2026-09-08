@@ -58,4 +58,9 @@ class EventPolicy
     {
         return $user->can(Permission::EngagementManage->value);
     }
+
+    public function viewAnalytics(User $user, Event $event): bool
+    {
+        return $user->can(Permission::AnalyticsView->value);
+    }
 }

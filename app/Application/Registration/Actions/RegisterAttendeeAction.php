@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Application\Registration\Actions;
 
 use App\Application\Registration\DTOs\RegisterAttendeeData;
+use App\Domain\Analytics\Contracts\AnalyticsCollector;
+use App\Domain\Analytics\Enums\AnalyticsEventName;
 use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Events\Models\Event;
 use App\Domain\Registration\Exceptions\RegistrationClosedException;
@@ -32,6 +34,7 @@ final class RegisterAttendeeAction
 {
     public function __construct(
         private readonly AuditLogger $audit,
+        private readonly AnalyticsCollector $analytics,
         private readonly TenantContext $tenantContext,
     ) {}
 
@@ -83,6 +86,11 @@ final class RegisterAttendeeAction
 
                 $this->audit->log('registration.registered', tenant: $event->tenant, auditable: $attendee, context: [
                     'event' => $event->ulid,
+                ]);
+
+                $this->analytics->record(AnalyticsEventName::RegistrationCompleted, $event, $attendee, [
+                    'returning' => ! $attendee->wasRecentlyCreated,
+                    'attribution' => $data->attribution,
                 ]);
 
                 return [

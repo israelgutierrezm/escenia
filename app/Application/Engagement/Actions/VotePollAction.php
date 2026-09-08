@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Engagement\Actions;
 
+use App\Domain\Analytics\Contracts\AnalyticsCollector;
+use App\Domain\Analytics\Enums\AnalyticsEventName;
 use App\Domain\Engagement\Enums\PollStatus;
 use App\Domain\Engagement\Exceptions\AlreadyVotedException;
 use App\Domain\Engagement\Exceptions\PollNotOpenException;
@@ -21,6 +23,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class VotePollAction
 {
+    public function __construct(
+        private readonly AnalyticsCollector $analytics,
+    ) {}
+
     public function execute(Attendee $attendee, Poll $poll, PollOption $option): Poll
     {
         if ($poll->status !== PollStatus::Open) {
@@ -28,7 +34,7 @@ final class VotePollAction
         }
 
         try {
-            return DB::transaction(function () use ($attendee, $poll, $option): Poll {
+            $result = DB::transaction(function () use ($attendee, $poll, $option): Poll {
                 PollVote::query()->create([
                     'poll_id' => $poll->getKey(),
                     'poll_option_id' => $option->getKey(),
@@ -42,5 +48,14 @@ final class VotePollAction
         } catch (UniqueConstraintViolationException) {
             throw new AlreadyVotedException;
         }
+
+        $this->analytics->record(
+            AnalyticsEventName::EngagementPollVoted,
+            $attendee->event()->firstOrFail(),
+            $attendee,
+            ['poll' => $poll->ulid, 'option' => $option->ulid],
+        );
+
+        return $result;
     }
 }

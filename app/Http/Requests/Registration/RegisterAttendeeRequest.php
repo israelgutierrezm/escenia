@@ -27,6 +27,14 @@ class RegisterAttendeeRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'answers' => ['nullable', 'array'],
+            'attribution' => ['nullable', 'array'],
+            'attribution.utm_source' => ['nullable', 'string', 'max:255'],
+            'attribution.utm_medium' => ['nullable', 'string', 'max:255'],
+            'attribution.utm_campaign' => ['nullable', 'string', 'max:255'],
+            'attribution.utm_term' => ['nullable', 'string', 'max:255'],
+            'attribution.utm_content' => ['nullable', 'string', 'max:255'],
+            'attribution.referrer' => ['nullable', 'string', 'max:2048'],
+            'attribution.landing_path' => ['nullable', 'string', 'max:2048'],
         ];
     }
 }

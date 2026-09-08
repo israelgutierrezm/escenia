@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\Analytics\AnalyticsController;
 use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
@@ -169,6 +170,12 @@ Route::prefix('v1')->group(function (): void {
 
             Route::get('events/{event}/engagement/resources', [HostResourceController::class, 'index']);
             Route::post('events/{event}/engagement/resources', [HostResourceController::class, 'store']);
+
+            // ---- Analytics (Fase 6) ----
+            Route::get('events/{event}/analytics/summary', [AnalyticsController::class, 'summary']);
+            Route::get('events/{event}/analytics/attendance', [AnalyticsController::class, 'attendance']);
+            Route::get('events/{event}/analytics/engagement', [AnalyticsController::class, 'engagement']);
+            Route::get('events/{event}/analytics/attribution', [AnalyticsController::class, 'attribution']);
         });
     });
 });

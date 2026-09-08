@@ -12,7 +12,9 @@
 
 **Fase 4 — Broadcast — COMPLETED** (2026-09-08), mergeada a `main`.
 
-**Fase 5 — Webinar — COMPLETED** (2026-09-08), en `main` (hito comercializable). No avanzar a Fase 6 — Analytics sin instrucción explícita.
+**Fase 5 — Webinar — COMPLETED** (2026-09-08), en `main` (hito comercializable).
+
+**Fase 6 — Analytics — COMPLETED** (2026-09-08), en `main`. No avanzar a Fase 7 — Commerce sin instrucción explícita.
 
 ## Stack instalado
 
@@ -72,13 +74,22 @@
 - Tablas: `registration_forms`, `contacts`, `registrations`, `attendees`, `attendee_sessions`, `chat_messages`, `questions`, `question_votes`, `polls`, `poll_options`, `poll_votes`, `resources`, `resource_downloads`.
 - **Diferido**: reminders/notificaciones (Fase 8), CTAs/commerce (Fase 7), tiempo real vía Reverb (hoy polling/REST).
 
+### Analytics (Fase 6 — `app/Domain/Analytics`, `app/Application/Analytics`, `app/Infrastructure/Analytics`)
+- **Plano de analytics separado** (ADR-005): `AnalyticsCollector` (contract) + tabla append-only **versionada** `analytics_events` (`name` enum + `version` + `occurred_at` + `properties` JSON) + `DatabaseAnalyticsCollector`. Única fuente de verdad analítica, swappable a ClickHouse sin tocar callers — ADR-023.
+- **Captura** en los choke points de Fase 5 (una línea por action): `registration.completed` (con **attribution** saneada), `attendance.joined`/`heartbeat`/`left`, `engagement.chat`/`question_asked`/`question_voted`/`poll_voted`/`resource_downloaded`.
+- **Reporting** host (`EventAnalyticsService`): `summary` (registros, asistentes únicos, tasa de asistencia, pico de concurrencia, watch-time medio, engagement), `attendance` (concurrencia por bucket = **heatmap**, sweep line para el pico), `engagement`, `attribution` (registros/asistencia por `utm_source`). Reconstruye sesiones de presencia en PHP desde el stream join/heartbeat/leave.
+- Permiso `analytics.view` (Owner/Admin/Member) + `EventPolicy::viewAnalytics`; endpoints `GET /events/{event}/analytics/{summary,attendance,engagement,attribution}`.
+- Contratos de frontend: métodos `analytics*` en `@escenia/api-client` + tipos en `@escenia/types`; `attribution` opcional en el registro del `AttendeeClient`.
+- Tabla: `analytics_events`.
+- **Diferido**: doble escritura síncrona → async/ClickHouse; agregación en PHP → warehouse; retención de `analytics_events`; unificación con el Outbox (ADR-007).
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 107 passed / 432 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, gating de capacidades, guest links, tokens de media, versionado de escenas, vision mixer, broadcast multistream, cifrado de stream keys, registro público idempotente + auth por token de asistente, y engagement chat/Q&A/polls/recursos con idempotencia y conflictos) — `php artisan test`.
+- **Backend**: 115 passed / 497 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, gating de capacidades, guest links, tokens de media, versionado de escenas, vision mixer, broadcast multistream, cifrado de stream keys, registro público idempotente + auth por token de asistente, engagement chat/Q&A/polls/recursos con idempotencia y conflictos, y analítica: summary/attendance/heatmap/attribution + captura versionada) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 
@@ -92,4 +103,4 @@ Ver `docs/progress/technical-debt.md`.
 
 ## Última actualización
 
-2026-09-08 — Fase 5 (Webinar) implementada y verificada en `main`.
+2026-09-08 — Fase 6 (Analytics) implementada y verificada en `main`.

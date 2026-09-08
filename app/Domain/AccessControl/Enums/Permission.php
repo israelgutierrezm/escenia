@@ -31,6 +31,7 @@ enum Permission: string
     case BroadcastManage = 'broadcast.manage';
     case EngagementView = 'engagement.view';
     case EngagementManage = 'engagement.manage';
+    case AnalyticsView = 'analytics.view';
     case FeatureFlagsManage = 'feature_flags.manage';
     case AuditView = 'audit.view';
 

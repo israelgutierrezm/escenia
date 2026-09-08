@@ -420,3 +420,60 @@ export interface EventResource {
   position: number
   downloads_count: number
 }
+
+// ---- Analytics (Fase 6) ----
+
+/** Optional acquisition context captured at registration (never in the URL). */
+export interface Attribution {
+  utm_source?: string
+  utm_medium?: string
+  utm_campaign?: string
+  utm_term?: string
+  utm_content?: string
+  referrer?: string
+  landing_path?: string
+}
+
+export interface EngagementTotals {
+  chat_messages: number
+  questions_asked: number
+  question_votes: number
+  poll_votes: number
+  resource_downloads: number
+}
+
+export interface AnalyticsSummary {
+  registrations: number
+  registered_attendees: number
+  attended_attendees: number
+  /** attended / registered, 0..1. */
+  attendance_rate: number
+  peak_concurrent: number
+  avg_watch_minutes: number
+  engagement: EngagementTotals
+}
+
+export interface AttendancePoint {
+  /** Bucket start, ISO-8601. */
+  t: string
+  concurrent: number
+}
+
+export interface AttendanceTimeline {
+  interval_seconds: number
+  points: AttendancePoint[]
+}
+
+export interface EngagementReport {
+  totals: EngagementTotals
+}
+
+export interface AttributionSource {
+  source: string
+  registrations: number
+  attended: number
+}
+
+export interface AttributionReport {
+  sources: AttributionSource[]
+}

@@ -42,6 +42,7 @@ final class RoleCatalog
                 Permission::BroadcastManage->value,
                 Permission::EngagementView->value,
                 Permission::EngagementManage->value,
+                Permission::AnalyticsView->value,
                 Permission::FeatureFlagsManage->value,
                 Permission::AuditView->value,
             ],
@@ -52,6 +53,7 @@ final class RoleCatalog
                 Permission::ProductionView->value,
                 Permission::BroadcastView->value,
                 Permission::EngagementView->value,
+                Permission::AnalyticsView->value,
             ],
         ];
     }

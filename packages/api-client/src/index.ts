@@ -4,9 +4,14 @@ import type {
   ApiCollection,
   ApiErrorPayload,
   ApiResource,
+  AnalyticsSummary,
+  AttendanceTimeline,
+  Attribution,
+  AttributionReport,
   AttendeeRegistered,
   AttendeeSession,
   CapabilityKey,
+  EngagementReport,
   ChatMessage,
   EventCapability,
   EventModel,
@@ -268,6 +273,16 @@ export function createApiClient(options: ApiClientOptions = {}) {
       request<ApiCollection<EventResource>>('GET', `/events/${eventId}/engagement/resources`),
     addEventResource: (eventId: string, data: { title: string; url: string }) =>
       request<ApiResource<EventResource>>('POST', `/events/${eventId}/engagement/resources`, data),
+
+    // ---- Analytics host reporting (Fase 6) ----
+    analyticsSummary: (eventId: string) =>
+      request<ApiResource<AnalyticsSummary>>('GET', `/events/${eventId}/analytics/summary`),
+    analyticsAttendance: (eventId: string) =>
+      request<ApiResource<AttendanceTimeline>>('GET', `/events/${eventId}/analytics/attendance`),
+    analyticsEngagement: (eventId: string) =>
+      request<ApiResource<EngagementReport>>('GET', `/events/${eventId}/analytics/engagement`),
+    analyticsAttribution: (eventId: string) =>
+      request<ApiResource<AttributionReport>>('GET', `/events/${eventId}/analytics/attribution`),
   }
 }
 
@@ -336,8 +351,10 @@ export function createAttendeeClient(options: AttendeeClientOptions = {}) {
     // ---- Public registration (no token) ----
     registration: (eventId: string) =>
       request<ApiResource<PublicRegistration>>('GET', `/events/${eventId}/registration`),
-    register: (eventId: string, data: { name: string; email: string; answers?: Record<string, unknown> }) =>
-      request<ApiResource<AttendeeRegistered>>('POST', `/events/${eventId}/register`, data),
+    register: (
+      eventId: string,
+      data: { name: string; email: string; answers?: Record<string, unknown>; attribution?: Attribution },
+    ) => request<ApiResource<AttendeeRegistered>>('POST', `/events/${eventId}/register`, data),
 
     // ---- Attendee live surface (token required) ----
     join: () => request<ApiResource<AttendeeSession>>('POST', '/attend/presence/join'),
