@@ -36,6 +36,8 @@ final class RoleCatalog
                 Permission::EventsManageCapabilities->value,
                 Permission::StudioView->value,
                 Permission::StudioManage->value,
+                Permission::ProductionView->value,
+                Permission::ProductionManage->value,
                 Permission::FeatureFlagsManage->value,
                 Permission::AuditView->value,
             ],
@@ -43,6 +45,7 @@ final class RoleCatalog
                 Permission::WorkspacesView->value,
                 Permission::EventsView->value,
                 Permission::StudioView->value,
+                Permission::ProductionView->value,
             ],
         ];
     }

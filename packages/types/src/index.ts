@@ -200,6 +200,9 @@ export interface Studio {
   status: StudioStatus
   provider: string
   current_session: StudioSession | null
+  /** Present on mixer responses (preview/take). */
+  preview_scene?: string | null
+  program_scene?: string | null
 }
 
 export interface StudioParticipant {
@@ -247,4 +250,39 @@ export interface GuestLinkCreated {
   link: StudioGuestLink
   token: string
   join_url: string
+}
+
+// ---- Production Engine (Fase 3) ----
+
+export interface SceneVersion {
+  id: string
+  version: number
+  schema_version: string
+  definition: Record<string, unknown>
+  is_current: boolean
+  created_at: string | null
+}
+
+export interface Scene {
+  id: string
+  name: string
+  position: number
+  current_version: SceneVersion | null
+}
+
+export interface BrandKit {
+  id: string
+  name: string
+  tokens: Record<string, unknown> | null
+  is_default: boolean
+}
+
+export interface RunOfShowItem {
+  id: string
+  title: string
+  notes: string | null
+  duration_seconds: number | null
+  position: number
+  /** Scene ULID, present when the relation is loaded. */
+  scene?: string
 }

@@ -6,7 +6,9 @@
 
 **Fase 1 — Event Core — COMPLETED** (2026-09-08), mergeada a `main` (incluye optimistic locking de transiciones).
 
-**Fase 2 — Studio MVP — COMPLETED** (2026-09-08), en la rama `feature/studio-mvp` (pendiente de revisión/merge). No avanzar a Fase 3 — Production Engine sin instrucción explícita.
+**Fase 2 — Studio MVP — COMPLETED** (2026-09-08), mergeada a `main`.
+
+**Fase 3 — Production Engine — COMPLETED** (2026-09-08), en la rama `feature/production-engine` (pendiente de revisión/merge). No avanzar a Fase 4 — Broadcast sin instrucción explícita.
 
 ## Stack instalado
 
@@ -43,13 +45,20 @@
 - Permisos `studio.*` + `StudioPolicy`; emisión de access tokens a los participantes.
 - Contratos de frontend de Studio en sync (`@escenia/types` + `@escenia/api-client`).
 
+### Production Engine (Fase 3 — `app/Domain/Production`, `app/Application/Production`, `app/Infrastructure/Production`)
+- **Escenas versionadas** (`scenes` + `scene_versions` inmutables con `schema_version`) y `SceneDefinitionMigrator` para abrir diseños antiguos — ADR-006/020.
+- **Vision mixer**: preview/program en el studio (alter aditivo), `TakeSceneAction` + domain event `SceneTaken`.
+- **Run of show** ordenable y **brand kits** (workspace-level, un default).
+- Permisos `production.*` + StudioPolicy (`viewProduction`/`produce`); contratos de frontend en sync.
+- Tablas: `scenes`, `scene_versions`, `brand_kits`, `run_of_show_items` (+ `studios.preview_scene_id`/`program_scene_id`).
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 54 passed / 200 assertions (incluye aislamiento cross-tenant, máquinas de estado de eventos y participantes con optimistic locking, gating de capacidades, guest links y emisión de tokens con el media provider fake) — `php artisan test`.
+- **Backend**: 65 passed / 234 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, gating de capacidades, guest links, emisión de tokens con el media provider fake, versionado de escenas y vision mixer) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 

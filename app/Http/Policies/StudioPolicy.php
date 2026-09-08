@@ -23,4 +23,14 @@ class StudioPolicy
     {
         return $user->can(Permission::StudioManage->value);
     }
+
+    public function viewProduction(User $user, Studio $studio): bool
+    {
+        return $user->can(Permission::ProductionView->value);
+    }
+
+    public function produce(User $user, Studio $studio): bool
+    {
+        return $user->can(Permission::ProductionManage->value);
+    }
 }
