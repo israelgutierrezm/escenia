@@ -1,0 +1,11 @@
+# Technical Debt Register
+
+Registrar deuda técnica conscientemente (descripción, motivo, impacto, prioridad, resolución propuesta).
+
+| ID | Área | Descripción | Motivo | Impacto | Prioridad | Resolución propuesta | Estado |
+|----|------|-------------|--------|---------|-----------|----------------------|--------|
+| TD-001 | Tenancy | El `TenantScope` es fail-closed sólo en HTTP; en consola/queues no filtra si falta contexto. | Evitar romper seeders/factories/tests que crean datos sin request. | Un Job que consulte modelos tenant-owned sin `TenantContext::runFor(...)` podría leer cross-tenant. | Media | Al implementar Jobs con datos de tenant, propagar el `tenant_id` y envolver en `TenantContext::runFor`. Añadir tests de Job. | Abierta |
+| TD-002 | Feature Flags | La unicidad de flags **globales** por `key` no está garantizada por índice. | MySQL trata múltiples `NULL` como distintos en un índice único; los owners (`tenant/workspace/user`) son nullable. | Posibles filas duplicadas de un flag global con la misma `key`. | Baja | Hacer upsert por `key+scope` en la capa de aplicación (o columna generada/sentinela cuando exista un servicio de flags). | Abierta |
+| TD-003 | Infra | Redis no se usa operativamente en Foundation (cache/queue/session en `database`; cliente `predis`). | No introducir infraestructura antes de necesitarla; entorno local sin Redis. | Rendimiento/locks subóptimos hasta habilitar Redis en producción. | Media | Habilitar Redis (phpredis) para cache, queues, locks y rate limiting al desplegar. | Abierta |
+| TD-004 | Frontend | `packages/ui` es mínimo (tokens + un componente). | Alcance de Foundation; sólo se requiere la base del design system. | Componentes se irán duplicando en apps hasta consolidar la librería. | Baja | Expandir el design system (tipografía, formularios, layout) al crecer las apps. | Abierta |
+| TD-005 | Auth | Sanctum stateful cookie requiere mismo sitio/subdominios + CORS con credenciales en producción. | Autenticación first-party basada en cookies. | Configuración incorrecta de dominios/CORS rompería el login cross-origin. | Media | Documentar y fijar `SESSION_DOMAIN`, `SANCTUM_STATEFUL_DOMAINS` y `config/cors.php` por entorno; considerar tokens para el futuro Developer Platform. | Abierta |

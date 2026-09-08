@@ -1,0 +1,26 @@
+/**
+ * Escenia design tokens — the foundation of the shared design system.
+ * Consumed by every app so brand and spacing stay consistent. Values here are
+ * intentionally minimal for Foundation and will expand into a fuller system.
+ */
+:root {
+  --escenia-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --escenia-color-bg: #0b0d12;
+  --escenia-color-surface: #151a23;
+  --escenia-color-surface-muted: #1d2430;
+  --escenia-color-border: #2a3240;
+  --escenia-color-text: #e6e9ef;
+  --escenia-color-text-muted: #9aa4b2;
+  --escenia-color-primary: #5b8cff;
+  --escenia-color-primary-contrast: #ffffff;
+  --escenia-color-danger: #ff5b6e;
+
+  --escenia-radius-sm: 6px;
+  --escenia-radius-md: 10px;
+  --escenia-space-1: 4px;
+  --escenia-space-2: 8px;
+  --escenia-space-3: 12px;
+  --escenia-space-4: 16px;
+  --escenia-space-6: 24px;
+}

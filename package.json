@@ -1,0 +1,17 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "name": "escenia",
+    "private": true,
+    "type": "module",
+    "packageManager": "pnpm@9.15.0",
+    "engines": {
+        "node": ">=22"
+    },
+    "scripts": {
+        "lint": "pnpm -r --if-present lint",
+        "typecheck": "pnpm -r --if-present typecheck",
+        "test": "pnpm -r --if-present test",
+        "build": "pnpm -r --if-present build",
+        "dev:admin": "pnpm --filter @escenia/admin dev"
+    }
+}

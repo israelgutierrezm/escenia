@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -v)",
+      "Bash(composer --version)",
+      "Bash(npm -v)",
+      "Bash(git --version)",
+      "Bash(mysql --version)",
+      "Bash(pnpm -v)",
+      "Bash(redis-cli --version)",
+      "Bash(rm -rf \"C:/Dev/escenia/_ltmp\")",
+      "Bash(COMPOSER_MEMORY_LIMIT=-1 composer create-project \"laravel/laravel:^12.0\" _ltmp --prefer-dist --no-interaction)"
+    ]
+  }
+}
