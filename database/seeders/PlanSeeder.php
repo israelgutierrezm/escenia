@@ -21,8 +21,10 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Free',
                 'is_active' => true,
-                'features' => ['workspaces'],
-                'limits' => ['max_workspaces' => 3],
+                // Feature keys double as event capability keys for entitlement
+                // gating (see ADR-013 / ADR-016).
+                'features' => ['workspaces', 'registration', 'chat', 'qa', 'polls', 'replay'],
+                'limits' => ['max_workspaces' => 3, 'max_events' => 5],
                 'price' => new Money(0, 'USD'),
             ],
         );
@@ -32,8 +34,12 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Pro',
                 'is_active' => true,
-                'features' => ['workspaces', 'white_label', 'recording'],
-                'limits' => ['max_workspaces' => 50],
+                'features' => [
+                    'workspaces', 'registration', 'chat', 'qa', 'polls', 'replay',
+                    'recording', 'multistream', 'certificates', 'networking',
+                    'white_label', 'captions', 'translation', 'automation', 'commerce',
+                ],
+                'limits' => ['max_workspaces' => 50, 'max_events' => 500],
                 'price' => new Money(4900, 'USD'),
             ],
         );

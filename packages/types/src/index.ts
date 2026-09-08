@@ -66,3 +66,114 @@ export interface Workspace {
   status: string
   created_at: string | null
 }
+
+// ---- Events (Fase 1 — Event Core) ----
+
+export type EventStatus = 'draft' | 'scheduled' | 'live' | 'ended' | 'archived' | 'canceled'
+
+export type EventTypeKey =
+  | 'webinar'
+  | 'live_studio'
+  | 'evergreen'
+  | 'simulive'
+  | 'training'
+  | 'course'
+  | 'town_hall'
+  | 'product_launch'
+  | 'virtual_conference'
+  | 'hybrid_event'
+  | 'podcast'
+  | 'on_demand'
+
+export type CapabilityKey =
+  | 'registration'
+  | 'payments'
+  | 'chat'
+  | 'qa'
+  | 'polls'
+  | 'tests'
+  | 'certificates'
+  | 'networking'
+  | 'expo'
+  | 'sponsors'
+  | 'recording'
+  | 'multistream'
+  | 'automation'
+  | 'ai'
+  | 'commerce'
+  | 'replay'
+  | 'translation'
+  | 'captions'
+  | 'white_label'
+  | 'gamification'
+  | 'breakout_rooms'
+
+export type SpeakerRole = 'host' | 'speaker' | 'moderator' | 'panelist'
+export type SessionStatus = 'scheduled' | 'live' | 'ended' | 'canceled'
+
+export interface EventCapability {
+  id: string
+  capability: CapabilityKey
+  enabled: boolean
+  settings: Record<string, unknown> | null
+}
+
+export interface EventSession {
+  id: string
+  title: string
+  status: SessionStatus
+  scheduled_start_at: string | null
+  scheduled_end_at: string | null
+  position: number
+}
+
+export interface EventSpeaker {
+  id: string
+  name: string
+  email: string | null
+  headline: string | null
+  bio: string | null
+  avatar_url: string | null
+  role: SpeakerRole
+  position: number
+}
+
+export interface EventScheduleItem {
+  id: string
+  title: string
+  description: string | null
+  starts_at: string | null
+  ends_at: string | null
+  position: number
+}
+
+export interface EventTemplate {
+  id: string
+  name: string
+  type: EventTypeKey
+  description: string | null
+  default_capabilities: CapabilityKey[]
+  is_system: boolean
+}
+
+/** Named EventModel to avoid clashing with the DOM `Event` global. */
+export interface EventModel {
+  id: string
+  type: EventTypeKey
+  status: EventStatus
+  title: string
+  slug: string
+  description: string | null
+  timezone: string
+  scheduled_start_at: string | null
+  scheduled_end_at: string | null
+  actual_start_at: string | null
+  actual_end_at: string | null
+  allowed_transitions: EventStatus[]
+  workspace?: Workspace
+  capabilities?: EventCapability[]
+  sessions?: EventSession[]
+  speakers?: EventSpeaker[]
+  schedule?: EventScheduleItem[]
+  created_at: string | null
+}

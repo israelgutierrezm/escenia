@@ -17,6 +17,12 @@ enum Permission: string
     case WorkspacesCreate = 'workspaces.create';
     case WorkspacesUpdate = 'workspaces.update';
     case WorkspacesDelete = 'workspaces.delete';
+    case EventsView = 'events.view';
+    case EventsCreate = 'events.create';
+    case EventsUpdate = 'events.update';
+    case EventsDelete = 'events.delete';
+    case EventsTransition = 'events.transition';
+    case EventsManageCapabilities = 'events.capabilities.manage';
     case FeatureFlagsManage = 'feature_flags.manage';
     case AuditView = 'audit.view';
 
