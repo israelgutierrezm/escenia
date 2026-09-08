@@ -26,6 +26,8 @@ class StudioResource extends JsonResource
             'status' => $this->status->value,
             'provider' => $this->provider,
             'current_session' => $current !== null ? StudioSessionResource::make($current) : null,
+            'preview_scene' => $this->whenLoaded('previewScene', fn () => $this->previewScene?->ulid),
+            'program_scene' => $this->whenLoaded('programScene', fn () => $this->programScene?->ulid),
         ];
     }
 }

@@ -10,10 +10,14 @@ import type {
   EventStatus,
   EventTemplate,
   EventTypeKey,
+  BrandKit,
   GuestJoinResult,
   GuestLinkCreated,
   ParticipantRole,
   ParticipantStage,
+  RunOfShowItem,
+  Scene,
+  SceneVersion,
   Studio,
   StudioParticipant,
   Tenant,
@@ -170,6 +174,37 @@ export function createApiClient(options: ApiClientOptions = {}) {
     revokeGuestLink: (linkId: string) => request<void>('DELETE', `/studio-guest-links/${linkId}`),
     joinStudioAsGuest: (token: string, name: string) =>
       request<ApiResource<GuestJoinResult>>('POST', `/studio/guest/${token}/join`, { name }),
+
+    // ---- Production ----
+    scenes: (eventId: string) =>
+      request<ApiCollection<Scene>>('GET', `/events/${eventId}/studio/scenes`),
+    createScene: (eventId: string, name: string) =>
+      request<ApiResource<Scene>>('POST', `/events/${eventId}/studio/scenes`, { name }),
+    scene: (sceneId: string) => request<ApiResource<Scene>>('GET', `/scenes/${sceneId}`),
+    updateScene: (sceneId: string, definition: Record<string, unknown>) =>
+      request<ApiResource<Scene>>('PUT', `/scenes/${sceneId}`, { definition }),
+    sceneVersions: (sceneId: string) =>
+      request<ApiCollection<SceneVersion>>('GET', `/scenes/${sceneId}/versions`),
+    previewScene: (eventId: string, sceneId: string) =>
+      request<ApiResource<Studio>>('POST', `/events/${eventId}/studio/preview`, { scene_id: sceneId }),
+    takeScene: (eventId: string, sceneId?: string) =>
+      request<ApiResource<Studio>>('POST', `/events/${eventId}/studio/take`, sceneId ? { scene_id: sceneId } : {}),
+    brandKits: (eventId: string) =>
+      request<ApiCollection<BrandKit>>('GET', `/events/${eventId}/studio/brand-kits`),
+    createBrandKit: (
+      eventId: string,
+      data: { name: string; tokens?: Record<string, unknown>; is_default?: boolean },
+    ) => request<ApiResource<BrandKit>>('POST', `/events/${eventId}/studio/brand-kits`, data),
+    setDefaultBrandKit: (kitId: string) =>
+      request<ApiResource<BrandKit>>('POST', `/brand-kits/${kitId}/default`),
+    runOfShow: (eventId: string) =>
+      request<ApiCollection<RunOfShowItem>>('GET', `/events/${eventId}/studio/run-of-show`),
+    addRunOfShowItem: (
+      eventId: string,
+      data: { title: string; notes?: string; scene_id?: string; duration_seconds?: number },
+    ) => request<ApiResource<RunOfShowItem>>('POST', `/events/${eventId}/studio/run-of-show`, data),
+    reorderRunOfShow: (eventId: string, items: string[]) =>
+      request<ApiCollection<RunOfShowItem>>('POST', `/events/${eventId}/studio/run-of-show/reorder`, { items }),
   }
 }
 

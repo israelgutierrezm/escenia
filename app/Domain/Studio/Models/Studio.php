@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Studio\Models;
 
 use App\Domain\Events\Models\Event;
+use App\Domain\Production\Models\Scene;
 use App\Domain\Shared\Concerns\BelongsToTenant;
 use App\Domain\Shared\Concerns\HasPublicId;
 use App\Domain\Studio\Enums\StudioStatus;
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $name
  * @property StudioStatus $status
  * @property string $provider
+ * @property int|null $preview_scene_id
+ * @property int|null $program_scene_id
  * @property array<string, mixed>|null $settings
  */
 class Studio extends Model
@@ -39,6 +42,8 @@ class Studio extends Model
         'name',
         'status',
         'provider',
+        'preview_scene_id',
+        'program_scene_id',
         'settings',
     ];
 
@@ -88,5 +93,21 @@ class Studio extends Model
     public function currentSession(): ?StudioSession
     {
         return $this->sessions()->where('status', 'live')->latest()->first();
+    }
+
+    /**
+     * @return BelongsTo<Scene, $this>
+     */
+    public function previewScene(): BelongsTo
+    {
+        return $this->belongsTo(Scene::class, 'preview_scene_id');
+    }
+
+    /**
+     * @return BelongsTo<Scene, $this>
+     */
+    public function programScene(): BelongsTo
+    {
+        return $this->belongsTo(Scene::class, 'program_scene_id');
     }
 }

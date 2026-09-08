@@ -14,6 +14,10 @@ use App\Http\Controllers\Api\V1\Events\EventSpeakerController;
 use App\Http\Controllers\Api\V1\Events\EventTemplateController;
 use App\Http\Controllers\Api\V1\Events\EventTransitionController;
 use App\Http\Controllers\Api\V1\FeatureManagement\FeatureFlagController;
+use App\Http\Controllers\Api\V1\Production\BrandKitController;
+use App\Http\Controllers\Api\V1\Production\ProductionMixerController;
+use App\Http\Controllers\Api\V1\Production\RunOfShowController;
+use App\Http\Controllers\Api\V1\Production\SceneController;
 use App\Http\Controllers\Api\V1\Studio\GuestJoinController;
 use App\Http\Controllers\Api\V1\Studio\StudioController;
 use App\Http\Controllers\Api\V1\Studio\StudioGuestLinkController;
@@ -82,6 +86,24 @@ Route::prefix('v1')->group(function (): void {
             Route::get('events/{event}/studio/guest-links', [StudioGuestLinkController::class, 'index']);
             Route::post('events/{event}/studio/guest-links', [StudioGuestLinkController::class, 'store']);
             Route::delete('studio-guest-links/{link}', [StudioGuestLinkController::class, 'destroy']);
+
+            // ---- Production Engine (Fase 3) ----
+            Route::get('events/{event}/studio/scenes', [SceneController::class, 'index']);
+            Route::post('events/{event}/studio/scenes', [SceneController::class, 'store']);
+            Route::get('scenes/{scene}', [SceneController::class, 'show']);
+            Route::match(['put', 'patch'], 'scenes/{scene}', [SceneController::class, 'update']);
+            Route::get('scenes/{scene}/versions', [SceneController::class, 'versions']);
+
+            Route::post('events/{event}/studio/preview', [ProductionMixerController::class, 'preview']);
+            Route::post('events/{event}/studio/take', [ProductionMixerController::class, 'take']);
+
+            Route::get('events/{event}/studio/brand-kits', [BrandKitController::class, 'index']);
+            Route::post('events/{event}/studio/brand-kits', [BrandKitController::class, 'store']);
+            Route::post('brand-kits/{kit}/default', [BrandKitController::class, 'setDefault']);
+
+            Route::get('events/{event}/studio/run-of-show', [RunOfShowController::class, 'index']);
+            Route::post('events/{event}/studio/run-of-show', [RunOfShowController::class, 'store']);
+            Route::post('events/{event}/studio/run-of-show/reorder', [RunOfShowController::class, 'reorder']);
         });
     });
 });
