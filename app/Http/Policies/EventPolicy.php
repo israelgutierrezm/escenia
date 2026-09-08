@@ -1,0 +1,51 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Policies;
+
+use App\Domain\AccessControl\Enums\Permission;
+use App\Domain\Events\Models\Event;
+use App\Domain\Identity\Models\User;
+
+/**
+ * Tenant isolation of the $event is guaranteed upstream by the tenant global
+ * scope; these checks focus on the permission the user holds within the tenant.
+ */
+class EventPolicy
+{
+    public function viewAny(User $user): bool
+    {
+        return $user->can(Permission::EventsView->value);
+    }
+
+    public function view(User $user, Event $event): bool
+    {
+        return $user->can(Permission::EventsView->value);
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->can(Permission::EventsCreate->value);
+    }
+
+    public function update(User $user, Event $event): bool
+    {
+        return $user->can(Permission::EventsUpdate->value);
+    }
+
+    public function delete(User $user, Event $event): bool
+    {
+        return $user->can(Permission::EventsDelete->value);
+    }
+
+    public function transition(User $user, Event $event): bool
+    {
+        return $user->can(Permission::EventsTransition->value);
+    }
+
+    public function manageCapabilities(User $user, Event $event): bool
+    {
+        return $user->can(Permission::EventsManageCapabilities->value);
+    }
+}

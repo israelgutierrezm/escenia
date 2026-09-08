@@ -3,7 +3,8 @@
 ## Fase actual
 
 **Fase 0 — Foundation — COMPLETED** (2026-09-08).
-Pendiente de revisión del arquitecto antes de avanzar a Fase 1 — Event Core.
+
+**Fase 1 — Event Core — COMPLETED** (2026-09-08), en la rama `feature/event-core` (pendiente de revisión/merge). No avanzar a Fase 2 — Studio MVP sin instrucción explícita.
 
 ## Stack instalado
 
@@ -24,13 +25,21 @@ Pendiente de revisión del arquitecto antes de avanzar a Fase 1 — Event Core.
 - API `/api/v1`: error envelope consistente, rate limiting, Resources / Form Requests / Policies / Actions / DTOs / Enums / Value Object `Money` — ADR-012.
 - Tablas: `users`, `tenants`, `tenant_memberships`, `workspaces`, `workspace_memberships`, `plans`, `feature_flags`, `audit_logs`, `personal_access_tokens`, tablas Spatie (con `tenant_id`).
 
+### Event Core (Fase 1 — `app/Domain/Events`, `app/Application/Events`)
+- Agregado `Event` con **composición por capacidades** (`event_capabilities`) gated por entitlements — ADR-016.
+- **Máquina de estados** guardada (`draft→scheduled→live→ended→archived`, `canceled`) con `TransitionEventAction`, domain event `EventStatusChanged` y auditoría — ADR-017.
+- Sub-entidades: `event_sessions`, `event_speakers`, `event_schedule_items`; `event_templates` (sistema + tenant) con `CreateEventAction`.
+- Permisos `events.*` (RBAC), `EventPolicy`, API `/api/v1/events` (CRUD + transition + capabilities + sessions/speakers/schedule + templates).
+- Tablas: `events`, `event_capabilities`, `event_sessions`, `event_speakers`, `event_schedule_items`, `event_templates`.
+- Contratos de frontend en sync: tipos de Event en `@escenia/types` + métodos en `@escenia/api-client`.
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 24 passed / 58 assertions (incluye aislamiento cross-tenant) — `php artisan test`.
+- **Backend**: 36 passed / 107 assertions (incluye aislamiento cross-tenant y máquina de estados de eventos) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Tenancy\Context;
 
+use App\Domain\Tenancy\Exceptions\TenantContextMissingException;
 use App\Domain\Tenancy\Models\Tenant;
 use Closure;
 
@@ -44,6 +45,19 @@ class TenantContext
     public function hasTenant(): bool
     {
         return $this->tenant !== null;
+    }
+
+    /**
+     * Return the resolved tenant or fail. Use on routes guarded by RequireTenant
+     * where the tenant is guaranteed to be present.
+     */
+    public function tenantOrFail(): Tenant
+    {
+        if ($this->tenant === null) {
+            throw new TenantContextMissingException(self::class);
+        }
+
+        return $this->tenant;
     }
 
     public function forget(): void

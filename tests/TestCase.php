@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use Database\Seeders\EventTemplateSeeder;
 use Database\Seeders\PlanSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,6 +24,7 @@ abstract class TestCase extends BaseTestCase
             $this->seed([
                 PlanSeeder::class,
                 RolePermissionSeeder::class,
+                EventTemplateSeeder::class,
             ]);
         }
     }

@@ -6,6 +6,13 @@ use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
+use App\Http\Controllers\Api\V1\Events\EventCapabilityController;
+use App\Http\Controllers\Api\V1\Events\EventController;
+use App\Http\Controllers\Api\V1\Events\EventScheduleController;
+use App\Http\Controllers\Api\V1\Events\EventSessionController;
+use App\Http\Controllers\Api\V1\Events\EventSpeakerController;
+use App\Http\Controllers\Api\V1\Events\EventTemplateController;
+use App\Http\Controllers\Api\V1\Events\EventTransitionController;
 use App\Http\Controllers\Api\V1\FeatureManagement\FeatureFlagController;
 use App\Http\Controllers\Api\V1\Tenancy\TenantController;
 use App\Http\Controllers\Api\V1\Workspaces\WorkspaceController;
@@ -31,6 +38,29 @@ Route::prefix('v1')->group(function (): void {
             Route::delete('workspaces/{workspace}', [WorkspaceController::class, 'destroy']);
 
             Route::get('feature-flags', FeatureFlagController::class);
+
+            // ---- Events (Fase 1 — Event Core) ----
+            Route::get('event-templates', [EventTemplateController::class, 'index']);
+
+            Route::get('events', [EventController::class, 'index']);
+            Route::post('events', [EventController::class, 'store']);
+            Route::get('events/{event}', [EventController::class, 'show']);
+            Route::match(['put', 'patch'], 'events/{event}', [EventController::class, 'update']);
+            Route::delete('events/{event}', [EventController::class, 'destroy']);
+
+            Route::post('events/{event}/transition', EventTransitionController::class);
+
+            Route::get('events/{event}/capabilities', [EventCapabilityController::class, 'index']);
+            Route::put('events/{event}/capabilities/{capability}', [EventCapabilityController::class, 'update']);
+
+            Route::get('events/{event}/sessions', [EventSessionController::class, 'index']);
+            Route::post('events/{event}/sessions', [EventSessionController::class, 'store']);
+
+            Route::get('events/{event}/speakers', [EventSpeakerController::class, 'index']);
+            Route::post('events/{event}/speakers', [EventSpeakerController::class, 'store']);
+
+            Route::get('events/{event}/schedule', [EventScheduleController::class, 'index']);
+            Route::post('events/{event}/schedule', [EventScheduleController::class, 'store']);
         });
     });
 });

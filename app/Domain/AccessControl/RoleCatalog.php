@@ -28,11 +28,18 @@ final class RoleCatalog
                 Permission::WorkspacesCreate->value,
                 Permission::WorkspacesUpdate->value,
                 Permission::WorkspacesDelete->value,
+                Permission::EventsView->value,
+                Permission::EventsCreate->value,
+                Permission::EventsUpdate->value,
+                Permission::EventsDelete->value,
+                Permission::EventsTransition->value,
+                Permission::EventsManageCapabilities->value,
                 Permission::FeatureFlagsManage->value,
                 Permission::AuditView->value,
             ],
             TenantRole::Member->value => [
                 Permission::WorkspacesView->value,
+                Permission::EventsView->value,
             ],
         ];
     }

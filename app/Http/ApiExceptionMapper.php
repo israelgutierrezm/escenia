@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http;
 
+use App\Domain\Events\Exceptions\CapabilityNotEntitledException;
+use App\Domain\Events\Exceptions\InvalidEventTransitionException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -27,6 +29,8 @@ final class ApiExceptionMapper
     {
         return match (true) {
             $e instanceof ValidationException => [422, 'validation_failed', 'The given data was invalid.', $e->errors()],
+            $e instanceof InvalidEventTransitionException => [422, 'invalid_transition', $e->getMessage(), null],
+            $e instanceof CapabilityNotEntitledException => [403, 'capability_not_entitled', $e->getMessage(), null],
             $e instanceof AuthenticationException => [401, 'unauthenticated', 'Unauthenticated.', null],
             $e instanceof AuthorizationException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],
             $e instanceof AccessDeniedHttpException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],

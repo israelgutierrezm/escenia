@@ -2,6 +2,12 @@ import type {
   ApiCollection,
   ApiErrorPayload,
   ApiResource,
+  CapabilityKey,
+  EventCapability,
+  EventModel,
+  EventStatus,
+  EventTemplate,
+  EventTypeKey,
   Tenant,
   User,
   Workspace,
@@ -102,6 +108,38 @@ export function createApiClient(options: ApiClientOptions = {}) {
     workspaces: () => request<ApiCollection<Workspace>>('GET', '/workspaces'),
     createWorkspace: (data: { name: string; slug?: string }) =>
       request<ApiResource<Workspace>>('POST', '/workspaces', data),
+
+    // ---- Events ----
+    events: (workspace?: string) =>
+      request<ApiCollection<EventModel>>(
+        'GET',
+        workspace ? `/events?workspace=${encodeURIComponent(workspace)}` : '/events',
+      ),
+    event: (id: string) => request<ApiResource<EventModel>>('GET', `/events/${id}`),
+    createEvent: (data: {
+      workspace_id: string
+      title: string
+      type?: EventTypeKey
+      slug?: string
+      description?: string
+      timezone?: string
+      scheduled_start_at?: string
+      scheduled_end_at?: string
+      template_id?: string
+    }) => request<ApiResource<EventModel>>('POST', '/events', data),
+    transitionEvent: (id: string, status: EventStatus) =>
+      request<ApiResource<EventModel>>('POST', `/events/${id}/transition`, { status }),
+    setEventCapability: (
+      id: string,
+      capability: CapabilityKey,
+      enabled: boolean,
+      settings?: Record<string, unknown>,
+    ) =>
+      request<ApiResource<EventCapability>>('PUT', `/events/${id}/capabilities/${capability}`, {
+        enabled,
+        settings,
+      }),
+    eventTemplates: () => request<ApiCollection<EventTemplate>>('GET', '/event-templates'),
   }
 }
 
