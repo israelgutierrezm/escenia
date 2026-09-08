@@ -2,7 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Application\Events\Actions\CreateEventAction;
+use App\Application\Events\Actions\TransitionEventAction;
+use App\Application\Events\DTOs\CreateEventData;
+use App\Domain\Events\Enums\EventStatus;
 use App\Domain\Events\Events\EventStatusChanged;
+use App\Domain\Events\Exceptions\EventTransitionConflictException;
 use App\Domain\Events\Models\Event;
 use App\Domain\Events\Models\EventTemplate;
 use App\Domain\Identity\Models\User;
@@ -111,4 +116,28 @@ it('forbids a member from creating events', function () {
     $this->withHeader('X-Tenant-Id', $tenant->ulid)
         ->postJson('/api/v1/events', ['workspace_id' => $workspace->ulid, 'title' => 'Nope'])
         ->assertForbidden();
+});
+
+it('rejects a concurrent stale transition via optimistic locking', function () {
+    [$user, $tenant] = registerTenantOwner();
+    $workspace = $tenant->workspaces()->firstOrFail();
+
+    $event = app(CreateEventAction::class)
+        ->execute($tenant, $workspace, $user, new CreateEventData('Race Event'));
+
+    // A second handle captured while the event is still draft (the "loser").
+    $stale = Event::withoutGlobalScopes()->findOrFail($event->getKey());
+
+    $action = app(TransitionEventAction::class);
+
+    // First transition wins: draft -> scheduled.
+    $action->execute($event, $user, EventStatus::Scheduled);
+
+    // The stale handle still believes it is draft; the compare-and-swap sees the
+    // row already moved and conflicts instead of double-transitioning.
+    expect(fn () => $action->execute($stale, $user, EventStatus::Scheduled))
+        ->toThrow(EventTransitionConflictException::class);
+
+    expect(Event::withoutGlobalScopes()->findOrFail($event->getKey())->status)
+        ->toBe(EventStatus::Scheduled);
 });
