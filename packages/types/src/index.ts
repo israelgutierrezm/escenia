@@ -286,3 +286,36 @@ export interface RunOfShowItem {
   /** Scene ULID, present when the relation is loaded. */
   scene?: string
 }
+
+// ---- Broadcast (Fase 4) ----
+
+export type BroadcastStatus = 'idle' | 'starting' | 'live' | 'ended' | 'failed'
+export type BroadcastHealth = 'unknown' | 'healthy' | 'degraded' | 'failed'
+export type DestinationProtocol = 'rtmp' | 'rtmps' | 'srt'
+export type BroadcastDestinationStatus = 'pending' | 'live' | 'failed'
+
+/** The stream key is a secret and is never returned by the API. */
+export interface StreamDestination {
+  id: string
+  name: string
+  protocol: DestinationProtocol
+  url: string
+  is_enabled: boolean
+}
+
+export interface BroadcastDestination {
+  id: string
+  status: BroadcastDestinationStatus
+  /** StreamDestination ULID, present when the relation is loaded. */
+  destination?: string
+}
+
+export interface BroadcastSession {
+  id: string
+  status: BroadcastStatus
+  health: BroadcastHealth
+  record: boolean
+  started_at: string | null
+  ended_at: string | null
+  destinations?: BroadcastDestination[]
+}

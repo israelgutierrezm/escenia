@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
+use App\Http\Controllers\Api\V1\Broadcasting\BroadcastController;
+use App\Http\Controllers\Api\V1\Broadcasting\StreamDestinationController;
 use App\Http\Controllers\Api\V1\Events\EventCapabilityController;
 use App\Http\Controllers\Api\V1\Events\EventController;
 use App\Http\Controllers\Api\V1\Events\EventScheduleController;
@@ -104,6 +106,15 @@ Route::prefix('v1')->group(function (): void {
             Route::get('events/{event}/studio/run-of-show', [RunOfShowController::class, 'index']);
             Route::post('events/{event}/studio/run-of-show', [RunOfShowController::class, 'store']);
             Route::post('events/{event}/studio/run-of-show/reorder', [RunOfShowController::class, 'reorder']);
+
+            // ---- Broadcast (Fase 4) ----
+            Route::get('events/{event}/studio/destinations', [StreamDestinationController::class, 'index']);
+            Route::post('events/{event}/studio/destinations', [StreamDestinationController::class, 'store']);
+
+            Route::get('events/{event}/studio/broadcast', [BroadcastController::class, 'show']);
+            Route::post('events/{event}/studio/broadcast/start', [BroadcastController::class, 'start']);
+            Route::post('broadcasts/{broadcast}/stop', [BroadcastController::class, 'stop']);
+            Route::post('broadcasts/{broadcast}/health', [BroadcastController::class, 'health']);
         });
     });
 });

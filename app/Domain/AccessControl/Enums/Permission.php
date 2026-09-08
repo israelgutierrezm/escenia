@@ -27,6 +27,8 @@ enum Permission: string
     case StudioManage = 'studio.manage';
     case ProductionView = 'production.view';
     case ProductionManage = 'production.manage';
+    case BroadcastView = 'broadcast.view';
+    case BroadcastManage = 'broadcast.manage';
     case FeatureFlagsManage = 'feature_flags.manage';
     case AuditView = 'audit.view';
 
