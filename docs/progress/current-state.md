@@ -39,7 +39,7 @@
 
 ## Tests ejecutados
 
-- **Backend**: 36 passed / 107 assertions (incluye aislamiento cross-tenant y máquina de estados de eventos) — `php artisan test`.
+- **Backend**: 37 passed / 109 assertions (incluye aislamiento cross-tenant, máquina de estados y optimistic locking de transiciones) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 
