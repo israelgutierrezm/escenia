@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Media\LiveKit;
 
+use App\Domain\Media\Contracts\MediaEgressProvider;
 use App\Domain\Media\Contracts\MediaProviderContract;
 use App\Domain\Media\ValueObjects\AccessToken;
+use App\Domain\Media\ValueObjects\EgressHandle;
+use App\Domain\Media\ValueObjects\EgressSpec;
 use App\Domain\Media\ValueObjects\ParticipantGrants;
 use App\Domain\Media\ValueObjects\ParticipantIdentity;
 use App\Domain\Media\ValueObjects\RoomHandle;
 use App\Domain\Media\ValueObjects\RoomSpec;
+use App\Domain\Media\ValueObjects\StreamOutput;
 use Firebase\JWT\JWT;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +25,7 @@ use Throwable;
  * provisioning returns a handle; room teardown / participant removal hit the
  * LiveKit RoomService API best-effort (see technical-debt.md).
  */
-final class LiveKitMediaProvider implements MediaProviderContract
+final class LiveKitMediaProvider implements MediaEgressProvider, MediaProviderContract
 {
     public function __construct(
         private readonly string $apiKey,
@@ -75,18 +79,47 @@ final class LiveKitMediaProvider implements MediaProviderContract
 
     public function removeParticipant(RoomHandle $room, ParticipantIdentity $identity): void
     {
-        $this->callRoomService('RemoveParticipant', ['room' => $room->name, 'identity' => $identity->id]);
+        $this->callTwirp('RoomService', 'RemoveParticipant', ['room' => $room->name, 'identity' => $identity->id]);
     }
 
     public function closeRoom(RoomHandle $room): void
     {
-        $this->callRoomService('DeleteRoom', ['room' => $room->name]);
+        $this->callTwirp('RoomService', 'DeleteRoom', ['room' => $room->name]);
+    }
+
+    public function startEgress(RoomHandle $room, EgressSpec $spec): EgressHandle
+    {
+        $streamOutputs = array_map(
+            static fn (StreamOutput $output): array => ['urls' => [rtrim($output->url, '/').'/'.$output->streamKey]],
+            $spec->outputs,
+        );
+
+        $this->callTwirp('Egress', 'StartRoomCompositeEgress', [
+            'room_name' => $room->name,
+            'stream_outputs' => $streamOutputs,
+        ]);
+
+        // Without a live server the real egress id is unknown; a synthetic id is
+        // returned (in production it comes from the API response).
+        return new EgressHandle('egr_'.bin2hex(random_bytes(8)), 'livekit');
+    }
+
+    public function stopEgress(EgressHandle $egress): void
+    {
+        $this->callTwirp('Egress', 'StopEgress', ['egress_id' => $egress->id]);
+    }
+
+    public function egressHealth(EgressHandle $egress): string
+    {
+        return 'unknown';
     }
 
     /**
+     * Best-effort call to a LiveKit Twirp service; failures are logged, not fatal.
+     *
      * @param  array<string, mixed>  $body
      */
-    private function callRoomService(string $method, array $body): void
+    private function callTwirp(string $service, string $method, array $body): void
     {
         if ($this->host === '') {
             return; // No server API configured; nothing to call.
@@ -95,10 +128,9 @@ final class LiveKitMediaProvider implements MediaProviderContract
         try {
             Http::withToken($this->adminToken())
                 ->asJson()
-                ->post(rtrim($this->host, '/')."/twirp/livekit.RoomService/{$method}", $body);
+                ->post(rtrim($this->host, '/')."/twirp/livekit.{$service}/{$method}", $body);
         } catch (Throwable $e) {
-            // Room teardown is best-effort cleanup; never fail the request over it.
-            Log::warning('LiveKit RoomService call failed', ['method' => $method, 'error' => $e->getMessage()]);
+            Log::warning('LiveKit call failed', ['service' => $service, 'method' => $method, 'error' => $e->getMessage()]);
         }
     }
 

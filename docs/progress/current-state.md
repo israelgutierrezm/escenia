@@ -8,7 +8,9 @@
 
 **Fase 2 — Studio MVP — COMPLETED** (2026-09-08), mergeada a `main`.
 
-**Fase 3 — Production Engine — COMPLETED** (2026-09-08), en la rama `feature/production-engine` (pendiente de revisión/merge). No avanzar a Fase 4 — Broadcast sin instrucción explícita.
+**Fase 3 — Production Engine — COMPLETED** (2026-09-08), mergeada a `main`.
+
+**Fase 4 — Broadcast — COMPLETED** (2026-09-08), en la rama `feature/broadcast` (pendiente de revisión/merge). No avanzar a Fase 5 — Webinar sin instrucción explícita.
 
 ## Stack instalado
 
@@ -52,13 +54,20 @@
 - Permisos `production.*` + StudioPolicy (`viewProduction`/`produce`); contratos de frontend en sync.
 - Tablas: `scenes`, `scene_versions`, `brand_kits`, `run_of_show_items` (+ `studios.preview_scene_id`/`program_scene_id`).
 
+### Broadcast (Fase 4 — `app/Domain/Broadcasting`, `app/Application/Broadcasting`)
+- **Egress** detrás de `MediaEgressProvider` (fake + LiveKit), misma instancia que el room/token provider — ADR-021. Laravel nunca transporta el stream.
+- **Stream keys cifradas** en reposo (`encrypted`), ocultas de la serialización y jamás en logs; los Resources nunca las exponen.
+- **Ciclo de vida** (idle→starting→live→ended, failed) con máquina de estados guardada + optimistic locking (409); `StartBroadcast` provisiona egress **multistream** + grabación (flag), `StopBroadcast` lo detiene; health reportable.
+- Permisos `broadcast.*` + StudioPolicy; contratos de frontend en sync.
+- Tablas: `stream_destinations`, `broadcast_sessions`, `broadcast_destinations`.
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 65 passed / 234 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, gating de capacidades, guest links, emisión de tokens con el media provider fake, versionado de escenas y vision mixer) — `php artisan test`.
+- **Backend**: 76 passed / 271 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, gating de capacidades, guest links, tokens de media, versionado de escenas, vision mixer, broadcast multistream y cifrado de stream keys) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 

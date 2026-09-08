@@ -11,6 +11,9 @@ import type {
   EventTemplate,
   EventTypeKey,
   BrandKit,
+  BroadcastHealth,
+  BroadcastSession,
+  DestinationProtocol,
   GuestJoinResult,
   GuestLinkCreated,
   ParticipantRole,
@@ -18,6 +21,7 @@ import type {
   RunOfShowItem,
   Scene,
   SceneVersion,
+  StreamDestination,
   Studio,
   StudioParticipant,
   Tenant,
@@ -205,6 +209,25 @@ export function createApiClient(options: ApiClientOptions = {}) {
     ) => request<ApiResource<RunOfShowItem>>('POST', `/events/${eventId}/studio/run-of-show`, data),
     reorderRunOfShow: (eventId: string, items: string[]) =>
       request<ApiCollection<RunOfShowItem>>('POST', `/events/${eventId}/studio/run-of-show/reorder`, { items }),
+
+    // ---- Broadcast ----
+    streamDestinations: (eventId: string) =>
+      request<ApiCollection<StreamDestination>>('GET', `/events/${eventId}/studio/destinations`),
+    createStreamDestination: (
+      eventId: string,
+      data: { name: string; protocol: DestinationProtocol; url: string; stream_key: string },
+    ) => request<ApiResource<StreamDestination>>('POST', `/events/${eventId}/studio/destinations`, data),
+    broadcast: (eventId: string) =>
+      request<ApiResource<BroadcastSession | null>>('GET', `/events/${eventId}/studio/broadcast`),
+    startBroadcast: (eventId: string, destinations: string[], record = false) =>
+      request<ApiResource<BroadcastSession>>('POST', `/events/${eventId}/studio/broadcast/start`, {
+        destinations,
+        record,
+      }),
+    stopBroadcast: (broadcastId: string) =>
+      request<ApiResource<BroadcastSession>>('POST', `/broadcasts/${broadcastId}/stop`),
+    reportBroadcastHealth: (broadcastId: string, health: BroadcastHealth) =>
+      request<ApiResource<BroadcastSession>>('POST', `/broadcasts/${broadcastId}/health`, { health }),
   }
 }
 

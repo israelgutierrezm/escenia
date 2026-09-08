@@ -33,4 +33,14 @@ class StudioPolicy
     {
         return $user->can(Permission::ProductionManage->value);
     }
+
+    public function viewBroadcast(User $user, Studio $studio): bool
+    {
+        return $user->can(Permission::BroadcastView->value);
+    }
+
+    public function broadcast(User $user, Studio $studio): bool
+    {
+        return $user->can(Permission::BroadcastManage->value);
+    }
 }

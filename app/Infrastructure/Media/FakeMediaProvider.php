@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Media;
 
+use App\Domain\Media\Contracts\MediaEgressProvider;
 use App\Domain\Media\Contracts\MediaProviderContract;
 use App\Domain\Media\ValueObjects\AccessToken;
+use App\Domain\Media\ValueObjects\EgressHandle;
+use App\Domain\Media\ValueObjects\EgressSpec;
 use App\Domain\Media\ValueObjects\ParticipantGrants;
 use App\Domain\Media\ValueObjects\ParticipantIdentity;
 use App\Domain\Media\ValueObjects\RoomHandle;
@@ -15,7 +18,7 @@ use App\Domain\Media\ValueObjects\RoomSpec;
  * Deterministic, network-free media provider for local development and tests.
  * The test suite never needs Internet (testing-strategy.md).
  */
-final class FakeMediaProvider implements MediaProviderContract
+final class FakeMediaProvider implements MediaEgressProvider, MediaProviderContract
 {
     public function name(): string
     {
@@ -57,5 +60,20 @@ final class FakeMediaProvider implements MediaProviderContract
     public function closeRoom(RoomHandle $room): void
     {
         // No-op.
+    }
+
+    public function startEgress(RoomHandle $room, EgressSpec $spec): EgressHandle
+    {
+        return new EgressHandle('egr_'.substr(md5($room->name.'|'.count($spec->outputs)), 0, 16), 'fake');
+    }
+
+    public function stopEgress(EgressHandle $egress): void
+    {
+        // No-op.
+    }
+
+    public function egressHealth(EgressHandle $egress): string
+    {
+        return 'healthy';
     }
 }
