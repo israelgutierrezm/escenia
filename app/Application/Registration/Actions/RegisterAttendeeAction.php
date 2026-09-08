@@ -9,6 +9,7 @@ use App\Domain\Analytics\Contracts\AnalyticsCollector;
 use App\Domain\Analytics\Enums\AnalyticsEventName;
 use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Events\Models\Event;
+use App\Domain\Outbox\Models\OutboxEvent;
 use App\Domain\Registration\Exceptions\RegistrationClosedException;
 use App\Domain\Registration\Models\Attendee;
 use App\Domain\Registration\Models\Registration;
@@ -76,6 +77,17 @@ final class RegisterAttendeeAction
                 $this->analytics->record(AnalyticsEventName::RegistrationCompleted, $event, $attendee, [
                     'returning' => ! $attendee->wasRecentlyCreated,
                     'attribution' => $data->attribution,
+                ]);
+
+                // Publish the trigger to the outbox (ADR-007) for automations.
+                OutboxEvent::query()->create([
+                    'topic' => 'registration.completed',
+                    'payload' => [
+                        'event_id' => $event->getKey(),
+                        'contact_id' => $issued['contact']->getKey(),
+                        'attendee_id' => $attendee->getKey(),
+                    ],
+                    'available_at' => now(),
                 ]);
 
                 return [

@@ -9,6 +9,7 @@ use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Billing\Contracts\EntitlementResolver;
 use App\Domain\Events\Models\Event;
 use App\Domain\FeatureManagement\Contracts\FeatureFlagResolver;
+use App\Domain\Notifications\Contracts\Notifier;
 use App\Domain\Production\Contracts\SceneDefinitionMigrator;
 use App\Domain\Registration\Context\AttendeeContext;
 use App\Domain\Studio\Models\Studio;
@@ -22,6 +23,7 @@ use App\Infrastructure\Audit\DatabaseAuditLogger;
 use App\Infrastructure\Billing\PlanEntitlementResolver;
 use App\Infrastructure\FeatureManagement\DatabaseFeatureFlagResolver;
 use App\Infrastructure\Logging\RequestContext;
+use App\Infrastructure\Notifications\LogNotifier;
 use App\Infrastructure\Production\DefaultSceneDefinitionMigrator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -41,6 +43,7 @@ class DomainServiceProvider extends ServiceProvider
         AuditLogger::class => DatabaseAuditLogger::class,
         EntitlementResolver::class => PlanEntitlementResolver::class,
         FeatureFlagResolver::class => DatabaseFeatureFlagResolver::class,
+        Notifier::class => LogNotifier::class,
         SceneDefinitionMigrator::class => DefaultSceneDefinitionMigrator::class,
     ];
 

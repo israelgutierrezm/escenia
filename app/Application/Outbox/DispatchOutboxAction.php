@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Outbox;
 
+use App\Application\Automation\HandleAutomationTrigger;
 use App\Application\Commerce\Handlers\FulfillPaidOrderHandler;
 use App\Domain\Outbox\Contracts\OutboxHandler;
 use App\Domain\Outbox\Models\OutboxEvent;
@@ -12,19 +13,22 @@ use Throwable;
 
 /**
  * Publishes pending outbox events (ADR-007). Reads unscoped across tenants (it
- * is a system process), routes each event to its handler within the event's
+ * is a system process), routes each event to its handler(s) within the event's
  * tenant context, and marks it processed. A failing handler leaves the event
  * unprocessed (attempts incremented) for the next run — at-least-once delivery.
  */
 final class DispatchOutboxAction
 {
     /**
-     * Topic → handler class.
+     * Topic → ordered list of handler classes. One event can feed several
+     * consumers (e.g. order.paid fulfils the order AND triggers automations).
      *
-     * @var array<string, class-string<OutboxHandler>>
+     * @var array<string, list<class-string<OutboxHandler>>>
      */
     private const HANDLERS = [
-        'order.paid' => FulfillPaidOrderHandler::class,
+        'order.paid' => [FulfillPaidOrderHandler::class, HandleAutomationTrigger::class],
+        'registration.completed' => [HandleAutomationTrigger::class],
+        'event.ended' => [HandleAutomationTrigger::class],
     ];
 
     public function __construct(
@@ -62,21 +66,26 @@ final class DispatchOutboxAction
 
     private function process(OutboxEvent $event): void
     {
-        $handlerClass = self::HANDLERS[$event->topic] ?? null;
+        $handlers = self::HANDLERS[$event->topic] ?? [];
 
-        if ($handlerClass === null) {
+        if ($handlers === []) {
             return;
         }
 
-        $handler = app($handlerClass);
+        $run = function () use ($event, $handlers): void {
+            foreach ($handlers as $handlerClass) {
+                app($handlerClass)->handle($event);
+            }
+        };
+
         $tenant = $event->tenant;
 
         if ($tenant === null) {
-            $handler->handle($event);
+            $run();
 
             return;
         }
 
-        $this->tenantContext->runFor($tenant, fn () => $handler->handle($event));
+        $this->tenantContext->runFor($tenant, $run);
     }
 }

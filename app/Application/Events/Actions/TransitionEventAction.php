@@ -11,6 +11,7 @@ use App\Domain\Events\Exceptions\EventTransitionConflictException;
 use App\Domain\Events\Exceptions\InvalidEventTransitionException;
 use App\Domain\Events\Models\Event;
 use App\Domain\Identity\Models\User;
+use App\Domain\Outbox\Models\OutboxEvent;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -65,6 +66,16 @@ final class TransitionEventAction
             $event->refresh();
 
             EventStatusChanged::dispatch($event, $from, $target);
+
+            // Publish the trigger to the outbox (ADR-007) for automations (e.g.
+            // post-event follow-up sequences).
+            if ($target === EventStatus::Ended) {
+                OutboxEvent::query()->create([
+                    'topic' => 'event.ended',
+                    'payload' => ['event_id' => $event->getKey()],
+                    'available_at' => now(),
+                ]);
+            }
 
             $this->audit->log('event.transitioned', actor: $actor, tenant: $event->tenant, auditable: $event, context: [
                 'from' => $from->value,

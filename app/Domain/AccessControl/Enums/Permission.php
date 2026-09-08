@@ -34,6 +34,8 @@ enum Permission: string
     case AnalyticsView = 'analytics.view';
     case CommerceView = 'commerce.view';
     case CommerceManage = 'commerce.manage';
+    case AutomationsView = 'automations.view';
+    case AutomationsManage = 'automations.manage';
     case FeatureFlagsManage = 'feature_flags.manage';
     case AuditView = 'audit.view';
 

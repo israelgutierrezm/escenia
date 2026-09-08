@@ -16,7 +16,9 @@
 
 **Fase 6 — Analytics — COMPLETED** (2026-09-08), en `main`.
 
-**Fase 7 — Commerce — COMPLETED** (2026-09-08), en `main` (incluye el Outbox de ADR-007). No avanzar a Fase 8 — Automation sin instrucción explícita.
+**Fase 7 — Commerce — COMPLETED** (2026-09-08), en `main` (incluye el Outbox de ADR-007).
+
+**Fase 8 — Automation — COMPLETED** (2026-09-08), en `main`. No avanzar a Fase 9 — Recording & Content sin instrucción explícita.
 
 ## Stack instalado
 
@@ -95,19 +97,27 @@
 - Tablas: `tickets`, `orders`, `order_items`, `payments`, `payment_accounts`, `ctas`, `cta_clicks`, `outbox_events`.
 - **Diferido**: adaptadores Stripe/MP sin integración; `createIntent` externo síncrono; posible oversell bajo concurrencia; refunds solo por webhook; códigos de descuento.
 
+### Automation (Fase 8 — `app/Domain/{Automation,Notifications}`, `app/Application/Automation`, `app/Infrastructure/Notifications`)
+- **Motor de workflows sobre el Outbox** (ADR-025): triggers (`registration.completed`, `order.paid`, `event.ended`) escritos al outbox en la misma transacción; el dispatcher enruta un topic a **varios handlers**. `HandleAutomationTrigger` construye contexto aplanado (campos públicos + ids internos `_`), evalúa condiciones y arranca un `AutomationRun` (único por automation+outbox_event, idempotente).
+- **Conditional logic segura**: `ConditionEvaluator` (`{field, op, value}`, eq/ne/gt/gte/lt/lte/contains, AND, sin ejecución de código, falla cerrada) a nivel automation y por paso.
+- **Pasos** detrás de `StepHandler`: `webhook` (POST saliente firmado HMAC, solo https, best-effort), `tag_contact` (CRM), `notify` (vía `Notifier`+`LogNotifier`, habilita reminders — email real futuro), `wait` (secuencias). Reanudación con `automations:resume` (agendado) para los runs en `waiting`.
+- Permisos `automations.view`/`automations.manage` (tenant-level). HTTP host: CRUD + activar/desactivar + runs. Contratos de frontend: métodos `automations*`.
+- Tablas: `automations`, `automation_steps`, `automation_runs`, `contact_tags`, `notifications`.
+- **Diferido**: SSRF hardening de webhooks; reintentos de run fallido; envío real de notificaciones; validación por tipo de paso.
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 132 passed / 600 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, gating de capacidades, guest links, tokens de media, versionado de escenas, vision mixer, broadcast multistream, cifrado de stream keys, registro público idempotente + auth por token de asistente, engagement chat/Q&A/polls/recursos, analítica summary/attendance/heatmap/attribution, y commerce: checkout completo con webhook + Outbox idempotente, cifrado de credenciales de gateway, revenue del ledger) — `php artisan test`.
+- **Backend**: 143 passed / 652 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, gating de capacidades, guest links, tokens de media, versionado de escenas, vision mixer, broadcast multistream, cifrado de stream keys, registro público + auth por token de asistente, engagement chat/Q&A/polls/recursos, analítica summary/attendance/heatmap/attribution, commerce checkout+webhook+Outbox+revenue, y automation: triggers vía outbox, condiciones, secuencias con wait/resume, webhooks firmados e idempotencia) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 
 ## No implementar todavía
 
-LiveKit productivo · Automation/workflows · Analytics avanzado (ClickHouse) · AI · Conferences · Qdrant · Horizon · Reverb · reminders/notificaciones — salvo contratos/stubs estrictamente necesarios.
+LiveKit productivo · Recording & Content · Analytics avanzado (ClickHouse) · AI · Conferences · Qdrant · Horizon · Reverb · envío real de email/SMS — salvo contratos/stubs estrictamente necesarios.
 
 ## Deuda técnica
 
@@ -115,4 +125,4 @@ Ver `docs/progress/technical-debt.md`.
 
 ## Última actualización
 
-2026-09-08 — Fase 7 (Commerce + Outbox) implementada y verificada en `main`.
+2026-09-08 — Fase 8 (Automation) implementada y verificada en `main`.

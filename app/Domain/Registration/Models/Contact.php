@@ -55,4 +55,12 @@ class Contact extends Model
     {
         return $this->hasMany(Registration::class);
     }
+
+    /**
+     * @return HasMany<ContactTag, $this>
+     */
+    public function tags(): HasMany
+    {
+        return $this->hasMany(ContactTag::class);
+    }
 }

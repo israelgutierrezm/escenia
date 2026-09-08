@@ -6,6 +6,10 @@ import type {
   ApiResource,
   AnalyticsSummary,
   AttendanceTimeline,
+  Automation,
+  AutomationRun,
+  AutomationStepInput,
+  Condition,
   Attribution,
   AttributionReport,
   AttendeeRegistered,
@@ -326,6 +330,19 @@ export function createApiClient(options: ApiClientOptions = {}) {
       webhook_secret?: string
       is_active?: boolean
     }) => request<ApiResource<PaymentAccount>>('PUT', '/payment-accounts', data),
+
+    // ---- Automation host side (Fase 8) ----
+    automations: () => request<ApiCollection<Automation>>('GET', '/automations'),
+    createAutomation: (data: {
+      name: string
+      trigger: Automation['trigger']
+      conditions?: Condition[]
+      steps: AutomationStepInput[]
+    }) => request<ApiResource<Automation>>('POST', '/automations', data),
+    setAutomationActive: (automationId: string, isActive: boolean) =>
+      request<ApiResource<Automation>>('POST', `/automations/${automationId}/active`, { is_active: isActive }),
+    automationRuns: (automationId: string) =>
+      request<ApiCollection<AutomationRun>>('GET', `/automations/${automationId}/runs`),
   }
 }
 

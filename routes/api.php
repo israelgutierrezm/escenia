@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
+use App\Http\Controllers\Api\V1\Automation\AutomationController;
+use App\Http\Controllers\Api\V1\Automation\AutomationRunController;
 use App\Http\Controllers\Api\V1\Broadcasting\BroadcastController;
 use App\Http\Controllers\Api\V1\Broadcasting\StreamDestinationController;
 use App\Http\Controllers\Api\V1\Commerce\Attendee\CtaController as AttendeeCtaController;
@@ -204,6 +206,12 @@ Route::prefix('v1')->group(function (): void {
             Route::get('events/{event}/commerce/ctas', [HostCtaController::class, 'index']);
             Route::post('events/{event}/commerce/ctas', [HostCtaController::class, 'store']);
             Route::get('events/{event}/commerce/revenue', [CommerceReportController::class, 'revenue']);
+
+            // ---- Automation host side (Fase 8) ----
+            Route::get('automations', [AutomationController::class, 'index']);
+            Route::post('automations', [AutomationController::class, 'store']);
+            Route::post('automations/{automation}/active', [AutomationController::class, 'setActive']);
+            Route::get('automations/{automation}/runs', [AutomationRunController::class, 'index']);
         });
     });
 });

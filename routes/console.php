@@ -12,3 +12,6 @@ Artisan::command('inspire', function () {
 
 // Publish transactional-outbox events (ADR-007) at-least-once, every minute.
 Schedule::command('outbox:dispatch')->everyMinute()->withoutOverlapping();
+
+// Resume automation runs parked by a wait step (ADR-025), every minute.
+Schedule::command('automations:resume')->everyMinute()->withoutOverlapping();

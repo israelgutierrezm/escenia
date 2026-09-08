@@ -573,3 +573,51 @@ export interface RevenueReport {
   by_ticket: RevenueByTicket[]
   cta: { clicks: number; unique_clickers: number }
 }
+
+// ---- Automation (Fase 8) ----
+
+export type TriggerEvent = 'registration.completed' | 'order.paid' | 'event.ended'
+export type AutomationStepType = 'webhook' | 'tag_contact' | 'notify' | 'wait'
+export type AutomationRunStatus = 'running' | 'waiting' | 'completed' | 'failed'
+export type ConditionOperator = 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'contains'
+
+export interface Condition {
+  field: string
+  op: ConditionOperator
+  value: unknown
+}
+
+export interface AutomationStep {
+  id: string
+  position: number
+  type: AutomationStepType
+  config: Record<string, unknown> | null
+  conditions: Condition[] | null
+}
+
+export interface Automation {
+  id: string
+  name: string
+  trigger: TriggerEvent
+  is_active: boolean
+  conditions: Condition[] | null
+  steps?: AutomationStep[]
+}
+
+export interface AutomationRun {
+  id: string
+  trigger: TriggerEvent
+  status: AutomationRunStatus
+  current_position: number
+  resume_at: string | null
+  log: Array<{ position: number; type: string; summary: string }> | null
+  completed_at: string | null
+  created_at: string | null
+}
+
+/** A step in a create-automation request. */
+export interface AutomationStepInput {
+  type: AutomationStepType
+  config?: Record<string, unknown>
+  conditions?: Condition[]
+}
