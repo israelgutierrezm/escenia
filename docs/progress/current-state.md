@@ -2,9 +2,11 @@
 
 ## Fase actual
 
-**Fase 0 — Foundation — COMPLETED** (2026-09-08).
+**Fase 0 — Foundation — COMPLETED** (2026-09-08), en `main`.
 
-**Fase 1 — Event Core — COMPLETED** (2026-09-08), en la rama `feature/event-core` (pendiente de revisión/merge). No avanzar a Fase 2 — Studio MVP sin instrucción explícita.
+**Fase 1 — Event Core — COMPLETED** (2026-09-08), mergeada a `main` (incluye optimistic locking de transiciones).
+
+**Fase 2 — Studio MVP — COMPLETED** (2026-09-08), en la rama `feature/studio-mvp` (pendiente de revisión/merge). No avanzar a Fase 3 — Production Engine sin instrucción explícita.
 
 ## Stack instalado
 
@@ -33,13 +35,21 @@
 - Tablas: `events`, `event_capabilities`, `event_sessions`, `event_speakers`, `event_schedule_items`, `event_templates`.
 - Contratos de frontend en sync: tipos de Event en `@escenia/types` + métodos en `@escenia/api-client`.
 
+### Studio MVP (Fase 2 — `app/Domain/Studio`, `app/Domain/Media`, `app/Application/Studio`, `app/Infrastructure/Media`)
+- **Media plane** detrás de `MediaProviderContract` + VOs agnósticos; `FakeMediaProvider` (default) y `LiveKitMediaProvider` (tokens JWT reales) por `config/media.php` — ADR-018. El dominio nunca ve el SDK.
+- `studios`, `studio_sessions`, `studio_participants`, `studio_guest_links`; start/end de sesión provisiona/cierra room vía provider.
+- **Ciclo de vida del participante** (invited→green_room→backstage→stage→left) con máquina de estados guardada + optimistic locking (409) — ADR-019; grants de media por rol+stage (`ParticipantGrantPolicy`).
+- **Guest links** firmados (hash en DB), con expiración/single-use/revocación; canje en flujo **público** (`/studio/guest/{token}/join`) con tenant derivado del link (`TenantContext::runFor`).
+- Permisos `studio.*` + `StudioPolicy`; emisión de access tokens a los participantes.
+- Contratos de frontend de Studio en sync (`@escenia/types` + `@escenia/api-client`).
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 37 passed / 109 assertions (incluye aislamiento cross-tenant, máquina de estados y optimistic locking de transiciones) — `php artisan test`.
+- **Backend**: 54 passed / 200 assertions (incluye aislamiento cross-tenant, máquinas de estado de eventos y participantes con optimistic locking, gating de capacidades, guest links y emisión de tokens con el media provider fake) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 

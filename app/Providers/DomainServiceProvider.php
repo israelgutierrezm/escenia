@@ -8,9 +8,11 @@ use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Billing\Contracts\EntitlementResolver;
 use App\Domain\Events\Models\Event;
 use App\Domain\FeatureManagement\Contracts\FeatureFlagResolver;
+use App\Domain\Studio\Models\Studio;
 use App\Domain\Tenancy\Context\TenantContext;
 use App\Domain\Workspaces\Models\Workspace;
 use App\Http\Policies\EventPolicy;
+use App\Http\Policies\StudioPolicy;
 use App\Http\Policies\WorkspacePolicy;
 use App\Infrastructure\Audit\DatabaseAuditLogger;
 use App\Infrastructure\Billing\PlanEntitlementResolver;
@@ -46,5 +48,6 @@ class DomainServiceProvider extends ServiceProvider
     {
         Gate::policy(Workspace::class, WorkspacePolicy::class);
         Gate::policy(Event::class, EventPolicy::class);
+        Gate::policy(Studio::class, StudioPolicy::class);
     }
 }

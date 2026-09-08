@@ -23,6 +23,8 @@ enum Permission: string
     case EventsDelete = 'events.delete';
     case EventsTransition = 'events.transition';
     case EventsManageCapabilities = 'events.capabilities.manage';
+    case StudioView = 'studio.view';
+    case StudioManage = 'studio.manage';
     case FeatureFlagsManage = 'feature_flags.manage';
     case AuditView = 'audit.view';
 

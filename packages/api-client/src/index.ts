@@ -1,4 +1,6 @@
 import type {
+  AccessTokenPayload,
+  AdmitParticipantResult,
   ApiCollection,
   ApiErrorPayload,
   ApiResource,
@@ -8,6 +10,12 @@ import type {
   EventStatus,
   EventTemplate,
   EventTypeKey,
+  GuestJoinResult,
+  GuestLinkCreated,
+  ParticipantRole,
+  ParticipantStage,
+  Studio,
+  StudioParticipant,
   Tenant,
   User,
   Workspace,
@@ -140,6 +148,28 @@ export function createApiClient(options: ApiClientOptions = {}) {
         settings,
       }),
     eventTemplates: () => request<ApiCollection<EventTemplate>>('GET', '/event-templates'),
+
+    // ---- Studio ----
+    studio: (eventId: string) => request<ApiResource<Studio>>('GET', `/events/${eventId}/studio`),
+    startStudio: (eventId: string) =>
+      request<ApiResource<Studio>>('POST', `/events/${eventId}/studio/start`),
+    endStudio: (eventId: string) =>
+      request<ApiResource<Studio>>('POST', `/events/${eventId}/studio/end`),
+    studioParticipants: (eventId: string) =>
+      request<ApiCollection<StudioParticipant>>('GET', `/events/${eventId}/studio/participants`),
+    admitParticipant: (eventId: string, data: { name: string; role: ParticipantRole }) =>
+      request<ApiResource<AdmitParticipantResult>>('POST', `/events/${eventId}/studio/participants`, data),
+    moveParticipant: (participantId: string, stage: ParticipantStage) =>
+      request<ApiResource<StudioParticipant>>('POST', `/studio-participants/${participantId}/move`, { stage }),
+    participantToken: (participantId: string) =>
+      request<ApiResource<{ access: AccessTokenPayload }>>('POST', `/studio-participants/${participantId}/token`),
+    createGuestLink: (
+      eventId: string,
+      data: { name: string; role: ParticipantRole; expires_at?: string; single_use?: boolean; max_uses?: number },
+    ) => request<ApiResource<GuestLinkCreated>>('POST', `/events/${eventId}/studio/guest-links`, data),
+    revokeGuestLink: (linkId: string) => request<void>('DELETE', `/studio-guest-links/${linkId}`),
+    joinStudioAsGuest: (token: string, name: string) =>
+      request<ApiResource<GuestJoinResult>>('POST', `/studio/guest/${token}/join`, { name }),
   }
 }
 

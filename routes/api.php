@@ -14,6 +14,10 @@ use App\Http\Controllers\Api\V1\Events\EventSpeakerController;
 use App\Http\Controllers\Api\V1\Events\EventTemplateController;
 use App\Http\Controllers\Api\V1\Events\EventTransitionController;
 use App\Http\Controllers\Api\V1\FeatureManagement\FeatureFlagController;
+use App\Http\Controllers\Api\V1\Studio\GuestJoinController;
+use App\Http\Controllers\Api\V1\Studio\StudioController;
+use App\Http\Controllers\Api\V1\Studio\StudioGuestLinkController;
+use App\Http\Controllers\Api\V1\Studio\StudioParticipantController;
 use App\Http\Controllers\Api\V1\Tenancy\TenantController;
 use App\Http\Controllers\Api\V1\Workspaces\WorkspaceController;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +26,9 @@ Route::prefix('v1')->group(function (): void {
     // ---- Public authentication ----
     Route::post('auth/register', RegisterController::class)->middleware('throttle:login');
     Route::post('auth/login', LoginController::class)->middleware('throttle:login');
+
+    // ---- Public guest join (the guest-link token is the credential) ----
+    Route::post('studio/guest/{token}/join', GuestJoinController::class)->middleware('throttle:30,1');
 
     // ---- Authenticated (any tenant) ----
     Route::middleware(['auth:sanctum', 'share.user'])->group(function (): void {
@@ -61,6 +68,20 @@ Route::prefix('v1')->group(function (): void {
 
             Route::get('events/{event}/schedule', [EventScheduleController::class, 'index']);
             Route::post('events/{event}/schedule', [EventScheduleController::class, 'store']);
+
+            // ---- Studio (Fase 2 — Studio MVP) ----
+            Route::get('events/{event}/studio', [StudioController::class, 'show']);
+            Route::post('events/{event}/studio/start', [StudioController::class, 'start']);
+            Route::post('events/{event}/studio/end', [StudioController::class, 'end']);
+
+            Route::get('events/{event}/studio/participants', [StudioParticipantController::class, 'index']);
+            Route::post('events/{event}/studio/participants', [StudioParticipantController::class, 'store']);
+            Route::post('studio-participants/{participant}/move', [StudioParticipantController::class, 'move']);
+            Route::post('studio-participants/{participant}/token', [StudioParticipantController::class, 'token']);
+
+            Route::get('events/{event}/studio/guest-links', [StudioGuestLinkController::class, 'index']);
+            Route::post('events/{event}/studio/guest-links', [StudioGuestLinkController::class, 'store']);
+            Route::delete('studio-guest-links/{link}', [StudioGuestLinkController::class, 'destroy']);
         });
     });
 });

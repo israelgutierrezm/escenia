@@ -177,3 +177,74 @@ export interface EventModel {
   schedule?: EventScheduleItem[]
   created_at: string | null
 }
+
+// ---- Studio (Fase 2 — Studio MVP) ----
+
+export type StudioStatus = 'idle' | 'live' | 'ended'
+export type StudioSessionStatus = 'live' | 'ended'
+export type ParticipantRole = 'host' | 'producer' | 'speaker' | 'guest'
+export type ParticipantStage = 'invited' | 'green_room' | 'backstage' | 'stage' | 'left'
+
+export interface StudioSession {
+  id: string
+  status: StudioSessionStatus
+  provider: string
+  room: string
+  started_at: string | null
+  ended_at: string | null
+}
+
+export interface Studio {
+  id: string
+  name: string
+  status: StudioStatus
+  provider: string
+  current_session: StudioSession | null
+}
+
+export interface StudioParticipant {
+  id: string
+  name: string
+  role: ParticipantRole
+  stage: ParticipantStage
+  device_checked: boolean
+  joined_at: string | null
+  left_at: string | null
+}
+
+export interface StudioGuestLink {
+  id: string
+  name: string
+  role: ParticipantRole
+  expires_at: string | null
+  single_use: boolean
+  max_uses: number | null
+  uses: number
+  revoked_at: string | null
+}
+
+/** Short-lived media credential for the client SDK to join the room. */
+export interface AccessTokenPayload {
+  token: string
+  url: string
+  identity: string
+  room: string
+  expires_at: string
+}
+
+export interface AdmitParticipantResult {
+  participant: StudioParticipant
+  access: AccessTokenPayload
+}
+
+export interface GuestJoinResult {
+  participant: StudioParticipant
+  session: StudioSession
+  access: AccessTokenPayload
+}
+
+export interface GuestLinkCreated {
+  link: StudioGuestLink
+  token: string
+  join_url: string
+}
