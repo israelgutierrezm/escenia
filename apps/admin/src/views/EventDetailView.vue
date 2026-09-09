@@ -101,6 +101,9 @@ onMounted(load)
             Inicio: {{ fecha(event.scheduled_start_at) }} · Zona horaria: {{ event.timezone }}
           </p>
         </div>
+        <RouterLink :to="{ name: 'event-registration', params: { id } }" class="head-link">
+          Registro ›
+        </RouterLink>
       </div>
 
       <div class="panel stack">
@@ -181,9 +184,32 @@ onMounted(load)
   color: var(--escenia-color-text);
 }
 
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--escenia-space-4);
+}
+
 .head h1 {
   margin: 0;
   font-size: 1.5rem;
+}
+
+.head-link {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--escenia-color-primary);
+  text-decoration: none;
+  border: 1px solid color-mix(in srgb, var(--escenia-color-primary) 40%, transparent);
+  border-radius: var(--escenia-radius-sm);
+  transition: background 0.15s ease;
+}
+
+.head-link:hover {
+  background: color-mix(in srgb, var(--escenia-color-primary) 10%, transparent);
 }
 
 .small {
