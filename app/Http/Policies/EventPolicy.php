@@ -83,4 +83,14 @@ class EventPolicy
     {
         return $user->can(Permission::ContentManage->value);
     }
+
+    public function viewEducation(User $user, Event $event): bool
+    {
+        return $user->can(Permission::EducationView->value);
+    }
+
+    public function manageEducation(User $user, Event $event): bool
+    {
+        return $user->can(Permission::EducationManage->value);
+    }
 }

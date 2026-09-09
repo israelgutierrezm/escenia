@@ -8,6 +8,7 @@ use App\Application\Ai\IndexTranscriptHandler;
 use App\Application\Automation\HandleAutomationTrigger;
 use App\Application\Commerce\Handlers\FulfillPaidOrderHandler;
 use App\Application\Content\Handlers\RegisterBroadcastRecordingHandler;
+use App\Application\Education\Handlers\IssueCertificateHandler;
 use App\Domain\Outbox\Contracts\OutboxHandler;
 use App\Domain\Outbox\Models\OutboxEvent;
 use App\Domain\Tenancy\Context\TenantContext;
@@ -33,6 +34,7 @@ final class DispatchOutboxAction
         'event.ended' => [HandleAutomationTrigger::class],
         'broadcast.ended' => [RegisterBroadcastRecordingHandler::class],
         'transcript.ready' => [IndexTranscriptHandler::class],
+        'assessment.submitted' => [IssueCertificateHandler::class],
     ];
 
     public function __construct(

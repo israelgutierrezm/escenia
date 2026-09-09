@@ -734,3 +734,59 @@ export interface EventPlan {
   plan: string
   model: string
 }
+
+// ---- Education (Fase 11) ----
+
+export type AssessmentQuestionType = 'single_choice' | 'multiple_choice' | 'true_false'
+
+export interface AssessmentOption {
+  key: string
+  label: string
+  /** Present only in the host view; never sent to attendees. */
+  correct?: boolean
+}
+
+export interface AssessmentQuestion {
+  id: string
+  prompt: string
+  type: AssessmentQuestionType
+  points?: number
+  options: AssessmentOption[]
+}
+
+export interface Assessment {
+  id: string
+  title: string
+  passing_score: number
+  is_published?: boolean
+  questions: AssessmentQuestion[]
+}
+
+export interface AssessmentSubmission {
+  id: string
+  score: number
+  passed: boolean
+  submitted_at: string
+  attendee?: { name?: string; email?: string }
+}
+
+export interface CompletionRule {
+  min_watch_seconds: number | null
+  require_assessment: boolean
+}
+
+export interface Certificate {
+  id: string
+  code: string
+  recipient_name: string
+  issued_at: string
+  verify_url: string
+}
+
+export interface CertificateVerification {
+  valid: boolean
+  code?: string
+  recipient_name?: string
+  event_title?: string | null
+  issued_at?: string
+}

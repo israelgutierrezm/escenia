@@ -26,6 +26,12 @@ use App\Http\Controllers\Api\V1\Commerce\WebhookController;
 use App\Http\Controllers\Api\V1\Content\ClipController;
 use App\Http\Controllers\Api\V1\Content\RecordingController;
 use App\Http\Controllers\Api\V1\Content\TranscriptController;
+use App\Http\Controllers\Api\V1\Education\Attendee\AssessmentController as AttendeeAssessmentController;
+use App\Http\Controllers\Api\V1\Education\CertificateVerifyController;
+use App\Http\Controllers\Api\V1\Education\Host\AssessmentController as HostAssessmentController;
+use App\Http\Controllers\Api\V1\Education\Host\CertificateController as HostCertificateController;
+use App\Http\Controllers\Api\V1\Education\Host\CompletionRuleController;
+use App\Http\Controllers\Api\V1\Education\Host\SubmissionController;
 use App\Http\Controllers\Api\V1\Engagement\Attendee\ChatController as AttendeeChatController;
 use App\Http\Controllers\Api\V1\Engagement\Attendee\PollController as AttendeePollController;
 use App\Http\Controllers\Api\V1\Engagement\Attendee\PresenceController as AttendeePresenceController;
@@ -76,6 +82,9 @@ Route::prefix('v1')->group(function (): void {
     // Gateway webhook (authenticity from the signature, not the URL).
     Route::post('checkout/webhooks/{account}', [WebhookController::class, 'handle'])->middleware('throttle:120,1');
 
+    // ---- Public certificate verification (Fase 11 — Education). ----
+    Route::get('certificates/verify/{code}', [CertificateVerifyController::class, 'verify'])->middleware('throttle:60,1');
+
     // ---- Attendee live surface (the join token is the credential) ----
     Route::middleware(['attendee', 'throttle:120,1'])->prefix('attend')->group(function (): void {
         Route::post('presence/join', [AttendeePresenceController::class, 'join']);
@@ -96,6 +105,9 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('ctas', [AttendeeCtaController::class, 'index']);
         Route::post('ctas/{cta}/click', [AttendeeCtaController::class, 'click']);
+
+        Route::get('assessment', [AttendeeAssessmentController::class, 'show']);
+        Route::post('assessment', [AttendeeAssessmentController::class, 'submit']);
     });
 
     // ---- Authenticated (any tenant) ----
@@ -238,6 +250,15 @@ Route::prefix('v1')->group(function (): void {
             Route::post('events/{event}/ai/architect', [EventArchitectController::class, 'design']);
             Route::post('recordings/{recording}/summaries', [ContentSummaryController::class, 'store']);
             Route::get('summaries/{summary}', [ContentSummaryController::class, 'show']);
+
+            // ---- Education host side (Fase 11) ----
+            Route::get('events/{event}/education/assessment', [HostAssessmentController::class, 'show']);
+            Route::put('events/{event}/education/assessment', [HostAssessmentController::class, 'save']);
+            Route::get('events/{event}/education/completion-rule', [CompletionRuleController::class, 'show']);
+            Route::put('events/{event}/education/completion-rule', [CompletionRuleController::class, 'save']);
+            Route::get('events/{event}/education/submissions', [SubmissionController::class, 'index']);
+            Route::get('events/{event}/education/certificates', [HostCertificateController::class, 'index']);
+            Route::post('events/{event}/education/certificates/issue', [HostCertificateController::class, 'issue']);
         });
     });
 });

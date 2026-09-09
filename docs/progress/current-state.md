@@ -22,7 +22,9 @@
 
 **Fase 9 — Recording & Content — COMPLETED** (2026-09-08), en `main`.
 
-**Fase 10 — AI — COMPLETED** (2026-09-08), en `main`. No avanzar a Fase 11 — Education sin instrucción explícita.
+**Fase 10 — AI — COMPLETED** (2026-09-08), en `main`.
+
+**Fase 11 — Education — COMPLETED** (2026-09-08), en `main`. No avanzar a Fase 12 — Enterprise Events sin instrucción explícita.
 
 ## Stack instalado
 
@@ -125,19 +127,26 @@
 - Tablas: `content_chunks`, `content_summaries`.
 - **Diferido**: providers reales (Claude/embeddings/Qdrant) sin integración; coseno O(n) → Qdrant a escala; chunking 1/segmento; Producer Copilot + Event Intelligence.
 
+### Education (Fase 11 — `app/Domain/Education`, `app/Application/Education`)
+- **Assessments auto-corregidos** (`Assessment`/`AssessmentQuestion`/`AssessmentSubmission`): la clave de respuestas (`correct`) **nunca sale del servidor** (Resource de asistente separado); corrección server-side (`AssessmentScorer`). Un envío por asistente (409) — ADR-028.
+- **Reglas de finalización** (`CompletionRule`: minutos vistos derivados de `attendee_sessions` + aprobar el assessment). **Certificación por Outbox** (6º topic): `assessment.submitted` → `IssueCertificateHandler` evalúa elegibilidad y emite `Certificate` (idempotente); endpoint host para certificación solo por asistencia.
+- **Verificación pública** `GET /certificates/verify/{code}` (sin auth, código opaco, PII mínima). RBAC `education.view`/`education.manage`. Contratos de frontend: host (`saveAssessment`/`completionRule`/`submissions`/`certificates`/`issueCertificates`) + `AttendeeClient` (`assessment`/`submitAssessment`/`verifyCertificate`).
+- Tablas: `assessments`, `assessment_questions`, `assessment_submissions`, `completion_rules`, `certificates`.
+- **Diferido**: render/PDF del certificado; reintentos de assessment; preguntas de texto libre; gating por entitlement.
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 155 passed / 721 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, guest links, tokens de media, versionado de escenas, vision mixer, broadcast multistream, cifrado de stream keys, registro público + auth por token de asistente, engagement, analítica, commerce checkout+webhook+Outbox+revenue, automation triggers/secuencias/webhooks firmados, content subida-firmada+transcripción-en-Job+clips+auto-registro desde broadcast, y AI: indexación por outbox, búsqueda semántica real, RAG con citas, resúmenes en Job y event architect) — `php artisan test`.
+- **Backend**: 162 passed / 773 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, media/escenas/mixer/broadcast+cifrado, registro público + auth por token de asistente, engagement, analítica, commerce checkout+webhook+Outbox+revenue, automation triggers/secuencias/webhooks firmados, content subida-firmada+transcripción-en-Job+clips+auto-registro, AI indexación+búsqueda-semántica-real+RAG+resúmenes, y education: corrección server-side sin filtrar la clave, certificación por Outbox, certificación por asistencia y verificación pública) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 
 ## No implementar todavía
 
-LiveKit productivo · Education/cohorts · Conferences · Analytics avanzado (ClickHouse) · Qdrant productivo · Horizon/worker productivo · Reverb · envío real de email/SMS · transcripción/storage/LLM reales · render de clips — salvo contratos/stubs estrictamente necesarios.
+LiveKit productivo · Enterprise Events (multi-session/venue/networking/sponsors/expo/gamification/hybrid) · Enterprise · Analytics avanzado (ClickHouse) · Qdrant productivo · Horizon/worker productivo · Reverb · envío real de email/SMS · transcripción/storage/LLM reales · render de clips/certificados — salvo contratos/stubs estrictamente necesarios.
 
 ## Deuda técnica
 
@@ -145,4 +154,4 @@ Ver `docs/progress/technical-debt.md`.
 
 ## Última actualización
 
-2026-09-08 — Fase 10 (AI) implementada y verificada en `main`.
+2026-09-08 — Fase 11 (Education) implementada y verificada en `main`.

@@ -5,8 +5,14 @@ import type {
   ApiErrorPayload,
   ApiResource,
   AnalyticsSummary,
+  Assessment,
+  AssessmentQuestionType,
+  AssessmentSubmission,
   AttendanceTimeline,
   Automation,
+  Certificate,
+  CertificateVerification,
+  CompletionRule,
   AutomationRun,
   AutomationStepInput,
   Clip,
@@ -387,6 +393,34 @@ export function createApiClient(options: ApiClientOptions = {}) {
       request<ApiResource<ContentSummary>>('GET', `/summaries/${summaryId}`),
     designEvent: (eventId: string, brief: string) =>
       request<ApiResource<EventPlan>>('POST', `/events/${eventId}/ai/architect`, { brief }),
+
+    // ---- Education host side (Fase 11) ----
+    assessment: (eventId: string) =>
+      request<ApiResource<Assessment | null>>('GET', `/events/${eventId}/education/assessment`),
+    saveAssessment: (
+      eventId: string,
+      data: {
+        title: string
+        passing_score: number
+        is_published?: boolean
+        questions: Array<{
+          prompt: string
+          type: AssessmentQuestionType
+          points?: number
+          options: Array<{ key: string; label: string; correct?: boolean }>
+        }>
+      },
+    ) => request<ApiResource<Assessment>>('PUT', `/events/${eventId}/education/assessment`, data),
+    completionRule: (eventId: string) =>
+      request<ApiResource<CompletionRule | null>>('GET', `/events/${eventId}/education/completion-rule`),
+    saveCompletionRule: (eventId: string, data: CompletionRule) =>
+      request<ApiResource<CompletionRule>>('PUT', `/events/${eventId}/education/completion-rule`, data),
+    submissions: (eventId: string) =>
+      request<ApiCollection<AssessmentSubmission>>('GET', `/events/${eventId}/education/submissions`),
+    certificates: (eventId: string) =>
+      request<ApiCollection<Certificate>>('GET', `/events/${eventId}/education/certificates`),
+    issueCertificates: (eventId: string) =>
+      request<ApiResource<{ issued: number }>>('POST', `/events/${eventId}/education/certificates/issue`),
   }
 }
 
@@ -490,6 +524,13 @@ export function createAttendeeClient(options: AttendeeClientOptions = {}) {
     // ---- Commerce: attendee CTAs (token required) ----
     ctas: () => request<ApiCollection<Cta>>('GET', '/attend/ctas'),
     clickCta: (ctaId: string) => request<ApiResource<Cta>>('POST', `/attend/ctas/${ctaId}/click`),
+
+    // ---- Education: assessment (token) + public certificate verification ----
+    assessment: () => request<ApiResource<Assessment | null>>('GET', '/attend/assessment'),
+    submitAssessment: (answers: Record<string, string | string[]>) =>
+      request<ApiResource<AssessmentSubmission>>('POST', '/attend/assessment', { answers }),
+    verifyCertificate: (code: string) =>
+      request<ApiResource<CertificateVerification>>('GET', `/certificates/verify/${code}`),
   }
 }
 
