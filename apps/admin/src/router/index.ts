@@ -13,9 +13,31 @@ export const router = createRouter({
     },
     {
       path: '/',
-      name: 'dashboard',
-      component: () => import('@/views/DashboardView.vue'),
+      component: () => import('@/layouts/AdminLayout.vue'),
       meta: { auth: true },
+      children: [
+        {
+          path: '',
+          name: 'dashboard',
+          component: () => import('@/views/DashboardView.vue'),
+        },
+        {
+          path: 'members',
+          name: 'members',
+          component: () => import('@/views/MembersView.vue'),
+        },
+        {
+          path: 'settings',
+          name: 'settings',
+          component: () => import('@/views/TenantSettingsView.vue'),
+        },
+        {
+          path: 'system-settings',
+          name: 'system-settings',
+          component: () => import('@/views/SystemSettingsView.vue'),
+          meta: { superAdmin: true },
+        },
+      ],
     },
   ],
 })
@@ -32,6 +54,10 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.guest && auth.isAuthenticated) {
+    return { name: 'dashboard' }
+  }
+
+  if (to.meta.superAdmin && !auth.isSuperAdmin) {
     return { name: 'dashboard' }
   }
 

@@ -22,6 +22,7 @@ class UserResource extends JsonResource
             'id' => $this->ulid,
             'name' => $this->name,
             'email' => $this->email,
+            'is_super_admin' => $this->is_super_admin,
             'timezone' => $this->timezone,
             'locale' => $this->locale,
             'tenants' => TenantResource::collection($this->whenLoaded('tenants')),

@@ -9,3 +9,110 @@ body {
   color: var(--escenia-color-text);
   font-family: var(--escenia-font-sans);
 }
+
+/* ---- Shared admin building blocks (token-based) ---- */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--escenia-space-6);
+}
+
+.panel {
+  background: var(--escenia-color-surface);
+  border: 1px solid var(--escenia-color-border);
+  border-radius: var(--escenia-radius-md);
+  padding: var(--escenia-space-4);
+}
+
+.panel h2 {
+  margin: 0 0 var(--escenia-space-3);
+  font-size: 1.05rem;
+}
+
+.muted {
+  color: var(--escenia-color-text-muted);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--escenia-space-1);
+  font-size: 0.875rem;
+}
+
+.field > span {
+  color: var(--escenia-color-text-muted);
+}
+
+.field input,
+.field select,
+.field textarea {
+  font: inherit;
+  padding: var(--escenia-space-2) var(--escenia-space-3);
+  background: var(--escenia-color-bg);
+  border: 1px solid var(--escenia-color-border);
+  border-radius: var(--escenia-radius-sm);
+  color: var(--escenia-color-text);
+}
+
+.actions {
+  display: flex;
+  gap: var(--escenia-space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--escenia-space-1);
+  padding: 2px var(--escenia-space-2);
+  border: 1px solid var(--escenia-color-border);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: var(--escenia-color-text-muted);
+}
+
+.error-text {
+  margin: 0;
+  color: var(--escenia-color-danger);
+  font-size: 0.875rem;
+}
+
+.ok-text {
+  margin: 0;
+  color: var(--escenia-color-primary);
+  font-size: 0.875rem;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: var(--escenia-space-2);
+  border-bottom: 1px solid var(--escenia-color-border);
+}
+
+.admin-table th {
+  color: var(--escenia-color-text-muted);
+  font-weight: 600;
+}
+
+.checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--escenia-space-1) var(--escenia-space-3);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--escenia-space-2);
+  font-size: 0.85rem;
+}

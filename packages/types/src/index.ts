@@ -53,6 +53,7 @@ export interface User {
   id: string
   name: string
   email: string
+  is_super_admin?: boolean
   timezone: string | null
   locale: string | null
   tenants?: Tenant[]
