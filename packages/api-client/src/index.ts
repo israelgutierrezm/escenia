@@ -11,8 +11,13 @@ import type {
   AutomationStepInput,
   Clip,
   Condition,
+  ContentSummary,
+  EventPlan,
+  QaAnswer,
   Recording,
   RecordingUpload,
+  SearchHit,
+  SummaryKind,
   Transcript,
   Attribution,
   AttributionReport,
@@ -367,6 +372,21 @@ export function createApiClient(options: ApiClientOptions = {}) {
       request<ApiCollection<Clip>>('GET', `/recordings/${recordingId}/clips`),
     createClip: (recordingId: string, data: { title: string; start_ms: number; end_ms: number }) =>
       request<ApiResource<Clip>>('POST', `/recordings/${recordingId}/clips`, data),
+
+    // ---- AI: semantic search, Q&A, summaries, architect (Fase 10) ----
+    searchContent: (eventId: string, q: string, limit?: number) =>
+      request<ApiCollection<SearchHit>>(
+        'GET',
+        `/events/${eventId}/content/search?q=${encodeURIComponent(q)}${limit ? `&limit=${limit}` : ''}`,
+      ),
+    askContent: (eventId: string, question: string) =>
+      request<ApiResource<QaAnswer>>('POST', `/events/${eventId}/content/ask`, { question }),
+    requestSummary: (recordingId: string, kind: SummaryKind) =>
+      request<ApiResource<ContentSummary>>('POST', `/recordings/${recordingId}/summaries`, { kind }),
+    contentSummary: (summaryId: string) =>
+      request<ApiResource<ContentSummary>>('GET', `/summaries/${summaryId}`),
+    designEvent: (eventId: string, brief: string) =>
+      request<ApiResource<EventPlan>>('POST', `/events/${eventId}/ai/architect`, { brief }),
   }
 }
 

@@ -690,3 +690,47 @@ export interface RecordingUpload {
   recording: Recording
   upload: UploadTicket
 }
+
+// ---- AI (Fase 10) ----
+
+export type SummaryKind = 'summary' | 'chapters' | 'highlights'
+export type SummaryStatus = 'pending' | 'processing' | 'ready' | 'failed'
+
+/** One semantic-search hit: a transcript chunk with its relevance score. */
+export interface SearchHit {
+  id: string
+  recording: string | null
+  start_ms: number
+  end_ms: number
+  text: string
+  score: number
+}
+
+/** A cited transcript excerpt supporting a Smart Q&A answer. */
+export interface Citation {
+  id: string
+  start_ms: number
+  end_ms: number
+  text: string
+}
+
+export interface QaAnswer {
+  answer: string
+  model: string
+  citations: Citation[]
+}
+
+export interface ContentSummary {
+  id: string
+  kind: SummaryKind
+  status: SummaryStatus
+  provider: string | null
+  model: string | null
+  content: string | null
+  created_at: string | null
+}
+
+export interface EventPlan {
+  plan: string
+  model: string
+}

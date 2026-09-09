@@ -20,7 +20,9 @@
 
 **Fase 8 — Automation — COMPLETED** (2026-09-08), en `main`.
 
-**Fase 9 — Recording & Content — COMPLETED** (2026-09-08), en `main`. No avanzar a Fase 10 — AI sin instrucción explícita.
+**Fase 9 — Recording & Content — COMPLETED** (2026-09-08), en `main`.
+
+**Fase 10 — AI — COMPLETED** (2026-09-08), en `main`. No avanzar a Fase 11 — Education sin instrucción explícita.
 
 ## Stack instalado
 
@@ -115,19 +117,27 @@
 - Tablas: `recordings`, `recording_tracks`, `transcripts`, `transcript_segments`, `clips`.
 - **Diferido**: providers reales (S3/transcriptor HTTP) sin integración; `complete` confía en el cliente; entrega del asset de egress real (webhook del provider); render/export de clips e ISO tracks; worker/Horizon en prod.
 
+### AI (Fase 10 — `app/Domain/Ai`, `app/Application/Ai`, `app/Infrastructure/Ai`)
+- **AI plane detrás de contracts** (nunca el SDK en el dominio), por `config/ai.php` (`AiServiceProvider`), con fakes deterministas — ADR-027: `EmbeddingProvider` (fake bag-of-words con coseno real + HTTP stub), `AiCompletionProvider` (fake + `ClaudeCompletionProvider` Messages API, default `claude-opus-5`, stub), `VectorIndex` (`DatabaseVectorIndex` coseno en PHP + Qdrant stub).
+- **Indexación por Outbox** (5º uso): `TranscribeRecordingJob` al quedar `ready` escribe `transcript.ready` → `IndexTranscriptHandler` embebe y guarda `content_chunks` (idempotente).
+- **Semantic Replay** (búsqueda semántica), **Smart Q&A** (RAG con citas), **Content Factory** (`content_summaries` en `GenerateSummaryJob`: summary/chapters/highlights), **Event Architect** (plan generativo síncrono). El texto de transcript va como datos en el prompt (no instrucciones).
+- RBAC reutilizado: search/ask → `content.view`, summaries → `content.manage`, architect → `events.create`. Contratos de frontend: `searchContent`/`askContent`/`requestSummary`/`designEvent`.
+- Tablas: `content_chunks`, `content_summaries`.
+- **Diferido**: providers reales (Claude/embeddings/Qdrant) sin integración; coseno O(n) → Qdrant a escala; chunking 1/segmento; Producer Copilot + Event Intelligence.
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 149 passed / 688 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, guest links, tokens de media, versionado de escenas, vision mixer, broadcast multistream, cifrado de stream keys, registro público + auth por token de asistente, engagement, analítica summary/attendance/heatmap/attribution, commerce checkout+webhook+Outbox+revenue, automation triggers/condiciones/secuencias/webhooks firmados, y content: subida por URL firmada + complete, transcripción en Job, clips, y auto-registro de grabación desde broadcast vía Outbox) — `php artisan test`.
+- **Backend**: 155 passed / 721 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, guest links, tokens de media, versionado de escenas, vision mixer, broadcast multistream, cifrado de stream keys, registro público + auth por token de asistente, engagement, analítica, commerce checkout+webhook+Outbox+revenue, automation triggers/secuencias/webhooks firmados, content subida-firmada+transcripción-en-Job+clips+auto-registro desde broadcast, y AI: indexación por outbox, búsqueda semántica real, RAG con citas, resúmenes en Job y event architect) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 
 ## No implementar todavía
 
-LiveKit productivo · AI · Conferences · Analytics avanzado (ClickHouse) · Qdrant · Horizon/worker productivo · Reverb · envío real de email/SMS · transcripción/storage reales · render de clips — salvo contratos/stubs estrictamente necesarios.
+LiveKit productivo · Education/cohorts · Conferences · Analytics avanzado (ClickHouse) · Qdrant productivo · Horizon/worker productivo · Reverb · envío real de email/SMS · transcripción/storage/LLM reales · render de clips — salvo contratos/stubs estrictamente necesarios.
 
 ## Deuda técnica
 
@@ -135,4 +145,4 @@ Ver `docs/progress/technical-debt.md`.
 
 ## Última actualización
 
-2026-09-08 — Fase 9 (Recording & Content) implementada y verificada en `main`.
+2026-09-08 — Fase 10 (AI) implementada y verificada en `main`.

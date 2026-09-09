@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Outbox;
 
+use App\Application\Ai\IndexTranscriptHandler;
 use App\Application\Automation\HandleAutomationTrigger;
 use App\Application\Commerce\Handlers\FulfillPaidOrderHandler;
 use App\Application\Content\Handlers\RegisterBroadcastRecordingHandler;
@@ -31,6 +32,7 @@ final class DispatchOutboxAction
         'registration.completed' => [HandleAutomationTrigger::class],
         'event.ended' => [HandleAutomationTrigger::class],
         'broadcast.ended' => [RegisterBroadcastRecordingHandler::class],
+        'transcript.ready' => [IndexTranscriptHandler::class],
     ];
 
     public function __construct(

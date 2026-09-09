@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\Ai\ContentSummaryController;
+use App\Http\Controllers\Api\V1\Ai\EventArchitectController;
+use App\Http\Controllers\Api\V1\Ai\SemanticSearchController;
+use App\Http\Controllers\Api\V1\Ai\SmartQaController;
 use App\Http\Controllers\Api\V1\Analytics\AnalyticsController;
 use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
@@ -227,6 +231,13 @@ Route::prefix('v1')->group(function (): void {
 
             Route::get('recordings/{recording}/clips', [ClipController::class, 'index']);
             Route::post('recordings/{recording}/clips', [ClipController::class, 'store']);
+
+            // ---- AI: semantic search, RAG Q&A, summaries, architect (Fase 10) ----
+            Route::get('events/{event}/content/search', [SemanticSearchController::class, 'search']);
+            Route::post('events/{event}/content/ask', [SmartQaController::class, 'ask']);
+            Route::post('events/{event}/ai/architect', [EventArchitectController::class, 'design']);
+            Route::post('recordings/{recording}/summaries', [ContentSummaryController::class, 'store']);
+            Route::get('summaries/{summary}', [ContentSummaryController::class, 'show']);
         });
     });
 });

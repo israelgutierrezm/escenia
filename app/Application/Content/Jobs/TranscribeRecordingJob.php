@@ -8,6 +8,7 @@ use App\Domain\Content\Contracts\Transcriber;
 use App\Domain\Content\Enums\TranscriptStatus;
 use App\Domain\Content\Models\Transcript;
 use App\Domain\Content\Models\TranscriptSegment;
+use App\Domain\Outbox\Models\OutboxEvent;
 use App\Domain\Tenancy\Context\TenantContext;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -68,6 +69,14 @@ class TranscribeRecordingJob implements ShouldQueue
                         'language' => $result->language,
                         'failed_reason' => null,
                     ])->save();
+
+                    // Publish to the outbox (ADR-007) so the AI plane indexes it
+                    // for semantic search / RAG (ADR-027).
+                    OutboxEvent::query()->create([
+                        'topic' => 'transcript.ready',
+                        'payload' => ['transcript_id' => $transcript->getKey()],
+                        'available_at' => now(),
+                    ]);
                 });
             } catch (Throwable $e) {
                 $transcript->forceFill([
