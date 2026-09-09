@@ -18,6 +18,8 @@ use App\Domain\Engagement\Exceptions\AlreadyVotedException;
 use App\Domain\Engagement\Exceptions\InvalidPollTransitionException;
 use App\Domain\Engagement\Exceptions\PollNotOpenException;
 use App\Domain\Engagement\Exceptions\PollTransitionConflictException;
+use App\Domain\Enterprise\Exceptions\DomainVerificationFailedException;
+use App\Domain\Enterprise\Exceptions\SsoAuthenticationException;
 use App\Domain\Events\Exceptions\CapabilityNotEntitledException;
 use App\Domain\Events\Exceptions\EventTransitionConflictException;
 use App\Domain\Events\Exceptions\InvalidEventTransitionException;
@@ -69,6 +71,8 @@ final class ApiExceptionMapper
             $e instanceof AssessmentNotAvailableException => [422, 'assessment_not_available', $e->getMessage(), null],
             $e instanceof AlreadySubmittedException => [409, 'already_submitted', $e->getMessage(), null],
             $e instanceof SessionFullException => [422, 'session_full', $e->getMessage(), null],
+            $e instanceof DomainVerificationFailedException => [422, 'domain_verification_failed', $e->getMessage(), null],
+            $e instanceof SsoAuthenticationException => [401, 'sso_authentication_failed', $e->getMessage(), null],
             $e instanceof AuthenticationException => [401, 'unauthenticated', 'Unauthenticated.', null],
             $e instanceof AuthorizationException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],
             $e instanceof AccessDeniedHttpException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],

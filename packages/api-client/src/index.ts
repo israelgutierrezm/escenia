@@ -76,6 +76,15 @@ import type {
   Tenant,
   User,
   Workspace,
+  ApiKey,
+  ApiKeyScope,
+  AuditLogEntry,
+  CustomDomain,
+  DataRegion,
+  IssuedApiKey,
+  SsoConnection,
+  SsoProvider,
+  TenantSettings,
 } from '@escenia/types'
 
 export interface ApiClientOptions {
@@ -452,7 +461,66 @@ export function createApiClient(options: ApiClientOptions = {}) {
     leads: (eventId: string) => request<ApiCollection<BoothLead>>('GET', `/events/${eventId}/leads`),
     leaderboard: (eventId: string) =>
       request<ApiResource<LeaderboardEntry[]>>('GET', `/events/${eventId}/leaderboard`),
+
+    // ---- Enterprise admin: domains, API keys, SSO, settings, audit (Fase 13) ----
+    customDomains: () => request<ApiCollection<CustomDomain>>('GET', '/enterprise/domains'),
+    createCustomDomain: (data: { hostname: string; workspace_id?: string }) =>
+      request<ApiResource<CustomDomain>>('POST', '/enterprise/domains', data),
+    verifyCustomDomain: (domainId: string) =>
+      request<ApiResource<CustomDomain>>('POST', `/enterprise/domains/${domainId}/verify`),
+    deleteCustomDomain: (domainId: string) =>
+      request<void>('DELETE', `/enterprise/domains/${domainId}`),
+
+    apiKeys: () => request<ApiCollection<ApiKey>>('GET', '/enterprise/api-keys'),
+    createApiKey: (data: { name: string; scopes: ApiKeyScope[]; expires_at?: string }) =>
+      request<ApiResource<IssuedApiKey>>('POST', '/enterprise/api-keys', data),
+    revokeApiKey: (apiKeyId: string) =>
+      request<ApiResource<ApiKey>>('DELETE', `/enterprise/api-keys/${apiKeyId}`),
+
+    ssoConnections: () => request<ApiCollection<SsoConnection>>('GET', '/enterprise/sso-connections'),
+    createSsoConnection: (data: {
+      provider: SsoProvider
+      display_name: string
+      domain?: string
+      config?: Record<string, unknown>
+      default_role?: 'admin' | 'member'
+    }) => request<ApiResource<SsoConnection>>('POST', '/enterprise/sso-connections', data),
+    updateSsoConnection: (
+      connectionId: string,
+      data: Partial<{
+        display_name: string
+        domain: string | null
+        config: Record<string, unknown>
+        default_role: 'admin' | 'member'
+        is_active: boolean
+      }>,
+    ) => request<ApiResource<SsoConnection>>('PUT', `/enterprise/sso-connections/${connectionId}`, data),
+    deleteSsoConnection: (connectionId: string) =>
+      request<void>('DELETE', `/enterprise/sso-connections/${connectionId}`),
+
+    tenantSettings: () => request<ApiResource<TenantSettings>>('GET', '/enterprise/settings'),
+    updateTenantSettings: (data: { data_region?: DataRegion; is_dedicated?: boolean }) =>
+      request<ApiResource<TenantSettings>>('PUT', '/enterprise/settings', data),
+
+    auditLogs: (filters: AuditLogFilters = {}) => {
+      const params = new URLSearchParams()
+      for (const [key, value] of Object.entries(filters)) {
+        if (value !== undefined && value !== null && value !== '') params.append(key, String(value))
+      }
+      const qs = params.toString()
+      return request<ApiCollection<AuditLogEntry>>('GET', `/audit-logs${qs ? `?${qs}` : ''}`)
+    },
   }
+}
+
+/** Filters accepted by the advanced audit-log query (Fase 13). */
+export interface AuditLogFilters {
+  action?: string
+  actor?: string
+  auditable_type?: string
+  from?: string
+  to?: string
+  per_page?: number
 }
 
 export type ApiClient = ReturnType<typeof createApiClient>

@@ -26,7 +26,9 @@
 
 **Fase 11 — Education — COMPLETED** (2026-09-08), en `main`.
 
-**Fase 12 — Enterprise Events — COMPLETED** (2026-09-08), en `main` (corte: agenda/sponsors/gamification; networking/venue/hybrid diferidos). No avanzar a Fase 13 — Enterprise sin instrucción explícita.
+**Fase 12 — Enterprise Events — COMPLETED** (2026-09-08), en `main` (corte: agenda/sponsors/gamification; networking/venue/hybrid diferidos).
+
+**Fase 13 — Enterprise — COMPLETED** (2026-09-09), en `main` (corte: custom domains, API keys/Developer Platform, SSO con aprovisionamiento JIT, residencia/dedicado, auditoría avanzada; SAML/OIDC real, SCIM, enforcement de residencia e infra dedicada diferidos). No avanzar a Fase 14 — Scale sin instrucción explícita.
 
 ## Stack instalado
 
@@ -144,19 +146,30 @@
 - Tablas: `tracks`, `session_registrations`, `sponsors`, `booths`, `booth_leads`, `points_awards` (+ columnas de agenda en `event_sessions`).
 - **Diferido**: networking (conexiones/meetings 1:1), virtual venue espacial, hybrid check-in; puntos configurables por evento.
 
+### Enterprise (Fase 13 — `app/Domain/Enterprise`, `app/Application/Enterprise`, `app/Infrastructure/Enterprise`)
+- **Nuevo contexto `Enterprise`** (tenant-owned, ULID): `CustomDomain`, `ApiKey`, `SsoConnection`; `tenants` extendida (aditivo) con `data_region` + `is_dedicated` — ADR-030.
+- **Custom domains**: alta en `pending` con token de challenge, verificación detrás de `DomainVerifier` (`FakeDomainVerifier` default network-free + `DnsDomainVerifier` TXT real/stub) → `active`/`failed` (`422 domain_verification_failed`). Endpoint **público** `GET /domains/resolve?hostname=` resuelve sin scope el tenant/workspace de un dominio activo (metadata de routing, nunca secretos).
+- **API keys (Developer Platform)**: patrón token-credencial (`esk_...` visible una vez, solo hash SHA-256 en DB, `$hidden`, prefijo en claro). Middleware `AuthenticateApiKey` (bearer o `X-Api-Key`) resuelve la key sin scope y establece tenant + team de Spatie desde la propia key. **Scopes** como dato (`ApiKey::SCOPES`) validados al emitir y exigidos por endpoint; muestra `GET /programmatic/events` (scope `events.read`, fuera de `auth:sanctum`). Revocación idempotente.
+- **SSO**: `SsoConnection` (provider `oidc|saml`, config **cifrada** `encrypted:array`+`$hidden`, dominio de email, `default_role`, `is_active`) detrás de `IdentityProvider` (`FakeIdentityProvider` default + `OidcIdentityProvider` stub sin validación de firma). `CompleteSsoLoginAction` aprovisiona JIT: enlaza `User` por email, crea membership con `default_role` **solo en el primer login** (nunca degrada), refleja el rol en Spatie; el controlador público establece la sesión Sanctum. **`default_role` restringido a `admin|member`** (owner jamás se delega a un IdP). `401 sso_authentication_failed`.
+- **Residencia + dedicado**: `GET/PUT /enterprise/settings` (Owner) lee/edita `data_region` (`us|eu|ap`) e `is_dedicated`; registra intención auditada (enforcement diferido).
+- **Auditoría avanzada**: `GET /audit-logs` con filtros (action/actor/auditable_type/rango de fechas) + paginación sobre `audit_logs`, filtrada por tenant en el controlador (la tabla no está bajo el TenantScope global).
+- **RBAC reutilizado** (sin permisos nuevos): `tenant.manage` (config enterprise → Owner) + `audit.view` (consulta → Owner/Admin); concern `AuthorizesTenantPermission`. Proveedores por `config/enterprise.php` (`EnterpriseServiceProvider`), fakes por defecto. Contratos de frontend: host `ApiClient` (`customDomains`/`apiKeys`/`ssoConnections`/`tenantSettings`/`auditLogs`) + tipos en `@escenia/types`.
+- Tablas: `custom_domains`, `api_keys`, `sso_connections` (+ columnas `data_region`/`is_dedicated` en `tenants`).
+- **Diferido (TD-035..039)**: SAML/OIDC real con validación de firma/JWKS, SCIM, enforcement de residencia e infra dedicada, emisión de TLS + edge para dominios, rate-limit/rotación por API key.
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 168 passed / 829 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, media/escenas/mixer/broadcast+cifrado, auth por token de asistente, engagement, analítica, commerce checkout+webhook+Outbox+revenue, automation triggers/secuencias/webhooks firmados, content subida-firmada+transcripción-en-Job+clips, AI indexación+búsqueda-semántica-real+RAG+resúmenes, education corrección-server-side+certificación-por-Outbox+verificación-pública, y enterprise: agenda multi-track con cupo, leads de expo y gamification con leaderboard) — `php artisan test`.
+- **Backend**: 183 passed / 882 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, media/escenas/mixer/broadcast+cifrado, auth por token de asistente, engagement, analítica, commerce checkout+webhook+Outbox+revenue, automation triggers/secuencias/webhooks firmados, content subida-firmada+transcripción-en-Job+clips, AI indexación+búsqueda-semántica-real+RAG+resúmenes, education corrección-server-side+certificación-por-Outbox+verificación-pública, enterprise events: agenda multi-track con cupo/leads/gamification, y enterprise: dominios custom verificados, API keys con scopes, SSO con aprovisionamiento JIT, residencia y auditoría avanzada) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 
 ## No implementar todavía
 
-LiveKit productivo · networking/virtual-venue/hybrid (resto de Enterprise Events) · Enterprise (Fase 13) · Analytics avanzado (ClickHouse) · Qdrant productivo · Horizon/worker productivo · Reverb · envío real de email/SMS · transcripción/storage/LLM reales · render de clips/certificados — salvo contratos/stubs estrictamente necesarios.
+LiveKit productivo · networking/virtual-venue/hybrid (resto de Enterprise Events) · SSO real (SAML/OIDC con validación de firma) · SCIM · enforcement de residencia + infra dedicada · TLS/edge para dominios custom · Scale (Fase 14: multi-region, extracción de analytics, Kafka/Redpanda, autoscaling, DR) · Analytics avanzado (ClickHouse) · Qdrant productivo · Horizon/worker productivo · Reverb · envío real de email/SMS · transcripción/storage/LLM reales · render de clips/certificados — salvo contratos/stubs estrictamente necesarios.
 
 ## Deuda técnica
 
@@ -164,4 +177,4 @@ Ver `docs/progress/technical-debt.md`.
 
 ## Última actualización
 
-2026-09-08 — Fase 12 (Enterprise Events) implementada y verificada en `main`.
+2026-09-09 — Fase 13 (Enterprise) implementada y verificada en `main`.

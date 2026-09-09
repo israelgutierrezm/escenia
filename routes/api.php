@@ -44,12 +44,20 @@ use App\Http\Controllers\Api\V1\Engagement\Host\ResourceController as HostResour
 use App\Http\Controllers\Api\V1\Enterprise\Attendee\AgendaController as AttendeeAgendaController;
 use App\Http\Controllers\Api\V1\Enterprise\Attendee\ExpoController as AttendeeExpoController;
 use App\Http\Controllers\Api\V1\Enterprise\Attendee\GamificationController as AttendeeGamificationController;
+use App\Http\Controllers\Api\V1\Enterprise\DomainResolveController;
+use App\Http\Controllers\Api\V1\Enterprise\Host\ApiKeyController;
+use App\Http\Controllers\Api\V1\Enterprise\Host\AuditLogController;
 use App\Http\Controllers\Api\V1\Enterprise\Host\BoothController as HostBoothController;
+use App\Http\Controllers\Api\V1\Enterprise\Host\CustomDomainController;
 use App\Http\Controllers\Api\V1\Enterprise\Host\LeadController;
 use App\Http\Controllers\Api\V1\Enterprise\Host\LeaderboardController;
 use App\Http\Controllers\Api\V1\Enterprise\Host\SessionAgendaController;
 use App\Http\Controllers\Api\V1\Enterprise\Host\SponsorController as HostSponsorController;
+use App\Http\Controllers\Api\V1\Enterprise\Host\SsoConnectionController;
+use App\Http\Controllers\Api\V1\Enterprise\Host\TenantSettingsController;
 use App\Http\Controllers\Api\V1\Enterprise\Host\TrackController as HostTrackController;
+use App\Http\Controllers\Api\V1\Enterprise\Programmatic\EventController as ProgrammaticEventController;
+use App\Http\Controllers\Api\V1\Enterprise\SsoController;
 use App\Http\Controllers\Api\V1\Events\EventCapabilityController;
 use App\Http\Controllers\Api\V1\Events\EventController;
 use App\Http\Controllers\Api\V1\Events\EventScheduleController;
@@ -93,6 +101,16 @@ Route::prefix('v1')->group(function (): void {
 
     // ---- Public certificate verification (Fase 11 — Education). ----
     Route::get('certificates/verify/{code}', [CertificateVerifyController::class, 'verify'])->middleware('throttle:60,1');
+
+    // ---- Enterprise: custom-domain routing resolution + SSO (public, Fase 13) ----
+    Route::get('domains/resolve', [DomainResolveController::class, 'resolve'])->middleware('throttle:120,1');
+    Route::get('sso/{connection}', [SsoController::class, 'metadata'])->middleware('throttle:60,1');
+    Route::post('sso/{connection}/callback', [SsoController::class, 'callback'])->middleware('throttle:20,1');
+
+    // ---- Developer Platform: programmatic API (API-key auth, Fase 13) ----
+    Route::middleware(['api.key', 'throttle:120,1'])->prefix('programmatic')->group(function (): void {
+        Route::get('events', [ProgrammaticEventController::class, 'index']);
+    });
 
     // ---- Attendee live surface (the join token is the credential) ----
     Route::middleware(['attendee', 'throttle:120,1'])->prefix('attend')->group(function (): void {
@@ -292,6 +310,26 @@ Route::prefix('v1')->group(function (): void {
             Route::post('events/{event}/booths', [HostBoothController::class, 'store']);
             Route::get('events/{event}/leads', [LeadController::class, 'index']);
             Route::get('events/{event}/leaderboard', [LeaderboardController::class, 'index']);
+
+            // ---- Enterprise admin: domains, API keys, SSO, settings, audit (Fase 13) ----
+            Route::get('enterprise/domains', [CustomDomainController::class, 'index']);
+            Route::post('enterprise/domains', [CustomDomainController::class, 'store']);
+            Route::post('enterprise/domains/{domain}/verify', [CustomDomainController::class, 'verify']);
+            Route::delete('enterprise/domains/{domain}', [CustomDomainController::class, 'destroy']);
+
+            Route::get('enterprise/api-keys', [ApiKeyController::class, 'index']);
+            Route::post('enterprise/api-keys', [ApiKeyController::class, 'store']);
+            Route::delete('enterprise/api-keys/{apiKey}', [ApiKeyController::class, 'destroy']);
+
+            Route::get('enterprise/sso-connections', [SsoConnectionController::class, 'index']);
+            Route::post('enterprise/sso-connections', [SsoConnectionController::class, 'store']);
+            Route::match(['put', 'patch'], 'enterprise/sso-connections/{connection}', [SsoConnectionController::class, 'update']);
+            Route::delete('enterprise/sso-connections/{connection}', [SsoConnectionController::class, 'destroy']);
+
+            Route::get('enterprise/settings', [TenantSettingsController::class, 'show']);
+            Route::match(['put', 'patch'], 'enterprise/settings', [TenantSettingsController::class, 'update']);
+
+            Route::get('audit-logs', [AuditLogController::class, 'index']);
         });
     });
 });

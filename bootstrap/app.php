@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\ApiExceptionMapper;
 use App\Http\Middleware\AssignRequestContext;
+use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Middleware\RequireTenant;
 use App\Http\Middleware\ResolveAttendee;
 use App\Http\Middleware\ResolveTenant;
@@ -39,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.required' => RequireTenant::class,
             'share.user' => ShareUserContext::class,
             'attendee' => ResolveAttendee::class,
+            'api.key' => AuthenticateApiKey::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

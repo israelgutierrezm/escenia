@@ -850,3 +850,75 @@ export interface AttendeeGamification {
   points: number
   leaderboard: LeaderboardEntry[]
 }
+
+// ---- Enterprise (Fase 13) ----
+
+export type DomainStatus = 'pending' | 'active' | 'failed'
+
+export interface DnsChallenge {
+  type: string
+  name: string
+  value: string
+}
+
+export interface CustomDomain {
+  id: string
+  hostname: string
+  status: DomainStatus
+  target: string | null
+  dns_challenge: DnsChallenge
+  workspace_id?: string | null
+  verified_at: string | null
+  created_at: string | null
+}
+
+export type ApiKeyScope = 'events.read' | 'events.write' | 'analytics.read'
+
+export interface ApiKey {
+  id: string
+  name: string
+  prefix: string
+  scopes: ApiKeyScope[]
+  last_used_at: string | null
+  expires_at: string | null
+  revoked_at: string | null
+  created_at: string | null
+}
+
+export interface IssuedApiKey {
+  /** The raw key — shown exactly once, never returned again. */
+  token: string
+  key: ApiKey
+}
+
+export type SsoProvider = 'oidc' | 'saml'
+
+export interface SsoConnection {
+  id: string
+  provider: SsoProvider
+  display_name: string
+  domain: string | null
+  default_role: 'admin' | 'member'
+  is_active: boolean
+  created_at: string | null
+}
+
+export type DataRegion = 'us' | 'eu' | 'ap'
+
+export interface TenantSettings {
+  id: string
+  name: string
+  data_region: DataRegion
+  is_dedicated: boolean
+}
+
+export interface AuditLogEntry {
+  id: string
+  action: string
+  actor_label: string | null
+  auditable_type: string | null
+  context: Record<string, unknown> | null
+  ip_address: string | null
+  request_id: string | null
+  created_at: string | null
+}

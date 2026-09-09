@@ -6,6 +6,7 @@ use App\Providers\AiServiceProvider;
 use App\Providers\AppServiceProvider;
 use App\Providers\ContentServiceProvider;
 use App\Providers\DomainServiceProvider;
+use App\Providers\EnterpriseServiceProvider;
 use App\Providers\MediaServiceProvider;
 
 return [
@@ -13,5 +14,6 @@ return [
     AppServiceProvider::class,
     ContentServiceProvider::class,
     DomainServiceProvider::class,
+    EnterpriseServiceProvider::class,
     MediaServiceProvider::class,
 ];

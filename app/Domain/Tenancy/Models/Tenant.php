@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Tenancy\Models;
 
 use App\Domain\Billing\Models\Plan;
+use App\Domain\Enterprise\Enums\DataRegion;
 use App\Domain\Identity\Models\User;
 use App\Domain\Shared\Concerns\HasPublicId;
 use App\Domain\Tenancy\Enums\TenantStatus;
@@ -27,6 +28,8 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property string $slug
  * @property TenantStatus $status
+ * @property DataRegion $data_region
+ * @property bool $is_dedicated
  * @property int|null $plan_id
  * @property array<string, mixed>|null $settings
  * @property Carbon|null $created_at
@@ -47,6 +50,8 @@ class Tenant extends Model
         'name',
         'slug',
         'status',
+        'data_region',
+        'is_dedicated',
         'plan_id',
         'settings',
     ];
@@ -58,6 +63,8 @@ class Tenant extends Model
     {
         return [
             'status' => TenantStatus::class,
+            'data_region' => DataRegion::class,
+            'is_dedicated' => 'boolean',
             'settings' => 'array',
         ];
     }
