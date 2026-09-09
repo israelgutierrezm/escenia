@@ -93,4 +93,14 @@ class EventPolicy
     {
         return $user->can(Permission::EducationManage->value);
     }
+
+    public function viewEnterprise(User $user, Event $event): bool
+    {
+        return $user->can(Permission::EnterpriseView->value);
+    }
+
+    public function manageEnterprise(User $user, Event $event): bool
+    {
+        return $user->can(Permission::EnterpriseManage->value);
+    }
 }

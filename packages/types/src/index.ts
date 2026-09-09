@@ -790,3 +790,63 @@ export interface CertificateVerification {
   event_title?: string | null
   issued_at?: string
 }
+
+// ---- Enterprise Events (Fase 12) ----
+
+export type SponsorTier = 'platinum' | 'gold' | 'silver' | 'bronze' | 'community'
+
+export interface Track {
+  id: string
+  name: string
+  color: string | null
+  position: number
+}
+
+export interface AgendaSession {
+  id: string
+  title: string
+  room: string | null
+  capacity: number | null
+  registered_count: number
+  has_capacity: boolean
+  track?: string
+  starts_at: string | null
+  ends_at: string | null
+}
+
+export interface Sponsor {
+  id: string
+  name: string
+  tier: SponsorTier
+  logo_url: string | null
+  website_url: string | null
+  position: number
+}
+
+export interface Booth {
+  id: string
+  name: string
+  description: string | null
+  url: string | null
+  leads_count: number
+  sponsor?: { id: string; name: string; tier: SponsorTier }
+}
+
+export interface BoothLead {
+  id: string
+  note: string | null
+  created_at: string | null
+  booth?: string
+  attendee?: { name?: string; email?: string }
+}
+
+export interface LeaderboardEntry {
+  attendee: string
+  name: string
+  points: number
+}
+
+export interface AttendeeGamification {
+  points: number
+  leaderboard: LeaderboardEntry[]
+}

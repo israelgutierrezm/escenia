@@ -51,6 +51,8 @@ final class RoleCatalog
                 Permission::ContentManage->value,
                 Permission::EducationView->value,
                 Permission::EducationManage->value,
+                Permission::EnterpriseView->value,
+                Permission::EnterpriseManage->value,
                 Permission::FeatureFlagsManage->value,
                 Permission::AuditView->value,
             ],
@@ -66,6 +68,7 @@ final class RoleCatalog
                 Permission::AutomationsView->value,
                 Permission::ContentView->value,
                 Permission::EducationView->value,
+                Permission::EnterpriseView->value,
             ],
         ];
     }

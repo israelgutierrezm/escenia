@@ -41,6 +41,15 @@ use App\Http\Controllers\Api\V1\Engagement\Host\ChatController as HostChatContro
 use App\Http\Controllers\Api\V1\Engagement\Host\PollController as HostPollController;
 use App\Http\Controllers\Api\V1\Engagement\Host\QuestionController as HostQuestionController;
 use App\Http\Controllers\Api\V1\Engagement\Host\ResourceController as HostResourceController;
+use App\Http\Controllers\Api\V1\Enterprise\Attendee\AgendaController as AttendeeAgendaController;
+use App\Http\Controllers\Api\V1\Enterprise\Attendee\ExpoController as AttendeeExpoController;
+use App\Http\Controllers\Api\V1\Enterprise\Attendee\GamificationController as AttendeeGamificationController;
+use App\Http\Controllers\Api\V1\Enterprise\Host\BoothController as HostBoothController;
+use App\Http\Controllers\Api\V1\Enterprise\Host\LeadController;
+use App\Http\Controllers\Api\V1\Enterprise\Host\LeaderboardController;
+use App\Http\Controllers\Api\V1\Enterprise\Host\SessionAgendaController;
+use App\Http\Controllers\Api\V1\Enterprise\Host\SponsorController as HostSponsorController;
+use App\Http\Controllers\Api\V1\Enterprise\Host\TrackController as HostTrackController;
 use App\Http\Controllers\Api\V1\Events\EventCapabilityController;
 use App\Http\Controllers\Api\V1\Events\EventController;
 use App\Http\Controllers\Api\V1\Events\EventScheduleController;
@@ -108,6 +117,18 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('assessment', [AttendeeAssessmentController::class, 'show']);
         Route::post('assessment', [AttendeeAssessmentController::class, 'submit']);
+
+        // ---- Enterprise: agenda, expo, gamification (Fase 12) ----
+        Route::get('agenda', [AttendeeAgendaController::class, 'index']);
+        Route::get('agenda/mine', [AttendeeAgendaController::class, 'mine']);
+        Route::post('agenda/{session}/register', [AttendeeAgendaController::class, 'register']);
+        Route::delete('agenda/{session}/register', [AttendeeAgendaController::class, 'unregister']);
+
+        Route::get('expo/sponsors', [AttendeeExpoController::class, 'sponsors']);
+        Route::get('expo/booths', [AttendeeExpoController::class, 'booths']);
+        Route::post('expo/booths/{booth}/visit', [AttendeeExpoController::class, 'visit']);
+
+        Route::get('gamification', [AttendeeGamificationController::class, 'index']);
     });
 
     // ---- Authenticated (any tenant) ----
@@ -259,6 +280,18 @@ Route::prefix('v1')->group(function (): void {
             Route::get('events/{event}/education/submissions', [SubmissionController::class, 'index']);
             Route::get('events/{event}/education/certificates', [HostCertificateController::class, 'index']);
             Route::post('events/{event}/education/certificates/issue', [HostCertificateController::class, 'issue']);
+
+            // ---- Enterprise Events host side (Fase 12) ----
+            Route::get('events/{event}/tracks', [HostTrackController::class, 'index']);
+            Route::post('events/{event}/tracks', [HostTrackController::class, 'store']);
+            Route::patch('events/{event}/sessions/{session}/agenda', [SessionAgendaController::class, 'update']);
+
+            Route::get('events/{event}/sponsors', [HostSponsorController::class, 'index']);
+            Route::post('events/{event}/sponsors', [HostSponsorController::class, 'store']);
+            Route::get('events/{event}/booths', [HostBoothController::class, 'index']);
+            Route::post('events/{event}/booths', [HostBoothController::class, 'store']);
+            Route::get('events/{event}/leads', [LeadController::class, 'index']);
+            Route::get('events/{event}/leaderboard', [LeaderboardController::class, 'index']);
         });
     });
 });

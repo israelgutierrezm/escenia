@@ -4,12 +4,20 @@ import type {
   ApiCollection,
   ApiErrorPayload,
   ApiResource,
+  AgendaSession,
   AnalyticsSummary,
   Assessment,
   AssessmentQuestionType,
   AssessmentSubmission,
   AttendanceTimeline,
+  AttendeeGamification,
   Automation,
+  Booth,
+  BoothLead,
+  LeaderboardEntry,
+  Sponsor,
+  SponsorTier,
+  Track,
   Certificate,
   CertificateVerification,
   CompletionRule,
@@ -421,6 +429,29 @@ export function createApiClient(options: ApiClientOptions = {}) {
       request<ApiCollection<Certificate>>('GET', `/events/${eventId}/education/certificates`),
     issueCertificates: (eventId: string) =>
       request<ApiResource<{ issued: number }>>('POST', `/events/${eventId}/education/certificates/issue`),
+
+    // ---- Enterprise Events host side (Fase 12) ----
+    tracks: (eventId: string) => request<ApiCollection<Track>>('GET', `/events/${eventId}/tracks`),
+    createTrack: (eventId: string, data: { name: string; color?: string }) =>
+      request<ApiResource<Track>>('POST', `/events/${eventId}/tracks`, data),
+    setSessionAgenda: (
+      eventId: string,
+      sessionId: string,
+      data: { track?: string; room?: string; capacity?: number },
+    ) => request<ApiResource<AgendaSession>>('PATCH', `/events/${eventId}/sessions/${sessionId}/agenda`, data),
+    sponsors: (eventId: string) => request<ApiCollection<Sponsor>>('GET', `/events/${eventId}/sponsors`),
+    createSponsor: (
+      eventId: string,
+      data: { name: string; tier: SponsorTier; logo_url?: string; website_url?: string },
+    ) => request<ApiResource<Sponsor>>('POST', `/events/${eventId}/sponsors`, data),
+    booths: (eventId: string) => request<ApiCollection<Booth>>('GET', `/events/${eventId}/booths`),
+    createBooth: (
+      eventId: string,
+      data: { sponsor: string; name: string; description?: string; url?: string },
+    ) => request<ApiResource<Booth>>('POST', `/events/${eventId}/booths`, data),
+    leads: (eventId: string) => request<ApiCollection<BoothLead>>('GET', `/events/${eventId}/leads`),
+    leaderboard: (eventId: string) =>
+      request<ApiResource<LeaderboardEntry[]>>('GET', `/events/${eventId}/leaderboard`),
   }
 }
 
@@ -531,6 +562,19 @@ export function createAttendeeClient(options: AttendeeClientOptions = {}) {
       request<ApiResource<AssessmentSubmission>>('POST', '/attend/assessment', { answers }),
     verifyCertificate: (code: string) =>
       request<ApiResource<CertificateVerification>>('GET', `/certificates/verify/${code}`),
+
+    // ---- Enterprise: agenda, expo, gamification (token required) ----
+    agenda: () => request<ApiCollection<AgendaSession>>('GET', '/attend/agenda'),
+    myAgenda: () => request<ApiCollection<AgendaSession>>('GET', '/attend/agenda/mine'),
+    registerForSession: (sessionId: string) =>
+      request<ApiResource<AgendaSession>>('POST', `/attend/agenda/${sessionId}/register`),
+    unregisterFromSession: (sessionId: string) =>
+      request<ApiResource<AgendaSession>>('DELETE', `/attend/agenda/${sessionId}/register`),
+    expoSponsors: () => request<ApiCollection<Sponsor>>('GET', '/attend/expo/sponsors'),
+    expoBooths: () => request<ApiCollection<Booth>>('GET', '/attend/expo/booths'),
+    visitBooth: (boothId: string, note?: string) =>
+      request<ApiResource<Booth>>('POST', `/attend/expo/booths/${boothId}/visit`, note ? { note } : {}),
+    gamification: () => request<ApiResource<AttendeeGamification>>('GET', '/attend/gamification'),
   }
 }
 

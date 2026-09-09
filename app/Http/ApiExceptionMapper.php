@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http;
 
+use App\Domain\Agenda\Exceptions\SessionFullException;
 use App\Domain\Broadcasting\Exceptions\BroadcastTransitionConflictException;
 use App\Domain\Broadcasting\Exceptions\InvalidBroadcastTransitionException;
 use App\Domain\Commerce\Exceptions\CheckoutUnavailableException;
@@ -67,6 +68,7 @@ final class ApiExceptionMapper
             $e instanceof InvalidClipRangeException => [422, 'invalid_clip_range', $e->getMessage(), null],
             $e instanceof AssessmentNotAvailableException => [422, 'assessment_not_available', $e->getMessage(), null],
             $e instanceof AlreadySubmittedException => [409, 'already_submitted', $e->getMessage(), null],
+            $e instanceof SessionFullException => [422, 'session_full', $e->getMessage(), null],
             $e instanceof AuthenticationException => [401, 'unauthenticated', 'Unauthenticated.', null],
             $e instanceof AuthorizationException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],
             $e instanceof AccessDeniedHttpException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],

@@ -24,7 +24,9 @@
 
 **Fase 10 — AI — COMPLETED** (2026-09-08), en `main`.
 
-**Fase 11 — Education — COMPLETED** (2026-09-08), en `main`. No avanzar a Fase 12 — Enterprise Events sin instrucción explícita.
+**Fase 11 — Education — COMPLETED** (2026-09-08), en `main`.
+
+**Fase 12 — Enterprise Events — COMPLETED** (2026-09-08), en `main` (corte: agenda/sponsors/gamification; networking/venue/hybrid diferidos). No avanzar a Fase 13 — Enterprise sin instrucción explícita.
 
 ## Stack instalado
 
@@ -134,19 +136,27 @@
 - Tablas: `assessments`, `assessment_questions`, `assessment_submissions`, `completion_rules`, `certificates`.
 - **Diferido**: render/PDF del certificado; reintentos de assessment; preguntas de texto libre; gating por entitlement.
 
+### Enterprise Events (Fase 12 — `app/Domain/{Agenda,Sponsorship,Gamification}`, `app/Application/{Agenda,Sponsorship,Gamification}`)
+- **Agenda multi-track** (`Track` + `event_sessions` extendida con `track_id`/`room`/`capacity`/`registered_count`): el asistente arma su agenda (`SessionRegistration`, único, con **cupo** → `422 session_full`, idempotente) — ADR-029.
+- **Sponsors + Expo**: `Sponsor` (tier), `Booth`, `BoothLead` (visita = lead para el sponsor, idempotente). Host lee leads; asistente explora expo + visita.
+- **Gamification**: `PointsAward` (ledger append-only, único por `(attendee, action, subject)`), puntos otorgados dentro de las acciones (inscribir sesión / visitar booth) + **leaderboard**. Asistente: mis puntos + ranking; host: leaderboard.
+- RBAC único `enterprise.view`/`enterprise.manage`. Contratos de frontend: host (`tracks`/`sponsors`/`booths`/`leads`/`leaderboard`) + `AttendeeClient` (`agenda`/`registerForSession`/`visitBooth`/`gamification`).
+- Tablas: `tracks`, `session_registrations`, `sponsors`, `booths`, `booth_leads`, `points_awards` (+ columnas de agenda en `event_sessions`).
+- **Diferido**: networking (conexiones/meetings 1:1), virtual venue espacial, hybrid check-in; puntos configurables por evento.
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 162 passed / 773 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, media/escenas/mixer/broadcast+cifrado, registro público + auth por token de asistente, engagement, analítica, commerce checkout+webhook+Outbox+revenue, automation triggers/secuencias/webhooks firmados, content subida-firmada+transcripción-en-Job+clips+auto-registro, AI indexación+búsqueda-semántica-real+RAG+resúmenes, y education: corrección server-side sin filtrar la clave, certificación por Outbox, certificación por asistencia y verificación pública) — `php artisan test`.
+- **Backend**: 168 passed / 829 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, media/escenas/mixer/broadcast+cifrado, auth por token de asistente, engagement, analítica, commerce checkout+webhook+Outbox+revenue, automation triggers/secuencias/webhooks firmados, content subida-firmada+transcripción-en-Job+clips, AI indexación+búsqueda-semántica-real+RAG+resúmenes, education corrección-server-side+certificación-por-Outbox+verificación-pública, y enterprise: agenda multi-track con cupo, leads de expo y gamification con leaderboard) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 
 ## No implementar todavía
 
-LiveKit productivo · Enterprise Events (multi-session/venue/networking/sponsors/expo/gamification/hybrid) · Enterprise · Analytics avanzado (ClickHouse) · Qdrant productivo · Horizon/worker productivo · Reverb · envío real de email/SMS · transcripción/storage/LLM reales · render de clips/certificados — salvo contratos/stubs estrictamente necesarios.
+LiveKit productivo · networking/virtual-venue/hybrid (resto de Enterprise Events) · Enterprise (Fase 13) · Analytics avanzado (ClickHouse) · Qdrant productivo · Horizon/worker productivo · Reverb · envío real de email/SMS · transcripción/storage/LLM reales · render de clips/certificados — salvo contratos/stubs estrictamente necesarios.
 
 ## Deuda técnica
 
@@ -154,4 +164,4 @@ Ver `docs/progress/technical-debt.md`.
 
 ## Última actualización
 
-2026-09-08 — Fase 11 (Education) implementada y verificada en `main`.
+2026-09-08 — Fase 12 (Enterprise Events) implementada y verificada en `main`.
