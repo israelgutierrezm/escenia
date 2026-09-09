@@ -76,6 +76,8 @@ use App\Http\Controllers\Api\V1\Production\SceneController;
 use App\Http\Controllers\Api\V1\Registration\PublicRegistrationController;
 use App\Http\Controllers\Api\V1\Registration\RegistrantController;
 use App\Http\Controllers\Api\V1\Registration\RegistrationFormController;
+use App\Http\Controllers\Api\V1\Settings\SystemSettingsController;
+use App\Http\Controllers\Api\V1\Settings\TenantSettingsController as TenantConfigController;
 use App\Http\Controllers\Api\V1\Studio\GuestJoinController;
 use App\Http\Controllers\Api\V1\Studio\StudioController;
 use App\Http\Controllers\Api\V1\Studio\StudioGuestLinkController;
@@ -158,6 +160,12 @@ Route::prefix('v1')->group(function (): void {
         Route::get('auth/me', MeController::class);
         Route::get('tenants', [TenantController::class, 'index']);
 
+        // ---- Platform super-admin: system-wide configuration (no tenant) ----
+        Route::middleware('super.admin')->group(function (): void {
+            Route::get('system/settings', [SystemSettingsController::class, 'index']);
+            Route::match(['put', 'patch'], 'system/settings', [SystemSettingsController::class, 'update']);
+        });
+
         // ---- Tenant-scoped ----
         Route::middleware(['tenant', 'tenant.required'])->group(function (): void {
             Route::get('workspaces', [WorkspaceController::class, 'index']);
@@ -180,6 +188,10 @@ Route::prefix('v1')->group(function (): void {
             Route::put('members/{member}/membership-role', [MemberController::class, 'membershipRole']);
             Route::put('members/{member}/roles', [MemberController::class, 'syncRoles']);
             Route::put('members/{member}/permissions', [MemberController::class, 'syncPermissions']);
+
+            // ---- Tenant configuration / integrations (tenant.manage) ----
+            Route::get('settings', [TenantConfigController::class, 'index']);
+            Route::match(['put', 'patch'], 'settings', [TenantConfigController::class, 'update']);
 
             // ---- Events (Fase 1 — Event Core) ----
             Route::get('event-templates', [EventTemplateController::class, 'index']);

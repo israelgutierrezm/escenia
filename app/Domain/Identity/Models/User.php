@@ -26,6 +26,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $ulid
  * @property string $name
  * @property string $email
+ * @property bool $is_super_admin
  * @property string|null $timezone
  * @property string|null $locale
  * @property Carbon|null $email_verified_at
@@ -71,6 +72,7 @@ class User extends Authenticatable
     protected $attributes = [
         'timezone' => null,
         'locale' => null,
+        'is_super_admin' => false,
     ];
 
     /**
@@ -81,7 +83,17 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_super_admin' => 'boolean',
         ];
+    }
+
+    /**
+     * The platform operator flag. Grants access to system-wide settings; granted
+     * out of band (never through the tenant API).
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->is_super_admin === true;
     }
 
     /**

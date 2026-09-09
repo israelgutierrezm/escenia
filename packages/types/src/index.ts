@@ -955,3 +955,26 @@ export interface MemberAccess {
   direct_permissions: string[]
   effective_permissions: string[]
 }
+
+// ---- Runtime configuration (settings) ----
+
+export type SettingType = 'string' | 'bool' | 'int' | 'select' | 'secret' | 'json'
+
+export interface SettingItem {
+  key: string
+  group: string
+  type: SettingType
+  label: string
+  help: string | null
+  options: string[]
+  is_secret: boolean
+  /** Whether an explicit value is stored at this scope (vs inherited/default). */
+  is_set: boolean
+  /** Effective value; omitted for secrets (write-only). */
+  value?: unknown
+}
+
+export interface SettingChange {
+  key: string
+  value: unknown
+}

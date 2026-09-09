@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Domain\Enterprise\Contracts\DomainVerifier;
 use App\Domain\Enterprise\Contracts\IdentityProvider;
+use App\Domain\Settings\Services\Settings;
 use App\Infrastructure\Enterprise\Domains\DnsDomainVerifier;
 use App\Infrastructure\Enterprise\Domains\FakeDomainVerifier;
 use App\Infrastructure\Enterprise\Sso\FakeIdentityProvider;
@@ -21,12 +22,12 @@ class EnterpriseServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(DomainVerifier::class, fn (): DomainVerifier => match (config('enterprise.domain_verifier')) {
+        $this->app->singleton(DomainVerifier::class, fn (): DomainVerifier => match (app(Settings::class)->get('enterprise.domain_verifier', config('enterprise.domain_verifier'))) {
             'dns' => new DnsDomainVerifier,
             default => new FakeDomainVerifier,
         });
 
-        $this->app->singleton(IdentityProvider::class, fn (): IdentityProvider => match (config('enterprise.identity_provider')) {
+        $this->app->singleton(IdentityProvider::class, fn (): IdentityProvider => match (app(Settings::class)->get('enterprise.identity_provider', config('enterprise.identity_provider'))) {
             'oidc' => new OidcIdentityProvider,
             default => new FakeIdentityProvider,
         });

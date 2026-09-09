@@ -8,6 +8,7 @@ use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Enterprise\Enums\DomainStatus;
 use App\Domain\Enterprise\Models\CustomDomain;
 use App\Domain\Identity\Models\User;
+use App\Domain\Settings\Services\Settings;
 use App\Domain\Workspaces\Models\Workspace;
 use Illuminate\Support\Str;
 
@@ -20,6 +21,7 @@ final class CreateCustomDomainAction
 {
     public function __construct(
         private readonly AuditLogger $audit,
+        private readonly Settings $settings,
     ) {}
 
     public function execute(User $actor, string $hostname, ?Workspace $workspace = null): CustomDomain
@@ -29,7 +31,7 @@ final class CreateCustomDomainAction
             'hostname' => Str::lower($hostname),
             'status' => DomainStatus::Pending,
             'verification_token' => Str::lower(Str::random(40)),
-            'target' => (string) config('enterprise.domain_target'),
+            'target' => (string) $this->settings->get('enterprise.domain_target', config('enterprise.domain_target')),
         ]);
 
         $this->audit->log('enterprise.domain.created', actor: $actor, auditable: $domain, context: [

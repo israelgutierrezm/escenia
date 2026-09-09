@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Domain\Ai\Contracts\AiCompletionProvider;
 use App\Domain\Ai\Contracts\EmbeddingProvider;
 use App\Domain\Ai\Contracts\VectorIndex;
+use App\Domain\Settings\Services\Settings;
 use App\Infrastructure\Ai\ClaudeCompletionProvider;
 use App\Infrastructure\Ai\DatabaseVectorIndex;
 use App\Infrastructure\Ai\FakeCompletionProvider;
@@ -24,17 +25,25 @@ class AiServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(AiCompletionProvider::class, fn (): AiCompletionProvider => match (config('ai.completion')) {
-            'claude' => new ClaudeCompletionProvider((array) config('ai.claude')),
-            default => new FakeCompletionProvider,
+        $this->app->singleton(AiCompletionProvider::class, function (): AiCompletionProvider {
+            $settings = app(Settings::class);
+
+            return match ($settings->get('ai.completion', config('ai.completion'))) {
+                'claude' => new ClaudeCompletionProvider([
+                    'api_key' => $settings->get('ai.claude.api_key', config('ai.claude.api_key')),
+                    'model' => $settings->get('ai.claude.model', config('ai.claude.model')),
+                    'max_tokens' => config('ai.claude.max_tokens'),
+                ]),
+                default => new FakeCompletionProvider,
+            };
         });
 
-        $this->app->singleton(EmbeddingProvider::class, fn (): EmbeddingProvider => match (config('ai.embedding')) {
+        $this->app->singleton(EmbeddingProvider::class, fn (): EmbeddingProvider => match (app(Settings::class)->get('ai.embedding', config('ai.embedding'))) {
             'http' => new HttpEmbeddingProvider((array) config('ai.embeddings')),
             default => new FakeEmbeddingProvider,
         });
 
-        $this->app->singleton(VectorIndex::class, fn (): VectorIndex => match (config('ai.vector')) {
+        $this->app->singleton(VectorIndex::class, fn (): VectorIndex => match (app(Settings::class)->get('ai.vector', config('ai.vector'))) {
             'qdrant' => new QdrantVectorIndex((array) config('ai.qdrant')),
             default => new DatabaseVectorIndex,
         });

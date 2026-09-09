@@ -9,6 +9,7 @@ use App\Providers\DomainServiceProvider;
 use App\Providers\EnterpriseServiceProvider;
 use App\Providers\MediaServiceProvider;
 use App\Providers\ScaleServiceProvider;
+use App\Providers\SettingsServiceProvider;
 
 return [
     AiServiceProvider::class,
@@ -18,4 +19,5 @@ return [
     EnterpriseServiceProvider::class,
     MediaServiceProvider::class,
     ScaleServiceProvider::class,
+    SettingsServiceProvider::class,
 ];

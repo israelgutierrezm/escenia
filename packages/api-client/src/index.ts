@@ -90,6 +90,8 @@ import type {
   MemberSummary,
   MemberAccess,
   TenantRoleKey,
+  SettingItem,
+  SettingChange,
 } from '@escenia/types'
 
 export interface ApiClientOptions {
@@ -533,6 +535,16 @@ export function createApiClient(options: ApiClientOptions = {}) {
       request<ApiResource<MemberAccess>>('PUT', `/members/${userId}/roles`, { roles }),
     syncMemberPermissions: (userId: string, permissions: string[]) =>
       request<ApiResource<MemberAccess>>('PUT', `/members/${userId}/permissions`, { permissions }),
+
+    // ---- Runtime configuration ----
+    // System-wide (super-admin): configure any external API / provider selection.
+    systemSettings: () => request<ApiCollection<SettingItem>>('GET', '/system/settings'),
+    updateSystemSettings: (settings: SettingChange[]) =>
+      request<ApiCollection<SettingItem>>('PUT', '/system/settings', { settings }),
+    // Per-tenant (tenant.manage): the tenant's own integration overrides.
+    tenantConfig: () => request<ApiCollection<SettingItem>>('GET', '/settings'),
+    updateTenantConfig: (settings: SettingChange[]) =>
+      request<ApiCollection<SettingItem>>('PUT', '/settings', { settings }),
   }
 }
 
