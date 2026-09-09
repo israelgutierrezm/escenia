@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 use App\Domain\Identity\Models\User;
 use App\Domain\Tenancy\Context\TenantContext;
+use App\Domain\Tenancy\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 
 /**
  * A tenant owner acting via Sanctum plus the host tenant headers.
  *
- * @return array{0: User, 1: \App\Domain\Tenancy\Models\Tenant, 2: array<string, string>}
+ * @return array{0: User, 1: Tenant, 2: array<string, string>}
  */
 function enterpriseOwner(?string $email = null, string $tenantName = 'Acme'): array
 {

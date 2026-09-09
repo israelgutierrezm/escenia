@@ -28,7 +28,9 @@
 
 **Fase 12 — Enterprise Events — COMPLETED** (2026-09-08), en `main` (corte: agenda/sponsors/gamification; networking/venue/hybrid diferidos).
 
-**Fase 13 — Enterprise — COMPLETED** (2026-09-09), en `main` (corte: custom domains, API keys/Developer Platform, SSO con aprovisionamiento JIT, residencia/dedicado, auditoría avanzada; SAML/OIDC real, SCIM, enforcement de residencia e infra dedicada diferidos). No avanzar a Fase 14 — Scale sin instrucción explícita.
+**Fase 13 — Enterprise — COMPLETED** (2026-09-09), en `main` (corte: custom domains, API keys/Developer Platform, SSO con aprovisionamiento JIT, residencia/dedicado, auditoría avanzada; SAML/OIDC real, SCIM, enforcement de residencia e infra dedicada diferidos).
+
+**Fase 14 — Scale — COMPLETED** (2026-09-09), en `main` (seams de código con defaults network-free: captura de analítica async, extracción a warehouse y fan-out de eventos del Outbox; ClickHouse/Kafka reales, enforcement multi-región, autoscaling y madurez de DR diferidos). **Roadmap completo (Fases 0–14).**
 
 ## Stack instalado
 
@@ -157,19 +159,27 @@
 - Tablas: `custom_domains`, `api_keys`, `sso_connections` (+ columnas `data_region`/`is_dedicated` en `tenants`).
 - **Diferido (TD-035..039)**: SAML/OIDC real con validación de firma/JWKS, SCIM, enforcement de residencia e infra dedicada, emisión de TLS + edge para dominios, rate-limit/rotación por API key.
 
+### Scale (Fase 14 — `app/Application/Analytics`, `app/Infrastructure/{Analytics,Outbox}`, `app/Providers/ScaleServiceProvider`)
+- **Seams de escala por configuración, defaults network-free** (`ScaleServiceProvider`) — ADR-031; ninguna infra nueva se levanta (CLAUDE.md §3):
+  1. **Captura de analítica async** (`config/analytics.php` → `capture=sync|queue`): `QueuedAnalyticsCollector` despacha `RecordAnalyticsEventJob` (en Infraestructura, usa el colector MySQL concreto en el worker para no reencolar en bucle) tras el mismo contrato `AnalyticsCollector` — desacopla el request de la escritura (avanza TD-016).
+  2. **Extracción a warehouse** (`config/analytics.php` → `export=fake|clickhouse`): `AnalyticsExporter` (`FakeAnalyticsExporter` testeable + `ClickHouseAnalyticsExporter` JSONEachRow stub) + `ExtractAnalyticsAction` + comando `analytics:extract` (agendado) con high-water mark `exported_at` (idempotente) — avanza TD-017/018.
+  3. **Fan-out de eventos del Outbox** (`config/outbox.php` → `stream=null|log|kafka`): `EventStreamPublisher` (`Null` default / `Log` / `Kafka` Redpanda-REST stub); `DispatchOutboxAction` publica tras los handlers (at-least-once; `ulid` = partition key). Seam de integración externa/multi-región.
+- Único cambio de esquema: `exported_at` (bookkeeping write-once, como `processed_at` del Outbox) en `analytics_events`; la telemetría sigue inmutable. `AnalyticsCollector` se enlaza ahora en `ScaleServiceProvider` (movido desde `DomainServiceProvider`).
+- **Diferido (TD-040..043)**: ClickHouse/warehouse real + push-down de agregación + retención; Kafka/Redpanda real + consumer groups + esquema versionado; enforcement multi-región (pinning/replicación por `data_region`); autoscaling (Horizon/HPA) y madurez de DR (backups+restore probado, RPO/RTO, runbooks). Ver `docs/architecture/scale-and-dr.md`.
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 183 passed / 882 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, media/escenas/mixer/broadcast+cifrado, auth por token de asistente, engagement, analítica, commerce checkout+webhook+Outbox+revenue, automation triggers/secuencias/webhooks firmados, content subida-firmada+transcripción-en-Job+clips, AI indexación+búsqueda-semántica-real+RAG+resúmenes, education corrección-server-side+certificación-por-Outbox+verificación-pública, enterprise events: agenda multi-track con cupo/leads/gamification, y enterprise: dominios custom verificados, API keys con scopes, SSO con aprovisionamiento JIT, residencia y auditoría avanzada) — `php artisan test`.
+- **Backend**: 188 passed / 911 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, media/escenas/mixer/broadcast+cifrado, auth por token de asistente, engagement, analítica, commerce checkout+webhook+Outbox+revenue, automation triggers/secuencias/webhooks firmados, content subida-firmada+transcripción-en-Job+clips, AI indexación+búsqueda-semántica-real+RAG+resúmenes, education corrección-server-side+certificación-por-Outbox+verificación-pública, enterprise events: agenda multi-track con cupo/leads/gamification, enterprise: dominios custom verificados/API keys con scopes/SSO con aprovisionamiento JIT/residencia/auditoría avanzada, y scale: extracción de analítica con high-water mark/captura async por cola/fan-out del Outbox al stream) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 
 ## No implementar todavía
 
-LiveKit productivo · networking/virtual-venue/hybrid (resto de Enterprise Events) · SSO real (SAML/OIDC con validación de firma) · SCIM · enforcement de residencia + infra dedicada · TLS/edge para dominios custom · Scale (Fase 14: multi-region, extracción de analytics, Kafka/Redpanda, autoscaling, DR) · Analytics avanzado (ClickHouse) · Qdrant productivo · Horizon/worker productivo · Reverb · envío real de email/SMS · transcripción/storage/LLM reales · render de clips/certificados — salvo contratos/stubs estrictamente necesarios.
+LiveKit productivo · networking/virtual-venue/hybrid (resto de Enterprise Events) · SSO real (SAML/OIDC con validación de firma) · SCIM · enforcement de residencia + infra dedicada · TLS/edge para dominios custom · ClickHouse/warehouse real · Kafka/Redpanda real + consumer groups · multi-region (pinning/replicación) · autoscaling (Horizon/HPA) + madurez de DR · Qdrant productivo · Reverb · envío real de email/SMS · transcripción/storage/LLM reales · render de clips/certificados — salvo contratos/stubs estrictamente necesarios. **Los seams de código ya existen** (ADR-031 y anteriores); solo falta activar/integrar la infra por config.
 
 ## Deuda técnica
 
@@ -177,4 +187,4 @@ Ver `docs/progress/technical-debt.md`.
 
 ## Última actualización
 
-2026-09-09 — Fase 13 (Enterprise) implementada y verificada en `main`.
+2026-09-09 — Fase 14 (Scale) implementada y verificada en `main`. **Roadmap completo (Fases 0–14).**

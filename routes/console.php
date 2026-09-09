@@ -15,3 +15,6 @@ Schedule::command('outbox:dispatch')->everyMinute()->withoutOverlapping();
 
 // Resume automation runs parked by a wait step (ADR-025), every minute.
 Schedule::command('automations:resume')->everyMinute()->withoutOverlapping();
+
+// Extract analytics rows to the warehouse sink (ADR-031), every five minutes.
+Schedule::command('analytics:extract')->everyFiveMinutes()->withoutOverlapping();

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Domain\Analytics\Contracts\AnalyticsCollector;
 use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Billing\Contracts\EntitlementResolver;
 use App\Domain\Events\Models\Event;
@@ -18,7 +17,6 @@ use App\Domain\Workspaces\Models\Workspace;
 use App\Http\Policies\EventPolicy;
 use App\Http\Policies\StudioPolicy;
 use App\Http\Policies\WorkspacePolicy;
-use App\Infrastructure\Analytics\DatabaseAnalyticsCollector;
 use App\Infrastructure\Audit\DatabaseAuditLogger;
 use App\Infrastructure\Billing\PlanEntitlementResolver;
 use App\Infrastructure\FeatureManagement\DatabaseFeatureFlagResolver;
@@ -39,7 +37,6 @@ class DomainServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     public array $bindings = [
-        AnalyticsCollector::class => DatabaseAnalyticsCollector::class,
         AuditLogger::class => DatabaseAuditLogger::class,
         EntitlementResolver::class => PlanEntitlementResolver::class,
         FeatureFlagResolver::class => DatabaseFeatureFlagResolver::class,

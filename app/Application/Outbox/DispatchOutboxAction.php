@@ -9,6 +9,7 @@ use App\Application\Automation\HandleAutomationTrigger;
 use App\Application\Commerce\Handlers\FulfillPaidOrderHandler;
 use App\Application\Content\Handlers\RegisterBroadcastRecordingHandler;
 use App\Application\Education\Handlers\IssueCertificateHandler;
+use App\Domain\Outbox\Contracts\EventStreamPublisher;
 use App\Domain\Outbox\Contracts\OutboxHandler;
 use App\Domain\Outbox\Models\OutboxEvent;
 use App\Domain\Tenancy\Context\TenantContext;
@@ -39,6 +40,7 @@ final class DispatchOutboxAction
 
     public function __construct(
         private readonly TenantContext $tenantContext,
+        private readonly EventStreamPublisher $stream,
     ) {}
 
     /**
@@ -59,6 +61,10 @@ final class DispatchOutboxAction
         foreach ($events as $event) {
             try {
                 $this->process($event);
+                // Fan out to the external stream after internal handlers run.
+                // If this throws, the event stays unprocessed and retries; the
+                // handlers are idempotent, so re-running them is safe.
+                $this->stream->publish($event->topic, $event->ulid, $event->payload);
                 $event->forceFill(['processed_at' => now()])->save();
                 $processed++;
             } catch (Throwable $e) {

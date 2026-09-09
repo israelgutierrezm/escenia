@@ -27,6 +27,7 @@ use Illuminate\Support\Carbon;
  * @property array<string, mixed>|null $properties
  * @property Carbon $occurred_at
  * @property Carbon|null $created_at
+ * @property Carbon|null $exported_at
  */
 class AnalyticsEvent extends Model
 {
@@ -47,6 +48,7 @@ class AnalyticsEvent extends Model
         'properties',
         'occurred_at',
         'created_at',
+        'exported_at',
     ];
 
     /**
@@ -60,6 +62,7 @@ class AnalyticsEvent extends Model
             'properties' => 'array',
             'occurred_at' => 'datetime',
             'created_at' => 'datetime',
+            'exported_at' => 'datetime',
         ];
     }
 
