@@ -53,18 +53,18 @@ onMounted(load)
 
 <template>
   <section class="stack">
-    <div>
-      <h1>System settings</h1>
-      <p class="muted">
-        Platform-wide configuration — external API credentials and provider selection. These apply
-        to every tenant unless a tenant overrides them.
+    <div class="page-head">
+      <h1>Configuración del sistema</h1>
+      <p>
+        Configuración global de la plataforma — credenciales de APIs externas y selección de
+        proveedores. Se aplica a todas las organizaciones salvo que una la sobrescriba.
       </p>
     </div>
 
-    <p v-if="loading" class="muted">Loading…</p>
+    <p v-if="loading" class="muted">Cargando…</p>
     <SettingsForm v-else :items="items" :saving="saving" @save="onSave">
       <template #status>
-        <span v-if="saved" class="ok-text">Saved.</span>
+        <span v-if="saved" class="ok-text">Guardado.</span>
         <span v-if="error" class="error-text">{{ error }}</span>
       </template>
     </SettingsForm>

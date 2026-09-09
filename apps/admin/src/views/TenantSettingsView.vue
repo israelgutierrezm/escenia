@@ -53,18 +53,18 @@ onMounted(load)
 
 <template>
   <section class="stack">
-    <div>
-      <h1>Tenant settings</h1>
-      <p class="muted">
-        Your tenant's integration overrides. Where you leave a value unset, the platform default
-        applies.
+    <div class="page-head">
+      <h1>Configuración</h1>
+      <p>
+        Ajustes de integración de tu organización. Donde dejes un valor sin definir, se aplica el
+        valor por defecto de la plataforma.
       </p>
     </div>
 
-    <p v-if="loading" class="muted">Loading…</p>
+    <p v-if="loading" class="muted">Cargando…</p>
     <SettingsForm v-else :items="items" :saving="saving" @save="onSave">
       <template #status>
-        <span v-if="saved" class="ok-text">Saved.</span>
+        <span v-if="saved" class="ok-text">Guardado.</span>
         <span v-if="error" class="error-text">{{ error }}</span>
       </template>
     </SettingsForm>

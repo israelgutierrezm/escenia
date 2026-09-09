@@ -24,7 +24,7 @@ const error = ref<string | null>(null)
 const saved = ref<string | null>(null)
 
 function message(e: unknown): string {
-  return e instanceof ApiError ? e.message : 'Something went wrong.'
+  return e instanceof ApiError ? e.message : 'Algo salió mal.'
 }
 
 function hydrate(next: MemberAccess): void {
@@ -64,16 +64,16 @@ async function run(fn: () => Promise<MemberAccess>, label: string): Promise<void
 function applyBase(): Promise<void> {
   return run(
     async () => (await api.changeMembershipRole(props.member.id, baseRole.value as TenantRoleKey)).data,
-    'Base role updated',
+    'Rol base actualizado',
   )
 }
 
 function applyRoles(): Promise<void> {
-  return run(async () => (await api.syncMemberRoles(props.member.id, selectedCustom.value)).data, 'Custom roles updated')
+  return run(async () => (await api.syncMemberRoles(props.member.id, selectedCustom.value)).data, 'Roles actualizados')
 }
 
 function applyPerms(): Promise<void> {
-  return run(async () => (await api.syncMemberPermissions(props.member.id, directPerms.value)).data, 'Direct permissions updated')
+  return run(async () => (await api.syncMemberPermissions(props.member.id, directPerms.value)).data, 'Permisos actualizados')
 }
 
 function toggleCustom(name: string, checked: boolean): void {
@@ -85,28 +85,31 @@ function toggleCustom(name: string, checked: boolean): void {
 
 <template>
   <div v-if="access" class="panel stack">
-    <div>
-      <h2>{{ member.name }}</h2>
-      <p class="muted">{{ member.email }}</p>
-    </div>
-
-    <div class="editor">
-      <h3>Base role</h3>
-      <div class="actions">
-        <label class="field">
-          <span>Membership tier</span>
-          <select v-model="baseRole">
-            <option value="owner">owner</option>
-            <option value="admin">admin</option>
-            <option value="member">member</option>
-          </select>
-        </label>
-        <AppButton :disabled="busy" @click="applyBase">Apply</AppButton>
+    <div class="who">
+      <span class="card__avatar">{{ member.name.slice(0, 1).toUpperCase() }}</span>
+      <div>
+        <h2 style="margin: 0">{{ member.name }}</h2>
+        <p class="muted" style="margin: 2px 0 0">{{ member.email }}</p>
       </div>
     </div>
 
-    <div v-if="customRoles.length" class="editor">
-      <h3>Custom roles</h3>
+    <div class="block">
+      <h3>Rol base</h3>
+      <div class="actions">
+        <label class="field">
+          <span>Nivel de membresía</span>
+          <select v-model="baseRole">
+            <option value="owner">Propietario</option>
+            <option value="admin">Administrador</option>
+            <option value="member">Miembro</option>
+          </select>
+        </label>
+        <AppButton :disabled="busy" @click="applyBase">Aplicar</AppButton>
+      </div>
+    </div>
+
+    <div v-if="customRoles.length" class="block">
+      <h3>Roles personalizados</h3>
       <div class="checks">
         <label v-for="name in customRoles" :key="name" class="check">
           <input
@@ -117,22 +120,22 @@ function toggleCustom(name: string, checked: boolean): void {
           <span>{{ name }}</span>
         </label>
       </div>
-      <div class="actions"><AppButton :disabled="busy" @click="applyRoles">Apply roles</AppButton></div>
+      <div class="actions"><AppButton :disabled="busy" @click="applyRoles">Aplicar roles</AppButton></div>
     </div>
 
-    <div class="editor">
-      <h3>Direct permissions</h3>
+    <div class="block">
+      <h3>Permisos directos</h3>
       <PermissionPicker v-model="directPerms" :catalog="catalog" />
-      <div class="actions"><AppButton :disabled="busy" @click="applyPerms">Apply permissions</AppButton></div>
+      <div class="actions"><AppButton :disabled="busy" @click="applyPerms">Aplicar permisos</AppButton></div>
     </div>
 
-    <div class="editor">
-      <h3>Effective permissions</h3>
+    <div class="block">
+      <h3>Permisos efectivos</h3>
       <div class="actions">
-        <span v-for="permission in access.effective_permissions" :key="permission" class="chip">
+        <span v-for="permission in access.effective_permissions" :key="permission" class="chip chip--primary">
           {{ permission }}
         </span>
-        <span v-if="access.effective_permissions.length === 0" class="muted">None</span>
+        <span v-if="access.effective_permissions.length === 0" class="muted">Ninguno</span>
       </div>
     </div>
 
@@ -142,16 +145,11 @@ function toggleCustom(name: string, checked: boolean): void {
 </template>
 
 <style scoped>
-.editor {
+.block {
   display: flex;
   flex-direction: column;
   gap: var(--escenia-space-3);
   border-top: 1px solid var(--escenia-color-border);
-  padding-top: var(--escenia-space-3);
-}
-
-.editor h3 {
-  margin: 0;
-  font-size: 0.95rem;
+  padding-top: var(--escenia-space-4);
 }
 </style>

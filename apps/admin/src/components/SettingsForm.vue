@@ -87,7 +87,7 @@ function onSave(): void {
         <label v-for="item in group.items" :key="item.key" class="field">
           <span>
             {{ item.label }}
-            <em v-if="!item.is_set" class="muted">· default</em>
+            <em v-if="!item.is_set" class="muted">· por defecto</em>
           </span>
 
           <select
@@ -104,7 +104,7 @@ function onSave(): void {
               :checked="draft[item.key] === true"
               @change="set(item.key, ($event.target as HTMLInputElement).checked)"
             />
-            <span class="muted">Enabled</span>
+            <span class="muted">Activado</span>
           </span>
 
           <input
@@ -119,7 +119,7 @@ function onSave(): void {
             type="password"
             autocomplete="off"
             :value="asString(draft[item.key])"
-            :placeholder="item.is_set ? '•••••••• (set — leave blank to keep)' : 'not set'"
+            :placeholder="item.is_set ? '•••••••• (definido — deja en blanco para conservar)' : 'sin definir'"
             @input="set(item.key, ($event.target as HTMLInputElement).value)"
           />
 
@@ -144,7 +144,7 @@ function onSave(): void {
 
     <div class="actions">
       <AppButton type="submit" :disabled="saving">
-        {{ saving ? 'Saving…' : 'Save changes' }}
+        {{ saving ? 'Guardando…' : 'Guardar cambios' }}
       </AppButton>
       <slot name="status" />
     </div>
