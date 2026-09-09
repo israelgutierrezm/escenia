@@ -183,7 +183,7 @@
 - Tablas: `settings` (+ columna `is_super_admin` en `users`). **Diferido (TD-045)**: binding per-tenant en caliente de proveedores singleton, rotación/versionado de secretos, caché distribuida de settings.
 
 ### Frontend (`apps/`, `packages/`)
-- `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
+- `apps/admin`: login + `AdminLayout` (shell con navegación por permisos + switcher de tenant), store Pinia de auth (tenant activo + gates `isSuperAdmin`/`canManageMembers`/`canManageTenant`), guard de router (incl. super-admin), cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`. **Superficies de administración**: Overview (tenants/workspaces); **Members & roles** (`members.manage`: miembros + editor de acceso por usuario rol-base/roles/permisos/efectivos + CRUD de roles con `PermissionPicker`); **Tenant settings** (`tenant.manage`) y **System settings** (super-admin) con `SettingsForm` generado del catálogo (controles por tipo, secretos write-only).
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
