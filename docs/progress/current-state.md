@@ -167,13 +167,21 @@
 - Único cambio de esquema: `exported_at` (bookkeeping write-once, como `processed_at` del Outbox) en `analytics_events`; la telemetría sigue inmutable. `AnalyticsCollector` se enlaza ahora en `ScaleServiceProvider` (movido desde `DomainServiceProvider`).
 - **Diferido (TD-040..043)**: ClickHouse/warehouse real + push-down de agregación + retención; Kafka/Redpanda real + consumer groups + esquema versionado; enforcement multi-región (pinning/replicación por `data_region`); autoscaling (Horizon/HPA) y madurez de DR (backups+restore probado, RPO/RTO, runbooks). Ver `docs/architecture/scale-and-dr.md`.
 
+### RBAC por usuario (`app/Domain/AccessControl`, `app/Application/AccessControl`)
+- **Roles personalizados por tenant + permisos por usuario** sobre Spatie (teams=tenant), sin tablas nuevas — ADR-032. El catálogo de permisos sigue siendo el enum `Permission` (con `group()`/`label()` para la UI).
+- **Roles de sistema** (owner/admin/member, `tenant_id` NULL) inmutables; **roles personalizados** (`tenant_id`=tenant) con CRUD y set de permisos elegido del catálogo (`CreateRoleAction`/`UpdateRoleAction`/`DeleteRoleAction`).
+- **Tres niveles por miembro**: rol base autoritativo (`ChangeMembershipRoleAction`, espeja `TenantMembership.role` ↔ rol de sistema Spatie), roles personalizados aditivos (`SyncMemberRolesAction`) y permisos directos aditivos (`SyncMemberPermissionsAction`). Acceso efectivo = unión.
+- **Guardas anti-escalada** (`AccessGuard`): solo se conceden permisos que el actor posee (`403 privilege_escalation`); tocar el tier owner exige ser owner; no se degrada al último owner; roles de sistema no se gestionan como personalizados (`422 system_role`).
+- Superficie host `members.manage`: `GET /permissions` (catálogo agrupado), `roles` CRUD, `GET /members`, `GET /members/{user}`, `PUT /members/{user}/{membership-role,roles,permissions}`. Mutaciones auditadas (`rbac.*`). Contratos de frontend: `permissionCatalog`/`roles`/`createRole`/`updateRole`/`deleteRole`/`members`/`memberAccess`/`changeMembershipRole`/`syncMemberRoles`/`syncMemberPermissions`.
+- **Diferido (TD-044)**: permisos negativos/denegación por usuario, jerarquía de roles, invitación/alta-baja de miembros.
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 188 passed / 911 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, media/escenas/mixer/broadcast+cifrado, auth por token de asistente, engagement, analítica, commerce checkout+webhook+Outbox+revenue, automation triggers/secuencias/webhooks firmados, content subida-firmada+transcripción-en-Job+clips, AI indexación+búsqueda-semántica-real+RAG+resúmenes, education corrección-server-side+certificación-por-Outbox+verificación-pública, enterprise events: agenda multi-track con cupo/leads/gamification, enterprise: dominios custom verificados/API keys con scopes/SSO con aprovisionamiento JIT/residencia/auditoría avanzada, y scale: extracción de analítica con high-water mark/captura async por cola/fan-out del Outbox al stream) — `php artisan test`.
+- **Backend**: 198 passed / 949 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, media/escenas/mixer/broadcast+cifrado, auth por token de asistente, engagement, analítica, commerce checkout+webhook+Outbox+revenue, automation triggers/secuencias/webhooks firmados, content subida-firmada+transcripción-en-Job+clips, AI indexación+búsqueda-semántica-real+RAG+resúmenes, education corrección-server-side+certificación-por-Outbox+verificación-pública, enterprise events: agenda multi-track con cupo/leads/gamification, enterprise: dominios custom verificados/API keys con scopes/SSO con aprovisionamiento JIT/residencia/auditoría avanzada, scale: extracción de analítica con high-water mark/captura async por cola/fan-out del Outbox al stream, y RBAC por usuario: roles personalizados, tier base, roles/permisos aditivos y guardas anti-escalada) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 

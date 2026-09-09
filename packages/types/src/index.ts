@@ -922,3 +922,36 @@ export interface AuditLogEntry {
   request_id: string | null
   created_at: string | null
 }
+
+// ---- Access control: roles & per-user permissions ----
+
+export type TenantRoleKey = 'owner' | 'admin' | 'member'
+
+export interface RoleModel {
+  name: string
+  is_system: boolean
+  permissions: string[]
+}
+
+export interface PermissionGroup {
+  group: string
+  permissions: Array<{ value: string; label: string }>
+}
+
+export interface MemberSummary {
+  id: string
+  name: string
+  email: string
+  membership_role: TenantRoleKey
+  status: string
+}
+
+export interface MemberAccess {
+  id: string
+  name: string
+  email: string
+  membership_role: TenantRoleKey | null
+  custom_roles: string[]
+  direct_permissions: string[]
+  effective_permissions: string[]
+}

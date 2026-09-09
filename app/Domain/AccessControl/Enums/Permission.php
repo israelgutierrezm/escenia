@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\AccessControl\Enums;
 
+use Illuminate\Support\Str;
+
 /**
  * The permission catalog. Permissions are stable strings (no magic strings
  * scattered in code) resolved through Spatie, scoped by tenant team
- * (see ADR-011). Only the permissions needed by Foundation exist today.
+ * (see ADR-011). This enum is the single source of truth for what a custom role
+ * or a per-user grant may contain.
  */
 enum Permission: string
 {
@@ -51,5 +54,22 @@ enum Permission: string
     public static function values(): array
     {
         return array_map(static fn (self $p): string => $p->value, self::cases());
+    }
+
+    /**
+     * The group a permission belongs to (its prefix), for grouping in the UI —
+     * e.g. `events.capabilities.manage` → `events`.
+     */
+    public function group(): string
+    {
+        return Str::before($this->value, '.');
+    }
+
+    /**
+     * A human-readable label, e.g. `events.view` → `Events View`.
+     */
+    public function label(): string
+    {
+        return Str::of($this->value)->replace(['.', '_'], ' ')->title()->toString();
     }
 }

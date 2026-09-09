@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\AccessControl\MemberController;
+use App\Http\Controllers\Api\V1\AccessControl\PermissionController;
+use App\Http\Controllers\Api\V1\AccessControl\RoleController;
 use App\Http\Controllers\Api\V1\Ai\ContentSummaryController;
 use App\Http\Controllers\Api\V1\Ai\EventArchitectController;
 use App\Http\Controllers\Api\V1\Ai\SemanticSearchController;
@@ -164,6 +167,19 @@ Route::prefix('v1')->group(function (): void {
             Route::delete('workspaces/{workspace}', [WorkspaceController::class, 'destroy']);
 
             Route::get('feature-flags', FeatureFlagController::class);
+
+            // ---- RBAC: custom roles & per-user permissions (members.manage) ----
+            Route::get('permissions', [PermissionController::class, 'index']);
+            Route::get('roles', [RoleController::class, 'index']);
+            Route::post('roles', [RoleController::class, 'store']);
+            Route::match(['put', 'patch'], 'roles/{role}', [RoleController::class, 'update']);
+            Route::delete('roles/{role}', [RoleController::class, 'destroy']);
+
+            Route::get('members', [MemberController::class, 'index']);
+            Route::get('members/{member}', [MemberController::class, 'show']);
+            Route::put('members/{member}/membership-role', [MemberController::class, 'membershipRole']);
+            Route::put('members/{member}/roles', [MemberController::class, 'syncRoles']);
+            Route::put('members/{member}/permissions', [MemberController::class, 'syncPermissions']);
 
             // ---- Events (Fase 1 — Event Core) ----
             Route::get('event-templates', [EventTemplateController::class, 'index']);

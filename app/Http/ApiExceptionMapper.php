@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http;
 
+use App\Domain\AccessControl\Exceptions\PrivilegeEscalationException;
+use App\Domain\AccessControl\Exceptions\SystemRoleException;
 use App\Domain\Agenda\Exceptions\SessionFullException;
 use App\Domain\Broadcasting\Exceptions\BroadcastTransitionConflictException;
 use App\Domain\Broadcasting\Exceptions\InvalidBroadcastTransitionException;
@@ -73,6 +75,8 @@ final class ApiExceptionMapper
             $e instanceof SessionFullException => [422, 'session_full', $e->getMessage(), null],
             $e instanceof DomainVerificationFailedException => [422, 'domain_verification_failed', $e->getMessage(), null],
             $e instanceof SsoAuthenticationException => [401, 'sso_authentication_failed', $e->getMessage(), null],
+            $e instanceof SystemRoleException => [422, 'system_role', $e->getMessage(), null],
+            $e instanceof PrivilegeEscalationException => [403, 'privilege_escalation', $e->getMessage(), null],
             $e instanceof AuthenticationException => [401, 'unauthenticated', 'Unauthenticated.', null],
             $e instanceof AuthorizationException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],
             $e instanceof AccessDeniedHttpException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],

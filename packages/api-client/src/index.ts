@@ -85,6 +85,11 @@ import type {
   SsoConnection,
   SsoProvider,
   TenantSettings,
+  RoleModel,
+  PermissionGroup,
+  MemberSummary,
+  MemberAccess,
+  TenantRoleKey,
 } from '@escenia/types'
 
 export interface ApiClientOptions {
@@ -510,6 +515,24 @@ export function createApiClient(options: ApiClientOptions = {}) {
       const qs = params.toString()
       return request<ApiCollection<AuditLogEntry>>('GET', `/audit-logs${qs ? `?${qs}` : ''}`)
     },
+
+    // ---- Access control: custom roles & per-user permissions ----
+    permissionCatalog: () => request<ApiCollection<PermissionGroup>>('GET', '/permissions'),
+    roles: () => request<ApiCollection<RoleModel>>('GET', '/roles'),
+    createRole: (data: { name: string; permissions: string[] }) =>
+      request<ApiResource<RoleModel>>('POST', '/roles', data),
+    updateRole: (name: string, data: { permissions: string[] }) =>
+      request<ApiResource<RoleModel>>('PUT', `/roles/${encodeURIComponent(name)}`, data),
+    deleteRole: (name: string) => request<void>('DELETE', `/roles/${encodeURIComponent(name)}`),
+
+    members: () => request<ApiCollection<MemberSummary>>('GET', '/members'),
+    memberAccess: (userId: string) => request<ApiResource<MemberAccess>>('GET', `/members/${userId}`),
+    changeMembershipRole: (userId: string, role: TenantRoleKey) =>
+      request<ApiResource<MemberAccess>>('PUT', `/members/${userId}/membership-role`, { role }),
+    syncMemberRoles: (userId: string, roles: string[]) =>
+      request<ApiResource<MemberAccess>>('PUT', `/members/${userId}/roles`, { roles }),
+    syncMemberPermissions: (userId: string, permissions: string[]) =>
+      request<ApiResource<MemberAccess>>('PUT', `/members/${userId}/permissions`, { permissions }),
   }
 }
 
