@@ -46,6 +46,9 @@ async function onLogout(): Promise<void> {
         <RouterLink :to="{ name: 'dashboard' }" class="nav-link">
           <span class="dot"></span> Resumen
         </RouterLink>
+        <RouterLink :to="{ name: 'events' }" class="nav-link">
+          <span class="dot"></span> Eventos
+        </RouterLink>
         <RouterLink v-if="auth.canManageMembers" :to="{ name: 'members' }" class="nav-link">
           <span class="dot"></span> Miembros y roles
         </RouterLink>

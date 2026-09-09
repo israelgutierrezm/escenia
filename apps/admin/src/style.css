@@ -162,6 +162,26 @@ body {
   background: color-mix(in srgb, var(--escenia-color-primary) 12%, transparent);
 }
 
+.chip--live {
+  color: var(--escenia-color-accent);
+  border-color: color-mix(in srgb, var(--escenia-color-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--escenia-color-accent) 14%, transparent);
+}
+
+.chip--live::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--escenia-color-accent);
+}
+
+.chip--danger {
+  color: var(--escenia-color-danger);
+  border-color: color-mix(in srgb, var(--escenia-color-danger) 45%, transparent);
+  background: color-mix(in srgb, var(--escenia-color-danger) 12%, transparent);
+}
+
 .role-badge {
   text-transform: capitalize;
 }

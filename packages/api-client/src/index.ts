@@ -197,6 +197,8 @@ export function createApiClient(options: ApiClientOptions = {}) {
         workspace ? `/events?workspace=${encodeURIComponent(workspace)}` : '/events',
       ),
     event: (id: string) => request<ApiResource<EventModel>>('GET', `/events/${id}`),
+    eventCapabilities: (id: string) =>
+      request<ApiCollection<EventCapability>>('GET', `/events/${id}/capabilities`),
     createEvent: (data: {
       workspace_id: string
       title: string
