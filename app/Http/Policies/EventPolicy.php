@@ -73,4 +73,14 @@ class EventPolicy
     {
         return $user->can(Permission::CommerceManage->value);
     }
+
+    public function viewContent(User $user, Event $event): bool
+    {
+        return $user->can(Permission::ContentView->value);
+    }
+
+    public function manageContent(User $user, Event $event): bool
+    {
+        return $user->can(Permission::ContentManage->value);
+    }
 }

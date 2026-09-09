@@ -9,7 +9,11 @@ import type {
   Automation,
   AutomationRun,
   AutomationStepInput,
+  Clip,
   Condition,
+  Recording,
+  RecordingUpload,
+  Transcript,
   Attribution,
   AttributionReport,
   AttendeeRegistered,
@@ -343,6 +347,26 @@ export function createApiClient(options: ApiClientOptions = {}) {
       request<ApiResource<Automation>>('POST', `/automations/${automationId}/active`, { is_active: isActive }),
     automationRuns: (automationId: string) =>
       request<ApiCollection<AutomationRun>>('GET', `/automations/${automationId}/runs`),
+
+    // ---- Content: recordings, transcripts, clips (Fase 9) ----
+    recordings: (eventId: string) =>
+      request<ApiCollection<Recording>>('GET', `/events/${eventId}/recordings`),
+    requestRecordingUpload: (eventId: string, data: { content_type: string; title?: string }) =>
+      request<ApiResource<RecordingUpload>>('POST', `/events/${eventId}/recordings`, data),
+    recording: (recordingId: string) =>
+      request<ApiResource<Recording>>('GET', `/recordings/${recordingId}`),
+    completeRecording: (
+      recordingId: string,
+      data: { duration_ms?: number; size_bytes?: number; format?: string },
+    ) => request<ApiResource<Recording>>('POST', `/recordings/${recordingId}/complete`, data),
+    transcribeRecording: (recordingId: string, language = 'en') =>
+      request<ApiResource<Transcript>>('POST', `/recordings/${recordingId}/transcribe`, { language }),
+    transcript: (transcriptId: string) =>
+      request<ApiResource<Transcript>>('GET', `/transcripts/${transcriptId}`),
+    clips: (recordingId: string) =>
+      request<ApiCollection<Clip>>('GET', `/recordings/${recordingId}/clips`),
+    createClip: (recordingId: string, data: { title: string; start_ms: number; end_ms: number }) =>
+      request<ApiResource<Clip>>('POST', `/recordings/${recordingId}/clips`, data),
   }
 }
 

@@ -13,6 +13,7 @@ use App\Domain\Broadcasting\Models\BroadcastSession;
 use App\Domain\Identity\Models\User;
 use App\Domain\Media\Contracts\MediaEgressProvider;
 use App\Domain\Media\ValueObjects\EgressHandle;
+use App\Domain\Outbox\Models\OutboxEvent;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -47,6 +48,17 @@ final class StopBroadcastAction
             $broadcast->refresh();
 
             BroadcastEnded::dispatch($broadcast);
+
+            // Publish to the outbox (ADR-007): a recorded broadcast becomes a
+            // content Recording (ADR-026), handled out of band.
+            OutboxEvent::query()->create([
+                'topic' => 'broadcast.ended',
+                'payload' => [
+                    'broadcast_session_id' => $broadcast->getKey(),
+                    'record' => $broadcast->record,
+                ],
+                'available_at' => now(),
+            ]);
 
             $this->audit->log('broadcast.ended', actor: $actor, tenant: $broadcast->tenant, auditable: $broadcast);
 

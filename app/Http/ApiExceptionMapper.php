@@ -10,6 +10,7 @@ use App\Domain\Commerce\Exceptions\CheckoutUnavailableException;
 use App\Domain\Commerce\Exceptions\InvalidOrderTransitionException;
 use App\Domain\Commerce\Exceptions\OrderTransitionConflictException;
 use App\Domain\Commerce\Exceptions\WebhookVerificationException;
+use App\Domain\Content\Exceptions\InvalidClipRangeException;
 use App\Domain\Engagement\Exceptions\AlreadyVotedException;
 use App\Domain\Engagement\Exceptions\InvalidPollTransitionException;
 use App\Domain\Engagement\Exceptions\PollNotOpenException;
@@ -61,6 +62,7 @@ final class ApiExceptionMapper
             $e instanceof InvalidOrderTransitionException => [422, 'invalid_order_transition', $e->getMessage(), null],
             $e instanceof OrderTransitionConflictException => [409, 'order_conflict', $e->getMessage(), null],
             $e instanceof WebhookVerificationException => [403, 'webhook_verification_failed', $e->getMessage(), null],
+            $e instanceof InvalidClipRangeException => [422, 'invalid_clip_range', $e->getMessage(), null],
             $e instanceof AuthenticationException => [401, 'unauthenticated', 'Unauthenticated.', null],
             $e instanceof AuthorizationException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],
             $e instanceof AccessDeniedHttpException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],

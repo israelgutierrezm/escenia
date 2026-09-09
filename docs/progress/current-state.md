@@ -18,7 +18,9 @@
 
 **Fase 7 — Commerce — COMPLETED** (2026-09-08), en `main` (incluye el Outbox de ADR-007).
 
-**Fase 8 — Automation — COMPLETED** (2026-09-08), en `main`. No avanzar a Fase 9 — Recording & Content sin instrucción explícita.
+**Fase 8 — Automation — COMPLETED** (2026-09-08), en `main`.
+
+**Fase 9 — Recording & Content — COMPLETED** (2026-09-08), en `main`. No avanzar a Fase 10 — AI sin instrucción explícita.
 
 ## Stack instalado
 
@@ -105,19 +107,27 @@
 - Tablas: `automations`, `automation_steps`, `automation_runs`, `contact_tags`, `notifications`.
 - **Diferido**: SSRF hardening de webhooks; reintentos de run fallido; envío real de notificaciones; validación por tipo de paso.
 
+### Recording & Content (Fase 9 — `app/Domain/Content`, `app/Application/Content`, `app/Infrastructure/{Storage,Transcription}`)
+- **Grabaciones** (`Recording`) desde subida local (**ticket firmado direct-to-storage**, el binario nunca pasa por Laravel) o auto-registradas desde un broadcast grabado vía **Outbox** (`broadcast.ended` → handler de Content, avanza TD-010). **ISO tracks** (`RecordingTrack`: composite/screen/camera/audio) — ADR-026.
+- **Storage detrás de `RecordingStorage`** (fake por defecto + `S3` con `temporaryUploadUrl`) y **transcripción detrás de `Transcriber`** (fake + `HttpTranscriber` stub), por `config/recordings.php` (`ContentServiceProvider`). El dominio nunca ve el SDK.
+- **Transcripción en Job** (`TranscribeRecordingJob`, primer uso de Jobs/Workers): endpoint `202`, el job persiste segmentos → ready/failed. **Content studio / editor**: `Clip` (rango ms, `422 invalid_clip_range`).
+- Permisos `content.view`/`content.manage` (`EventPolicy`). HTTP host: recordings (list/request-upload/show/complete), transcribe, transcript, clips. Contratos de frontend: `recordings*`/`transcripts*`/`clips*`.
+- Tablas: `recordings`, `recording_tracks`, `transcripts`, `transcript_segments`, `clips`.
+- **Diferido**: providers reales (S3/transcriptor HTTP) sin integración; `complete` confía en el cliente; entrega del asset de egress real (webhook del provider); render/export de clips e ISO tracks; worker/Horizon en prod.
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + dashboard (tenants/workspaces), store Pinia de auth, guard de router, cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`.
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
 
 ## Tests ejecutados
 
-- **Backend**: 143 passed / 652 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, gating de capacidades, guest links, tokens de media, versionado de escenas, vision mixer, broadcast multistream, cifrado de stream keys, registro público + auth por token de asistente, engagement chat/Q&A/polls/recursos, analítica summary/attendance/heatmap/attribution, commerce checkout+webhook+Outbox+revenue, y automation: triggers vía outbox, condiciones, secuencias con wait/resume, webhooks firmados e idempotencia) — `php artisan test`.
+- **Backend**: 149 passed / 688 assertions (incluye aislamiento cross-tenant, máquinas de estado con optimistic locking, guest links, tokens de media, versionado de escenas, vision mixer, broadcast multistream, cifrado de stream keys, registro público + auth por token de asistente, engagement, analítica summary/attendance/heatmap/attribution, commerce checkout+webhook+Outbox+revenue, automation triggers/condiciones/secuencias/webhooks firmados, y content: subida por URL firmada + complete, transcripción en Job, clips, y auto-registro de grabación desde broadcast vía Outbox) — `php artisan test`.
 - **Frontend**: 2 passed — `pnpm --filter @escenia/admin test`.
 - **Static analysis**: PHPStan nivel 6 sin errores; Pint passed; vue-tsc + ESLint sin errores; build de producción OK.
 
 ## No implementar todavía
 
-LiveKit productivo · Recording & Content · Analytics avanzado (ClickHouse) · AI · Conferences · Qdrant · Horizon · Reverb · envío real de email/SMS — salvo contratos/stubs estrictamente necesarios.
+LiveKit productivo · AI · Conferences · Analytics avanzado (ClickHouse) · Qdrant · Horizon/worker productivo · Reverb · envío real de email/SMS · transcripción/storage reales · render de clips — salvo contratos/stubs estrictamente necesarios.
 
 ## Deuda técnica
 
@@ -125,4 +135,4 @@ Ver `docs/progress/technical-debt.md`.
 
 ## Última actualización
 
-2026-09-08 — Fase 8 (Automation) implementada y verificada en `main`.
+2026-09-08 — Fase 9 (Recording & Content) implementada y verificada en `main`.

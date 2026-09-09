@@ -621,3 +621,72 @@ export interface AutomationStepInput {
   config?: Record<string, unknown>
   conditions?: Condition[]
 }
+
+// ---- Content: Recording & Content (Fase 9) ----
+
+export type RecordingSource = 'broadcast' | 'upload'
+export type RecordingStatus = 'pending' | 'processing' | 'ready' | 'failed'
+export type TrackKind = 'composite' | 'screen' | 'camera' | 'audio'
+export type TranscriptStatus = 'pending' | 'processing' | 'ready' | 'failed'
+export type ClipStatus = 'draft' | 'ready'
+
+export interface RecordingTrack {
+  id: string
+  kind: TrackKind
+  label: string | null
+  status: RecordingStatus
+  size_bytes: number | null
+}
+
+export interface TranscriptSegment {
+  start_ms: number
+  end_ms: number
+  speaker: string | null
+  text: string
+}
+
+export interface Transcript {
+  id: string
+  provider: string
+  language: string
+  status: TranscriptStatus
+  segments?: TranscriptSegment[]
+}
+
+export interface Clip {
+  id: string
+  title: string
+  start_ms: number
+  end_ms: number
+  status: ClipStatus
+  created_at: string | null
+}
+
+export interface Recording {
+  id: string
+  source: RecordingSource
+  status: RecordingStatus
+  title: string | null
+  duration_ms: number | null
+  size_bytes: number | null
+  format: string | null
+  playback_url: string | null
+  tracks?: RecordingTrack[]
+  transcripts?: Transcript[]
+  clips?: Clip[]
+  created_at: string | null
+}
+
+/** A signed direct-to-storage upload ticket. Upload the binary to `url`; never through the API. */
+export interface UploadTicket {
+  url: string
+  method: string
+  headers: Record<string, string>
+  key: string
+  expires_at: string
+}
+
+export interface RecordingUpload {
+  recording: Recording
+  upload: UploadTicket
+}

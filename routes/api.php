@@ -19,6 +19,9 @@ use App\Http\Controllers\Api\V1\Commerce\Host\PaymentAccountController;
 use App\Http\Controllers\Api\V1\Commerce\Host\TicketController as HostTicketController;
 use App\Http\Controllers\Api\V1\Commerce\PublicCheckoutController;
 use App\Http\Controllers\Api\V1\Commerce\WebhookController;
+use App\Http\Controllers\Api\V1\Content\ClipController;
+use App\Http\Controllers\Api\V1\Content\RecordingController;
+use App\Http\Controllers\Api\V1\Content\TranscriptController;
 use App\Http\Controllers\Api\V1\Engagement\Attendee\ChatController as AttendeeChatController;
 use App\Http\Controllers\Api\V1\Engagement\Attendee\PollController as AttendeePollController;
 use App\Http\Controllers\Api\V1\Engagement\Attendee\PresenceController as AttendeePresenceController;
@@ -212,6 +215,18 @@ Route::prefix('v1')->group(function (): void {
             Route::post('automations', [AutomationController::class, 'store']);
             Route::post('automations/{automation}/active', [AutomationController::class, 'setActive']);
             Route::get('automations/{automation}/runs', [AutomationRunController::class, 'index']);
+
+            // ---- Content: recordings, transcripts, clips (Fase 9) ----
+            Route::get('events/{event}/recordings', [RecordingController::class, 'index']);
+            Route::post('events/{event}/recordings', [RecordingController::class, 'store']);
+            Route::get('recordings/{recording}', [RecordingController::class, 'show']);
+            Route::post('recordings/{recording}/complete', [RecordingController::class, 'complete']);
+
+            Route::post('recordings/{recording}/transcribe', [TranscriptController::class, 'store']);
+            Route::get('transcripts/{transcript}', [TranscriptController::class, 'show']);
+
+            Route::get('recordings/{recording}/clips', [ClipController::class, 'index']);
+            Route::post('recordings/{recording}/clips', [ClipController::class, 'store']);
         });
     });
 });
