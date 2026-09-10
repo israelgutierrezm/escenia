@@ -3,7 +3,15 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { AppButton } from '@escenia/ui'
 import { ApiError } from '@escenia/api-client'
-import type { CapabilityKey, EventCapability, EventModel, EventStatus } from '@escenia/types'
+import type {
+  CapabilityKey,
+  EventCapability,
+  EventModel,
+  EventSession,
+  EventSpeaker,
+  EventStatus,
+  SpeakerRole,
+} from '@escenia/types'
 
 import { capacidad, estadoEvento, fecha, tipoEvento, todasLasCapacidades } from '@/lib/eventLabels'
 import { api } from '@/lib/api'
@@ -28,8 +36,18 @@ const accionEstado: Record<EventStatus, string> = {
 
 const enabledMap = computed(() => new Map(capabilities.value.map((c) => [c.capability, c.enabled])))
 
-const sesiones = computed(() => event.value?.sessions ?? [])
-const ponentes = computed(() => event.value?.speakers ?? [])
+const sesiones = ref<EventSession[]>([])
+const ponentes = ref<EventSpeaker[]>([])
+
+const nuevaSesion = ref('')
+const nuevoPonente = ref({ name: '', role: 'speaker' as SpeakerRole })
+
+const rolesPonente: [SpeakerRole, string][] = [
+  ['host', 'Anfitrión'],
+  ['speaker', 'Ponente'],
+  ['moderator', 'Moderador'],
+  ['panelist', 'Panelista'],
+]
 
 function message(e: unknown): string {
   return e instanceof ApiError ? e.message : 'Algo salió mal.'
@@ -39,13 +57,50 @@ async function load(): Promise<void> {
   loading.value = true
   error.value = null
   try {
-    const [ev, caps] = await Promise.all([api.event(id), api.eventCapabilities(id)])
+    const [ev, caps, ss, sp] = await Promise.all([
+      api.event(id),
+      api.eventCapabilities(id),
+      api.eventSessions(id),
+      api.eventSpeakers(id),
+    ])
     event.value = ev.data
     capabilities.value = caps.data
+    sesiones.value = ss.data
+    ponentes.value = sp.data
   } catch (e) {
     error.value = message(e)
   } finally {
     loading.value = false
+  }
+}
+
+async function crearSesion(): Promise<void> {
+  if (nuevaSesion.value.trim() === '') return
+  busy.value = true
+  error.value = null
+  try {
+    await api.createEventSession(id, { title: nuevaSesion.value })
+    nuevaSesion.value = ''
+    sesiones.value = (await api.eventSessions(id)).data
+  } catch (e) {
+    error.value = message(e)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function agregarPonente(): Promise<void> {
+  if (nuevoPonente.value.name.trim() === '') return
+  busy.value = true
+  error.value = null
+  try {
+    await api.addEventSpeaker(id, { name: nuevoPonente.value.name, role: nuevoPonente.value.role })
+    nuevoPonente.value = { name: '', role: 'speaker' }
+    ponentes.value = (await api.eventSpeakers(id)).data
+  } catch (e) {
+    error.value = message(e)
+  } finally {
+    busy.value = false
   }
 }
 
@@ -166,6 +221,10 @@ onMounted(load)
               <span class="chip" :class="s.status === 'live' ? 'chip--live' : ''">{{ sessionLabel[s.status] }}</span>
             </li>
           </ul>
+          <div class="add">
+            <input v-model="nuevaSesion" class="control grow" placeholder="Nueva sesión…" @keyup.enter="crearSesion" />
+            <AppButton :disabled="busy || !nuevaSesion.trim()" @click="crearSesion">Añadir</AppButton>
+          </div>
         </div>
 
         <div class="panel stack">
@@ -177,6 +236,13 @@ onMounted(load)
               <span class="chip role-badge">{{ roleLabel[p.role] }}</span>
             </li>
           </ul>
+          <div class="add">
+            <input v-model="nuevoPonente.name" class="control grow" placeholder="Nombre del ponente…" />
+            <select v-model="nuevoPonente.role" class="control">
+              <option v-for="[r, label] in rolesPonente" :key="r" :value="r">{{ label }}</option>
+            </select>
+            <AppButton :disabled="busy || !nuevoPonente.name.trim()" @click="agregarPonente">Añadir</AppButton>
+          </div>
         </div>
       </div>
 

@@ -43,9 +43,13 @@ import type {
   EventCapability,
   EventModel,
   EventResource,
+  EventSession,
+  EventSpeaker,
   EventStatus,
   EventTemplate,
   EventTypeKey,
+  SessionStatus,
+  SpeakerRole,
   BrandKit,
   BroadcastHealth,
   BroadcastSession,
@@ -199,6 +203,18 @@ export function createApiClient(options: ApiClientOptions = {}) {
     event: (id: string) => request<ApiResource<EventModel>>('GET', `/events/${id}`),
     eventCapabilities: (id: string) =>
       request<ApiCollection<EventCapability>>('GET', `/events/${id}/capabilities`),
+    eventSessions: (id: string) =>
+      request<ApiCollection<EventSession>>('GET', `/events/${id}/sessions`),
+    createEventSession: (
+      id: string,
+      data: { title: string; status?: SessionStatus; scheduled_start_at?: string; scheduled_end_at?: string },
+    ) => request<ApiResource<EventSession>>('POST', `/events/${id}/sessions`, data),
+    eventSpeakers: (id: string) =>
+      request<ApiCollection<EventSpeaker>>('GET', `/events/${id}/speakers`),
+    addEventSpeaker: (
+      id: string,
+      data: { name: string; email?: string; headline?: string; role?: SpeakerRole },
+    ) => request<ApiResource<EventSpeaker>>('POST', `/events/${id}/speakers`, data),
     createEvent: (data: {
       workspace_id: string
       title: string
