@@ -72,6 +72,11 @@ export const router = createRouter({
           component: () => import('@/views/EventEnterpriseView.vue'),
         },
         {
+          path: 'events/:id/ia',
+          name: 'event-ai',
+          component: () => import('@/views/EventAiView.vue'),
+        },
+        {
           path: 'members',
           name: 'members',
           component: () => import('@/views/MembersView.vue'),

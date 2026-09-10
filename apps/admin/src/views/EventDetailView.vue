@@ -181,6 +181,9 @@ onMounted(load)
           <RouterLink :to="{ name: 'event-agenda', params: { id } }" class="head-link">
             Agenda y expo ›
           </RouterLink>
+          <RouterLink :to="{ name: 'event-ai', params: { id } }" class="head-link">
+            IA ›
+          </RouterLink>
         </div>
       </div>
 
