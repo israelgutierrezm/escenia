@@ -111,6 +111,9 @@ onMounted(load)
           <RouterLink :to="{ name: 'event-commerce', params: { id } }" class="head-link">
             Comercio ›
           </RouterLink>
+          <RouterLink :to="{ name: 'event-engagement', params: { id } }" class="head-link">
+            Engagement ›
+          </RouterLink>
         </div>
       </div>
 
