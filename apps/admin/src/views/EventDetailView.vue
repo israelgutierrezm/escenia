@@ -101,9 +101,14 @@ onMounted(load)
             Inicio: {{ fecha(event.scheduled_start_at) }} · Zona horaria: {{ event.timezone }}
           </p>
         </div>
-        <RouterLink :to="{ name: 'event-registration', params: { id } }" class="head-link">
-          Registro ›
-        </RouterLink>
+        <div class="head-links">
+          <RouterLink :to="{ name: 'event-registration', params: { id } }" class="head-link">
+            Registro ›
+          </RouterLink>
+          <RouterLink :to="{ name: 'event-analytics', params: { id } }" class="head-link">
+            Analíticas ›
+          </RouterLink>
+        </div>
       </div>
 
       <div class="panel stack">
@@ -194,6 +199,13 @@ onMounted(load)
 .head h1 {
   margin: 0;
   font-size: 1.5rem;
+}
+
+.head-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--escenia-space-2);
+  flex-shrink: 0;
 }
 
 .head-link {

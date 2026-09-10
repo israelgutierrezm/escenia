@@ -37,6 +37,11 @@ export const router = createRouter({
           component: () => import('@/views/EventRegistrationView.vue'),
         },
         {
+          path: 'events/:id/analiticas',
+          name: 'event-analytics',
+          component: () => import('@/views/EventAnalyticsView.vue'),
+        },
+        {
           path: 'members',
           name: 'members',
           component: () => import('@/views/MembersView.vue'),
