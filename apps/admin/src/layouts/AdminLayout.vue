@@ -55,6 +55,9 @@ async function onLogout(): Promise<void> {
         <RouterLink v-if="auth.canManageMembers" :to="{ name: 'automations' }" class="nav-link">
           <span class="dot"></span> Automatizaciones
         </RouterLink>
+        <RouterLink v-if="auth.canManageTenant" :to="{ name: 'payment-accounts' }" class="nav-link">
+          <span class="dot"></span> Cuentas de pago
+        </RouterLink>
         <RouterLink v-if="auth.canManageTenant" :to="{ name: 'settings' }" class="nav-link">
           <span class="dot"></span> Configuración
         </RouterLink>

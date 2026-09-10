@@ -77,6 +77,11 @@ export const router = createRouter({
           component: () => import('@/views/TenantSettingsView.vue'),
         },
         {
+          path: 'payment-accounts',
+          name: 'payment-accounts',
+          component: () => import('@/views/PaymentAccountsView.vue'),
+        },
+        {
           path: 'system-settings',
           name: 'system-settings',
           component: () => import('@/views/SystemSettingsView.vue'),
