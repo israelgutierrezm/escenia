@@ -32,6 +32,11 @@ export const router = createRouter({
           component: () => import('@/views/EventDetailView.vue'),
         },
         {
+          path: 'events/:id/studio',
+          name: 'event-studio',
+          component: () => import('@/views/EventStudioView.vue'),
+        },
+        {
           path: 'events/:id/registro',
           name: 'event-registration',
           component: () => import('@/views/EventRegistrationView.vue'),

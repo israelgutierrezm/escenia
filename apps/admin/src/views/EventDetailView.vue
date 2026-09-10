@@ -157,6 +157,9 @@ onMounted(load)
           </p>
         </div>
         <div class="head-links">
+          <RouterLink :to="{ name: 'event-studio', params: { id } }" class="head-link">
+            Studio ›
+          </RouterLink>
           <RouterLink :to="{ name: 'event-registration', params: { id } }" class="head-link">
             Registro ›
           </RouterLink>
