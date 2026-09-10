@@ -67,6 +67,11 @@ export const router = createRouter({
           component: () => import('@/views/MembersView.vue'),
         },
         {
+          path: 'automations',
+          name: 'automations',
+          component: () => import('@/views/AutomationsView.vue'),
+        },
+        {
           path: 'settings',
           name: 'settings',
           component: () => import('@/views/TenantSettingsView.vue'),
