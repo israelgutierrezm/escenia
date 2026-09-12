@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { AppButton } from '@escenia/ui'
 import { ApiError } from '@escenia/api-client'
-import type { Money, Order, OrderStatus, RevenueReport, Ticket } from '@escenia/types'
+import type { Cta, Money, Order, OrderStatus, RevenueReport, Ticket } from '@escenia/types'
 
 import { fecha } from '@/lib/eventLabels'
 import { api } from '@/lib/api'
@@ -14,12 +14,17 @@ const id = route.params.id as string
 const tickets = ref<Ticket[]>([])
 const orders = ref<Order[]>([])
 const revenue = ref<RevenueReport | null>(null)
+const ctas = ref<Cta[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
 const creando = ref(false)
 const guardando = ref(false)
 const form = ref({ name: '', amount: 0, currency: 'MXN', capacity: '' })
+
+const creandoCta = ref(false)
+const guardandoCta = ref(false)
+const ctaForm = ref({ title: '', body: '', url: '', ticket: '', starts_at: '', ends_at: '' })
 
 const estadoOrden: Record<OrderStatus, { label: string; clase: string }> = {
   pending: { label: 'Pendiente', clase: '' },
@@ -47,10 +52,11 @@ async function load(): Promise<void> {
   loading.value = true
   error.value = null
   try {
-    const [t, o, r] = await Promise.all([api.tickets(id), api.orders(id), api.revenue(id)])
+    const [t, o, r, c] = await Promise.all([api.tickets(id), api.orders(id), api.revenue(id), api.ctas(id)])
     tickets.value = t.data
     orders.value = o.data
     revenue.value = r.data
+    ctas.value = c.data
   } catch (e) {
     error.value = message(e)
   } finally {
@@ -77,6 +83,34 @@ async function crearTicket(): Promise<void> {
   } finally {
     guardando.value = false
   }
+}
+
+async function crearCta(): Promise<void> {
+  if (ctaForm.value.title.trim() === '') return
+  guardandoCta.value = true
+  error.value = null
+  try {
+    await api.createCta(id, {
+      title: ctaForm.value.title,
+      body: ctaForm.value.body.trim() || undefined,
+      url: ctaForm.value.url.trim() || undefined,
+      ticket: ctaForm.value.ticket || undefined,
+      starts_at: ctaForm.value.starts_at || undefined,
+      ends_at: ctaForm.value.ends_at || undefined,
+    })
+    ctaForm.value = { title: '', body: '', url: '', ticket: '', starts_at: '', ends_at: '' }
+    creandoCta.value = false
+    ctas.value = (await api.ctas(id)).data
+  } catch (e) {
+    error.value = message(e)
+  } finally {
+    guardandoCta.value = false
+  }
+}
+
+function nombreTicket(ulid: string | undefined): string {
+  if (ulid === undefined) return ''
+  return tickets.value.find((t) => t.id === ulid)?.name ?? ''
 }
 
 onMounted(load)
@@ -190,6 +224,51 @@ onMounted(load)
           </table>
         </div>
       </div>
+
+      <!-- Llamadas a la acción (CTAs) -->
+      <div class="panel stack">
+        <div class="actions" style="justify-content: space-between">
+          <h2 style="margin: 0">Llamadas a la acción <span class="muted">({{ ctas.length }})</span></h2>
+          <AppButton @click="creandoCta = !creandoCta">{{ creandoCta ? 'Cerrar' : '+ Nueva CTA' }}</AppButton>
+        </div>
+        <p class="muted small">Botones y ofertas que aparecen a los asistentes durante el evento.</p>
+
+        <div v-if="creandoCta" class="crear">
+          <label class="field"><span>Título</span><input v-model="ctaForm.title" type="text" placeholder="Compra con descuento" /></label>
+          <label class="field"><span>Texto (opcional)</span><input v-model="ctaForm.body" type="text" placeholder="Solo durante el evento" /></label>
+          <label class="field"><span>URL (opcional)</span><input v-model="ctaForm.url" type="text" placeholder="https://…" /></label>
+          <label class="field">
+            <span>Entrada (opcional)</span>
+            <select v-model="ctaForm.ticket">
+              <option value="">Ninguna</option>
+              <option v-for="t in tickets" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </label>
+          <label class="field"><span>Desde (opcional)</span><input v-model="ctaForm.starts_at" type="datetime-local" /></label>
+          <label class="field"><span>Hasta (opcional)</span><input v-model="ctaForm.ends_at" type="datetime-local" /></label>
+          <div class="actions">
+            <AppButton :disabled="guardandoCta || !ctaForm.title.trim()" @click="crearCta">Crear CTA</AppButton>
+          </div>
+        </div>
+
+        <p v-if="ctas.length === 0" class="empty">Aún no hay llamadas a la acción.</p>
+        <ul v-else class="cta-list">
+          <li v-for="c in ctas" :key="c.id">
+            <div class="cta-main">
+              <div class="cta-title">
+                <strong>{{ c.title }}</strong>
+                <span class="chip" :class="c.live ? 'chip--live' : ''">{{ c.live ? 'En vivo' : (c.is_active ? 'Programada' : 'Inactiva') }}</span>
+              </div>
+              <p v-if="c.body" class="muted small">{{ c.body }}</p>
+              <p class="muted small">
+                <template v-if="nombreTicket(c.ticket)">Entrada: {{ nombreTicket(c.ticket) }} · </template>
+                <a v-if="c.url" :href="c.url" target="_blank" rel="noopener" class="muted">{{ c.url }}</a>
+              </p>
+            </div>
+            <span class="chip">{{ c.clicks_count }} clics</span>
+          </li>
+        </ul>
+      </div>
     </template>
   </section>
 </template>
@@ -215,5 +294,40 @@ onMounted(load)
 
 .email {
   font-size: 0.78rem;
+}
+
+.small {
+  font-size: 0.8rem;
+  margin: 2px 0 0;
+}
+
+.cta-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--escenia-space-2);
+}
+
+.cta-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--escenia-space-3);
+  padding: 12px;
+  border: 1px solid var(--escenia-color-border);
+  border-radius: var(--escenia-radius-sm);
+  background: rgba(4, 16, 29, 0.35);
+}
+
+.cta-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cta-list a {
+  text-decoration: none;
 }
 </style>

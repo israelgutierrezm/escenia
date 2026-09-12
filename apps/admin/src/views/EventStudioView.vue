@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { AppButton } from '@escenia/ui'
 import { ApiError } from '@escenia/api-client'
 import type {
+  BrandKit,
   BroadcastHealth,
   BroadcastSession,
   BroadcastStatus,
@@ -23,13 +24,14 @@ import { api } from '@/lib/api'
 const route = useRoute()
 const id = route.params.id as string
 
-type Tab = 'sala' | 'escenas' | 'guion' | 'emision'
+type Tab = 'sala' | 'escenas' | 'guion' | 'emision' | 'marca'
 const tab = ref<Tab>('sala')
 const tabs: [Tab, string][] = [
   ['sala', 'Sala'],
   ['escenas', 'Escenas'],
   ['guion', 'Guion'],
   ['emision', 'Emisión'],
+  ['marca', 'Marca'],
 ]
 
 const studio = ref<Studio | null>(null)
@@ -38,6 +40,8 @@ const scenes = ref<Scene[]>([])
 const runOfShow = ref<RunOfShowItem[]>([])
 const destinations = ref<StreamDestination[]>([])
 const broadcast = ref<BroadcastSession | null>(null)
+const brandKits = ref<BrandKit[]>([])
+const nuevoKit = ref({ name: '', tokens: '', is_default: false })
 const previewSceneId = ref<string | null>(null)
 const programSceneId = ref<string | null>(null)
 
@@ -111,18 +115,20 @@ async function load(): Promise<void> {
   loading.value = true
   error.value = null
   try {
-    const [st, sc, ros, dest, bc] = await Promise.all([
+    const [st, sc, ros, dest, bc, bk] = await Promise.all([
       api.studio(id),
       api.scenes(id),
       api.runOfShow(id),
       api.streamDestinations(id),
       api.broadcast(id),
+      api.brandKits(id),
     ])
     studio.value = st.data
     scenes.value = sc.data
     runOfShow.value = ros.data
     destinations.value = dest.data
     broadcast.value = bc.data
+    brandKits.value = bk.data
     if (st.data.status === 'live') {
       participants.value = (await api.studioParticipants(id)).data
     }
@@ -267,6 +273,31 @@ function detenerEmision(): void {
   const bid = broadcast.value.id
   run(async () => {
     broadcast.value = (await api.stopBroadcast(bid)).data
+  })
+}
+
+function crearKit(): void {
+  if (nuevoKit.value.name.trim() === '') return
+  let tokens: Record<string, unknown> | undefined
+  if (nuevoKit.value.tokens.trim() !== '') {
+    try {
+      tokens = JSON.parse(nuevoKit.value.tokens) as Record<string, unknown>
+    } catch {
+      error.value = 'Los tokens de marca no son un JSON válido.'
+      return
+    }
+  }
+  run(async () => {
+    await api.createBrandKit(id, { name: nuevoKit.value.name, tokens, is_default: nuevoKit.value.is_default })
+    nuevoKit.value = { name: '', tokens: '', is_default: false }
+    brandKits.value = (await api.brandKits(id)).data
+  })
+}
+
+function predeterminarKit(kit: BrandKit): void {
+  run(async () => {
+    await api.setDefaultBrandKit(kit.id)
+    brandKits.value = (await api.brandKits(id)).data
   })
 }
 
@@ -431,6 +462,39 @@ onMounted(load)
         </ol>
       </div>
 
+      <!-- MARCA -->
+      <div v-else-if="tab === 'marca'" class="stack">
+        <div class="panel stack">
+          <h2>Kits de marca</h2>
+          <p class="muted small">Define paletas y estilos reutilizables para las escenas del evento.</p>
+          <div class="fila">
+            <label class="field grow"><span>Nombre</span><input v-model="nuevoKit.name" class="control" placeholder="Marca principal" /></label>
+          </div>
+          <label class="field">
+            <span>Tokens (JSON, opcional)</span>
+            <textarea v-model="nuevoKit.tokens" class="control" rows="3" placeholder='{ "primary": "#2ea6ff", "logo": "https://…" }'></textarea>
+          </label>
+          <label class="dest-check">
+            <input v-model="nuevoKit.is_default" type="checkbox" />
+            <span>Usar como predeterminado</span>
+          </label>
+          <div class="actions">
+            <AppButton :disabled="busy || !nuevoKit.name.trim()" @click="crearKit">Crear kit</AppButton>
+          </div>
+        </div>
+
+        <p v-if="brandKits.length === 0" class="panel empty">Aún no hay kits de marca.</p>
+        <ul v-else class="lista">
+          <li v-for="k in brandKits" :key="k.id">
+            <div>
+              <strong>{{ k.name }}</strong>
+              <span v-if="k.is_default" class="chip chip--live">Predeterminado</span>
+            </div>
+            <AppButton v-if="!k.is_default" variant="ghost" :disabled="busy" @click="predeterminarKit(k)">Predeterminar</AppButton>
+          </li>
+        </ul>
+      </div>
+
       <!-- EMISIÓN -->
       <div v-else class="stack">
         <div class="panel stack">
@@ -521,7 +585,9 @@ onMounted(load)
 .tab .count { background: rgba(255, 255, 255, 0.25); border-radius: 999px; padding: 0 7px; font-size: 0.7rem; }
 
 .add { display: flex; gap: var(--escenia-space-2); flex-wrap: wrap; }
+.fila { display: flex; gap: var(--escenia-space-3); flex-wrap: wrap; align-items: end; }
 .stage-select { max-width: 170px; }
+textarea.control { resize: vertical; }
 
 .lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--escenia-space-2); }
 .lista li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--escenia-color-border); border-radius: var(--escenia-radius-sm); background: rgba(4, 16, 29, 0.35); }
