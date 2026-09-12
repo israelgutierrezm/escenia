@@ -468,6 +468,8 @@ export function createApiClient(options: ApiClientOptions = {}) {
     tracks: (eventId: string) => request<ApiCollection<Track>>('GET', `/events/${eventId}/tracks`),
     createTrack: (eventId: string, data: { name: string; color?: string }) =>
       request<ApiResource<Track>>('POST', `/events/${eventId}/tracks`, data),
+    agendaSessions: (eventId: string) =>
+      request<ApiCollection<AgendaSession>>('GET', `/events/${eventId}/agenda/sessions`),
     setSessionAgenda: (
       eventId: string,
       sessionId: string,

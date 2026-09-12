@@ -7,7 +7,6 @@ import type {
   AgendaSession,
   Booth,
   BoothLead,
-  EventSession,
   LeaderboardEntry,
   Sponsor,
   SponsorTier,
@@ -35,7 +34,7 @@ const busy = ref(false)
 
 // Agenda
 const tracks = ref<Track[]>([])
-const sessions = ref<EventSession[]>([])
+const sessions = ref<AgendaSession[]>([])
 const nuevaPista = ref({ name: '', color: '#2ea6ff' })
 const edits = ref<Record<string, { track: string; room: string; capacity: string }>>({})
 const agenda = ref<Record<string, AgendaSession>>({})
@@ -88,7 +87,7 @@ async function load(): Promise<void> {
   try {
     const [t, se, sp, b, l, lb] = await Promise.all([
       api.tracks(id),
-      api.eventSessions(id),
+      api.agendaSessions(id),
       api.sponsors(id),
       api.booths(id),
       api.leads(id),
@@ -101,7 +100,12 @@ async function load(): Promise<void> {
     leads.value = l.data
     leaderboard.value = lb.data
     for (const s of se.data) {
-      edits.value[s.id] = { track: '', room: '', capacity: '' }
+      edits.value[s.id] = {
+        track: s.track ?? '',
+        room: s.room ?? '',
+        capacity: s.capacity !== null ? String(s.capacity) : '',
+      }
+      agenda.value[s.id] = s
     }
   } catch (e) {
     error.value = message(e)
@@ -119,7 +123,7 @@ function crearPista(): void {
     tracks.value = (await api.tracks(id)).data
   })
 }
-function guardarAgenda(s: EventSession): void {
+function guardarAgenda(s: AgendaSession): void {
   const e = edits.value[s.id]
   if (e === undefined) return
   run(async () => {

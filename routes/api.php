@@ -330,6 +330,7 @@ Route::prefix('v1')->group(function (): void {
             // ---- Enterprise Events host side (Fase 12) ----
             Route::get('events/{event}/tracks', [HostTrackController::class, 'index']);
             Route::post('events/{event}/tracks', [HostTrackController::class, 'store']);
+            Route::get('events/{event}/agenda/sessions', [SessionAgendaController::class, 'index']);
             Route::patch('events/{event}/sessions/{session}/agenda', [SessionAgendaController::class, 'update']);
 
             Route::get('events/{event}/sponsors', [HostSponsorController::class, 'index']);
