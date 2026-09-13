@@ -455,8 +455,8 @@ onMounted(load)
               </p>
             </div>
             <div class="guion__move">
-              <button type="button" class="mini" :disabled="busy || i === 0" @click="moverItem(i, -1)">↑</button>
-              <button type="button" class="mini" :disabled="busy || i === runOfShow.length - 1" @click="moverItem(i, 1)">↓</button>
+              <button type="button" class="mini" :disabled="busy || i === 0" aria-label="Subir en el guion" title="Subir" @click="moverItem(i, -1)">↑</button>
+              <button type="button" class="mini" :disabled="busy || i === runOfShow.length - 1" aria-label="Bajar en el guion" title="Bajar" @click="moverItem(i, 1)">↓</button>
             </div>
           </li>
         </ol>

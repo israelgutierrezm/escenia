@@ -204,7 +204,7 @@ onMounted(load)
           <select v-model="p.type" class="control">
             <option v-for="[t, label] in tiposPaso" :key="t" :value="t">{{ label }}</option>
           </select>
-          <button type="button" class="mini" :disabled="pasos.length === 1" title="Quitar paso" @click="quitarPaso(i)">✕</button>
+          <button type="button" class="mini" :disabled="pasos.length === 1" title="Quitar paso" aria-label="Quitar paso" @click="quitarPaso(i)">✕</button>
         </div>
 
         <div class="paso__cfg">

@@ -264,7 +264,7 @@ onMounted(load)
           <div class="pregunta__head">
             <span class="pregunta__num">{{ qi + 1 }}</span>
             <input v-model="q.prompt" class="control grow" placeholder="Enunciado de la pregunta" />
-            <button type="button" class="mini" title="Quitar pregunta" @click="quitarPregunta(qi)">✕</button>
+            <button type="button" class="mini" title="Quitar pregunta" aria-label="Quitar pregunta" @click="quitarPregunta(qi)">✕</button>
           </div>
           <div class="fila">
             <label class="field">
@@ -283,9 +283,11 @@ onMounted(load)
                 class="marca"
                 :class="{ 'is-correct': o.correct, multi: q.type === 'multiple_choice' }"
                 :title="o.correct ? 'Respuesta correcta' : 'Marcar como correcta'"
+                :aria-label="o.correct ? 'Respuesta correcta' : 'Marcar como correcta'"
+                :aria-pressed="o.correct"
                 @click="marcarCorrecta(q, oi)"
               >
-                <span v-if="o.correct">✓</span>
+                <span v-if="o.correct" aria-hidden="true">✓</span>
               </button>
               <input
                 v-model="o.label"
@@ -298,6 +300,7 @@ onMounted(load)
                 class="mini"
                 :disabled="q.options.length <= 2 || q.type === 'true_false'"
                 title="Quitar opción"
+                aria-label="Quitar opción"
                 @click="quitarOpcion(q, oi)"
               >
                 ✕

@@ -20,6 +20,7 @@ async function onLogout(): Promise<void> {
 
 <template>
   <div class="layout brand-bg">
+    <a href="#contenido" class="skip-link">Saltar al contenido</a>
     <header class="bar">
       <div class="brand">
         <BrandMark :size="30" />
@@ -42,7 +43,7 @@ async function onLogout(): Promise<void> {
     </header>
 
     <div class="body">
-      <nav class="nav">
+      <nav class="nav" aria-label="Navegación principal">
         <RouterLink :to="{ name: 'dashboard' }" class="nav-link">
           <span class="dot"></span> Resumen
         </RouterLink>
@@ -69,7 +70,7 @@ async function onLogout(): Promise<void> {
         </RouterLink>
       </nav>
 
-      <main class="content">
+      <main id="contenido" class="content">
         <RouterView :key="auth.activeTenantId ?? 'none'" />
       </main>
     </div>

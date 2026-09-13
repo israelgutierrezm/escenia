@@ -35,6 +35,7 @@ watch(modelo, (valor) => {
     <button
       type="button"
       :class="{ 'is-active': modelo === 'lista' }"
+      :aria-pressed="modelo === 'lista'"
       aria-label="Ver como lista"
       title="Lista"
       @click="modelo = 'lista'"
@@ -46,6 +47,7 @@ watch(modelo, (valor) => {
     <button
       type="button"
       :class="{ 'is-active': modelo === 'cuadricula' }"
+      :aria-pressed="modelo === 'cuadricula'"
       aria-label="Ver como cuadrícula"
       title="Cuadrícula"
       @click="modelo = 'cuadricula'"

@@ -20,6 +20,51 @@ body {
   box-sizing: border-box;
 }
 
+/* Foco visible por teclado para todo control interactivo (los inputs ya
+   muestran su anillo en :focus). Alto contraste sobre fondo oscuro. */
+a:focus-visible,
+button:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+[role='button']:focus-visible,
+[role='tab']:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--escenia-color-primary);
+  outline-offset: 2px;
+  border-radius: var(--escenia-radius-sm);
+}
+
+/* Respeta la preferencia de movimiento reducido en toda la app (hero Vanta,
+   hovers de tarjetas, animaciones). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Enlace para saltar al contenido, visible solo al recibir foco por teclado. */
+.skip-link {
+  position: absolute;
+  left: var(--escenia-space-4);
+  top: -60px;
+  z-index: 100;
+  padding: 10px var(--escenia-space-4);
+  background: var(--escenia-color-primary);
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: var(--escenia-radius-sm);
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: var(--escenia-space-3);
+}
+
 /* Fondo de marca: navy con brillo superior + onda teal abajo-derecha. */
 .brand-bg {
   position: relative;

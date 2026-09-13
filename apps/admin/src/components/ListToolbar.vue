@@ -37,7 +37,7 @@ const abierto = ref(props.filterCount > 0)
         <span v-if="filterCount > 0" class="count">{{ filterCount }}</span>
       </button>
 
-      <input v-model="search" type="search" class="control toolbar__search" :placeholder="placeholder" />
+      <input v-model="search" type="search" class="control toolbar__search" :placeholder="placeholder" :aria-label="placeholder" />
 
       <div class="toolbar__spacer"></div>
 
