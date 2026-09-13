@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Engagement\Actions;
 
+use App\Application\Engagement\Events\ChatMessagePosted;
 use App\Domain\Analytics\Contracts\AnalyticsCollector;
 use App\Domain\Analytics\Enums\AnalyticsEventName;
 use App\Domain\Engagement\Models\ChatMessage;
@@ -25,6 +26,8 @@ final class PostChatMessageAction
 
     public function forAttendee(Attendee $attendee, string $body): ChatMessage
     {
+        $event = $attendee->event()->firstOrFail();
+
         $message = ChatMessage::query()->create([
             'event_id' => $attendee->event_id,
             'attendee_id' => $attendee->getKey(),
@@ -32,18 +35,24 @@ final class PostChatMessageAction
             'body' => $body,
         ]);
 
-        $this->analytics->record(AnalyticsEventName::EngagementChat, $attendee->event()->firstOrFail(), $attendee);
+        $this->analytics->record(AnalyticsEventName::EngagementChat, $event, $attendee);
+
+        event(ChatMessagePosted::fromMessage($message, $event->ulid));
 
         return $message;
     }
 
     public function forHost(Event $event, User $host, string $body): ChatMessage
     {
-        return ChatMessage::query()->create([
+        $message = ChatMessage::query()->create([
             'event_id' => $event->getKey(),
             'user_id' => $host->getKey(),
             'author_name' => $host->name,
             'body' => $body,
         ]);
+
+        event(ChatMessagePosted::fromMessage($message, $event->ulid));
+
+        return $message;
     }
 }

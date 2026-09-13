@@ -5,8 +5,19 @@ import { ApiError } from '@escenia/api-client'
 import type { ChatMessage } from '@escenia/types'
 
 import { api } from '@/lib/attendeeApi'
+import { useEventChannel } from '@/composables/useRealtime'
+
+const props = defineProps<{ eventId: string }>()
 
 const mensajes = ref<ChatMessage[]>([])
+
+// Real-time delivery when configured; the 12s poll below is the baseline.
+useEventChannel(props.eventId, {
+  'chat.posted': (payload) => {
+    const m = payload as ChatMessage
+    if (m.id !== undefined && !mensajes.value.some((x) => x.id === m.id)) mensajes.value.push(m)
+  },
+})
 const nuevo = ref('')
 const error = ref<string | null>(null)
 const enviando = ref(false)

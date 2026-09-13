@@ -98,7 +98,7 @@ onBeforeUnmount(() => {
 
       <TabList v-model="tab" :tabs="tabs" label="Secciones del evento" base="live" />
 
-      <StagePanel v-if="tab === 'envivo'" />
+      <StagePanel v-if="tab === 'envivo'" :event-id="eventId" />
       <QaPanel v-else-if="tab === 'preguntas'" />
       <PollsPanel v-else-if="tab === 'encuestas'" />
       <AgendaPanel v-else-if="tab === 'agenda'" />
