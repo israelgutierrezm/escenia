@@ -281,6 +281,7 @@ onMounted(load)
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--escenia-space-4);
+  flex-wrap: wrap;
 }
 
 .head h1 {
@@ -384,5 +385,18 @@ onMounted(load)
   border: 1px solid var(--escenia-color-border);
   border-radius: var(--escenia-radius-sm);
   background: rgba(4, 16, 29, 0.35);
+}
+
+/* En móvil los accesos del hub pasan a una fila que envuelve, a lo ancho. */
+@media (max-width: 560px) {
+  .head-links {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .head-link {
+    flex: 1 1 130px;
+    text-align: center;
+  }
 }
 </style>
