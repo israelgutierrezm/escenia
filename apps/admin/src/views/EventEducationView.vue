@@ -389,12 +389,6 @@ onMounted(load)
 .grow { flex: 1; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
-.tabs { display: flex; gap: var(--escenia-space-2); flex-wrap: wrap; }
-.tab { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; font: inherit; font-weight: 600; font-size: 0.85rem; color: var(--escenia-color-text-muted); background: transparent; border: 1px solid var(--escenia-color-border); border-radius: var(--escenia-radius-sm); cursor: pointer; transition: all 0.14s ease; }
-.tab:hover { color: var(--escenia-color-text); }
-.tab.is-active { color: #fff; background: var(--escenia-color-primary); border-color: transparent; }
-.tab .count { background: rgba(255, 255, 255, 0.25); border-radius: 999px; padding: 0 7px; font-size: 0.7rem; }
-
 .fila { display: flex; gap: var(--escenia-space-3); flex-wrap: wrap; align-items: end; }
 .check { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
 .puntos { max-width: 90px; }

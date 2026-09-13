@@ -358,11 +358,6 @@ onMounted(load)
 .fila { display: flex; gap: var(--escenia-space-3); flex-wrap: wrap; align-items: end; }
 .email { font-size: 0.78rem; }
 
-.tabs { display: flex; gap: var(--escenia-space-2); flex-wrap: wrap; }
-.tab { padding: 9px 16px; font: inherit; font-weight: 600; font-size: 0.85rem; color: var(--escenia-color-text-muted); background: transparent; border: 1px solid var(--escenia-color-border); border-radius: var(--escenia-radius-sm); cursor: pointer; transition: all 0.14s ease; }
-.tab:hover { color: var(--escenia-color-text); }
-.tab.is-active { color: #fff; background: var(--escenia-color-primary); border-color: transparent; }
-
 .color { width: 44px; height: 40px; padding: 2px; background: transparent; border: 1px solid var(--escenia-color-border); border-radius: var(--escenia-radius-sm); cursor: pointer; }
 .tracks-row { display: flex; gap: var(--escenia-space-2); flex-wrap: wrap; }
 .track-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 0.82rem; border: 1px solid var(--escenia-color-border); border-radius: 999px; background: rgba(4, 16, 29, 0.35); }

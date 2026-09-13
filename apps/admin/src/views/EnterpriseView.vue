@@ -474,16 +474,6 @@ onMounted(load)
 .add { display: flex; gap: var(--escenia-space-2); flex-wrap: wrap; }
 .fila { display: flex; gap: var(--escenia-space-3); flex-wrap: wrap; align-items: end; }
 
-.tabs { display: flex; gap: var(--escenia-space-2); flex-wrap: wrap; }
-.tab {
-  padding: 9px 16px; font: inherit; font-weight: 600; font-size: 0.85rem;
-  color: var(--escenia-color-text-muted); background: transparent;
-  border: 1px solid var(--escenia-color-border); border-radius: var(--escenia-radius-sm);
-  cursor: pointer; transition: all 0.14s ease;
-}
-.tab:hover { color: var(--escenia-color-text); }
-.tab.is-active { color: #fff; background: var(--escenia-color-primary); border-color: transparent; }
-
 .row-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--escenia-space-4); flex-wrap: wrap; }
 .row-head > div:first-child { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
