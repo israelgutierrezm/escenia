@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Engagement\Actions;
 
+use App\Application\Engagement\Events\QuestionActivity;
 use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Engagement\Enums\QuestionStatus;
 use App\Domain\Engagement\Models\Question;
@@ -29,6 +30,8 @@ final class AnswerQuestionAction
         ])->save();
 
         $this->audit->log('engagement.question.answered', actor: $actor, tenant: $question->tenant, auditable: $question);
+
+        event(new QuestionActivity($question->event()->firstOrFail()->ulid));
 
         return $question;
     }

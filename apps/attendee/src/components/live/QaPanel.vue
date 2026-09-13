@@ -5,8 +5,13 @@ import { ApiError } from '@escenia/api-client'
 import type { Question } from '@escenia/types'
 
 import { api } from '@/lib/attendeeApi'
+import { useEventChannel } from '@/composables/useRealtime'
+
+const props = defineProps<{ eventId: string }>()
 
 const preguntas = ref<Question[]>([])
+
+useEventChannel(props.eventId, { 'questions.changed': () => void cargar() })
 const nueva = ref('')
 const error = ref<string | null>(null)
 const busy = ref(false)

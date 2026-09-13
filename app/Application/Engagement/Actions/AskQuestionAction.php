@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Engagement\Actions;
 
+use App\Application\Engagement\Events\QuestionActivity;
 use App\Domain\Analytics\Contracts\AnalyticsCollector;
 use App\Domain\Analytics\Enums\AnalyticsEventName;
 use App\Domain\Engagement\Enums\QuestionStatus;
@@ -30,7 +31,10 @@ final class AskQuestionAction
             'votes_count' => 0,
         ]);
 
-        $this->analytics->record(AnalyticsEventName::EngagementQuestionAsked, $attendee->event()->firstOrFail(), $attendee);
+        $event = $attendee->event()->firstOrFail();
+        $this->analytics->record(AnalyticsEventName::EngagementQuestionAsked, $event, $attendee);
+
+        event(new QuestionActivity($event->ulid));
 
         return $question;
     }

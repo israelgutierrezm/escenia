@@ -5,8 +5,13 @@ import { ApiError } from '@escenia/api-client'
 import type { Poll } from '@escenia/types'
 
 import { api } from '@/lib/attendeeApi'
+import { useEventChannel } from '@/composables/useRealtime'
+
+const props = defineProps<{ eventId: string }>()
 
 const polls = ref<Poll[]>([])
+
+useEventChannel(props.eventId, { 'polls.changed': () => void cargar() })
 const seleccion = ref<Record<string, string>>({})
 const votadas = ref<Set<string>>(new Set())
 const error = ref<string | null>(null)

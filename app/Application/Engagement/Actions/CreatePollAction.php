@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Engagement\Actions;
 
 use App\Application\Engagement\DTOs\CreatePollData;
+use App\Application\Engagement\Events\PollActivity;
 use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Engagement\Enums\PollStatus;
 use App\Domain\Engagement\Models\Poll;
@@ -25,7 +26,7 @@ final class CreatePollAction
 
     public function execute(Event $event, User $actor, CreatePollData $data): Poll
     {
-        return DB::transaction(function () use ($event, $actor, $data): Poll {
+        $poll = DB::transaction(function () use ($event, $actor, $data): Poll {
             $poll = Poll::query()->create([
                 'event_id' => $event->getKey(),
                 'question' => $data->question,
@@ -46,5 +47,9 @@ final class CreatePollAction
 
             return $poll->load('options');
         });
+
+        event(new PollActivity($event->ulid));
+
+        return $poll;
     }
 }

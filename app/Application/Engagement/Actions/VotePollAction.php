@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Engagement\Actions;
 
+use App\Application\Engagement\Events\PollActivity;
 use App\Domain\Analytics\Contracts\AnalyticsCollector;
 use App\Domain\Analytics\Enums\AnalyticsEventName;
 use App\Domain\Engagement\Enums\PollStatus;
@@ -55,6 +56,8 @@ final class VotePollAction
             $attendee,
             ['poll' => $poll->ulid, 'option' => $option->ulid],
         );
+
+        event(new PollActivity($attendee->event()->firstOrFail()->ulid));
 
         return $result;
     }

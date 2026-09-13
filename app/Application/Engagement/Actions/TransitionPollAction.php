@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Engagement\Actions;
 
+use App\Application\Engagement\Events\PollActivity;
 use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Engagement\Enums\PollStatus;
 use App\Domain\Engagement\Exceptions\InvalidPollTransitionException;
@@ -31,7 +32,7 @@ final class TransitionPollAction
             throw new InvalidPollTransitionException($from, $to);
         }
 
-        return DB::transaction(function () use ($poll, $actor, $from, $to): Poll {
+        $result = DB::transaction(function () use ($poll, $actor, $from, $to): Poll {
             $applied = Poll::query()
                 ->whereKey($poll->getKey())
                 ->where('status', $from->value)
@@ -50,5 +51,9 @@ final class TransitionPollAction
 
             return $poll->load('options');
         });
+
+        event(new PollActivity($poll->event()->firstOrFail()->ulid));
+
+        return $result;
     }
 }

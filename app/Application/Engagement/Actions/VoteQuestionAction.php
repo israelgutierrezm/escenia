@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Engagement\Actions;
 
+use App\Application\Engagement\Events\QuestionActivity;
 use App\Domain\Analytics\Contracts\AnalyticsCollector;
 use App\Domain\Analytics\Enums\AnalyticsEventName;
 use App\Domain\Engagement\Models\Question;
@@ -24,7 +25,7 @@ final class VoteQuestionAction
 
     public function execute(Attendee $attendee, Question $question): Question
     {
-        return DB::transaction(function () use ($attendee, $question): Question {
+        $result = DB::transaction(function () use ($attendee, $question): Question {
             $vote = QuestionVote::query()->firstOrCreate([
                 'question_id' => $question->getKey(),
                 'attendee_id' => $attendee->getKey(),
@@ -43,5 +44,9 @@ final class VoteQuestionAction
 
             return $question->refresh();
         });
+
+        event(new QuestionActivity($attendee->event()->firstOrFail()->ulid));
+
+        return $result;
     }
 }

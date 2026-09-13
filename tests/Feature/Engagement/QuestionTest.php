@@ -1,7 +1,26 @@
 <?php
 
 declare(strict_types=1);
+use App\Application\Engagement\Events\QuestionActivity;
+use Illuminate\Support\Facades\Event;
 use Laravel\Sanctum\Sanctum;
+
+it('broadcasts question activity on the event channel', function () {
+    Event::fake([QuestionActivity::class]);
+
+    [, , $event] = makeWebinarHost();
+    $token = registerAttendee($event->ulid, 'Asker');
+
+    $this->withHeaders(['X-Attendee-Token' => $token])
+        ->postJson('/api/v1/attend/questions', ['body' => '¿Habrá grabación?'])
+        ->assertCreated();
+
+    Event::assertDispatched(
+        QuestionActivity::class,
+        fn (QuestionActivity $e): bool => $e->broadcastOn()->name === "event.{$event->ulid}"
+            && $e->broadcastAs() === 'questions.changed',
+    );
+});
 
 it('lets attendees ask, upvote, and the host answer', function () {
     [, , $event, $headers] = makeWebinarHost();

@@ -1,7 +1,28 @@
 <?php
 
 declare(strict_types=1);
+use App\Application\Engagement\Events\PollActivity;
+use Illuminate\Support\Facades\Event;
 use Laravel\Sanctum\Sanctum;
+
+it('broadcasts poll activity on the event channel', function () {
+    Event::fake([PollActivity::class]);
+
+    [, , $event, $headers] = makeWebinarHost();
+
+    $this->withHeaders($headers)
+        ->postJson("/api/v1/events/{$event->ulid}/engagement/polls", [
+            'question' => '¿Herramienta favorita?',
+            'options' => ['A', 'B'],
+        ])
+        ->assertCreated();
+
+    Event::assertDispatched(
+        PollActivity::class,
+        fn (PollActivity $e): bool => $e->broadcastOn()->name === "event.{$event->ulid}"
+            && $e->broadcastAs() === 'polls.changed',
+    );
+});
 
 /**
  * @return array{0: string, 1: array<string,string>, 2: string} [eventUlid, hostHeaders, pollId (draft)]
