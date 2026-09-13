@@ -141,7 +141,7 @@ onMounted(load)
     <RouterLink :to="{ name: 'events' }" class="back muted">‹ Eventos</RouterLink>
 
     <p v-if="loading" class="muted">Cargando…</p>
-    <p v-else-if="error && !event" class="error-text">{{ error }}</p>
+    <p v-else-if="error && !event" role="alert" class="error-text">{{ error }}</p>
 
     <template v-else-if="event">
       <div class="head panel">
@@ -261,7 +261,7 @@ onMounted(load)
         </div>
       </div>
 
-      <p v-if="error" class="error-text">{{ error }}</p>
+      <p v-if="error" role="alert" class="error-text">{{ error }}</p>
     </template>
   </section>
 </template>

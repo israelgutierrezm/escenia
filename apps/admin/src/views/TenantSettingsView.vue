@@ -64,8 +64,8 @@ onMounted(load)
     <p v-if="loading" class="muted">Cargando…</p>
     <SettingsForm v-else :items="items" :saving="saving" @save="onSave">
       <template #status>
-        <span v-if="saved" class="ok-text">Guardado.</span>
-        <span v-if="error" class="error-text">{{ error }}</span>
+        <span v-if="saved" role="status" class="ok-text">Guardado.</span>
+        <span v-if="error" role="alert" class="error-text">{{ error }}</span>
       </template>
     </SettingsForm>
   </section>

@@ -232,7 +232,7 @@ onMounted(load)
     </div>
 
     <p v-if="loading" class="muted">Cargando…</p>
-    <p v-else-if="error && automations.length === 0" class="error-text">{{ error }}</p>
+    <p v-else-if="error && automations.length === 0" role="alert" class="error-text">{{ error }}</p>
     <p v-else-if="automations.length === 0" class="panel empty">Aún no hay automatizaciones.</p>
 
     <div v-else class="stack">
@@ -281,7 +281,7 @@ onMounted(load)
       </div>
     </div>
 
-    <p v-if="error && automations.length" class="error-text">{{ error }}</p>
+    <p v-if="error && automations.length" role="alert" class="error-text">{{ error }}</p>
   </section>
 </template>
 

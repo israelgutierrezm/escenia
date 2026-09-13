@@ -139,8 +139,8 @@ function toggleCustom(name: string, checked: boolean): void {
       </div>
     </div>
 
-    <p v-if="saved" class="ok-text">{{ saved }}.</p>
-    <p v-if="error" class="error-text">{{ error }}</p>
+    <p v-if="saved" role="status" class="ok-text">{{ saved }}.</p>
+    <p v-if="error" role="alert" class="error-text">{{ error }}</p>
   </div>
 </template>
 

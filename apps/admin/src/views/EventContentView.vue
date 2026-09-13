@@ -174,7 +174,7 @@ onMounted(load)
     </div>
 
     <p v-if="loading" class="muted">Cargando…</p>
-    <p v-else-if="error && recordings.length === 0" class="error-text">{{ error }}</p>
+    <p v-else-if="error && recordings.length === 0" role="alert" class="error-text">{{ error }}</p>
 
     <div v-else-if="recordings.length === 0" class="panel empty-state">
       <h2>Aún no hay grabaciones</h2>
@@ -291,7 +291,7 @@ onMounted(load)
       </div>
     </div>
 
-    <p v-if="error && recordings.length" class="error-text">{{ error }}</p>
+    <p v-if="error && recordings.length" role="alert" class="error-text">{{ error }}</p>
   </section>
 </template>
 

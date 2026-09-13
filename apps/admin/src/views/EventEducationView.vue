@@ -382,8 +382,8 @@ onMounted(load)
         </ul>
       </div>
 
-      <p v-if="error" class="error-text">{{ error }}</p>
-      <p v-if="ok" class="ok-text">{{ ok }}</p>
+      <p v-if="error" role="alert" class="error-text">{{ error }}</p>
+      <p v-if="ok" role="status" class="ok-text">{{ ok }}</p>
     </template>
   </section>
 </template>

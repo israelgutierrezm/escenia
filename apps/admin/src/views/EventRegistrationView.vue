@@ -141,7 +141,7 @@ onMounted(load)
         <div class="actions">
           <AppButton variant="ghost" @click="addField">+ Añadir campo</AppButton>
           <AppButton :disabled="saving" @click="save">{{ saving ? 'Guardando…' : 'Guardar formulario' }}</AppButton>
-          <span v-if="saved" class="ok-text">Guardado.</span>
+          <span v-if="saved" role="status" class="ok-text">Guardado.</span>
         </div>
       </div>
 
@@ -168,7 +168,7 @@ onMounted(load)
         </div>
       </div>
 
-      <p v-if="error" class="error-text">{{ error }}</p>
+      <p v-if="error" role="alert" class="error-text">{{ error }}</p>
     </template>
   </section>
 </template>

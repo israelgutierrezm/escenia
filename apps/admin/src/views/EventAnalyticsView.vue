@@ -74,7 +74,7 @@ onMounted(load)
     </div>
 
     <p v-if="loading" class="muted">Cargando…</p>
-    <p v-else-if="error" class="error-text">{{ error }}</p>
+    <p v-else-if="error" role="alert" class="error-text">{{ error }}</p>
 
     <template v-else-if="summary">
       <div class="stat-grid">

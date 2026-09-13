@@ -472,7 +472,7 @@ onMounted(load)
         </div>
       </div>
 
-      <p v-if="error" class="error-text">{{ error }}</p>
+      <p v-if="error" role="alert" class="error-text">{{ error }}</p>
     </template>
   </section>
 </template>

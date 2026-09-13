@@ -66,7 +66,7 @@ onMounted(async () => {
     <div class="panel">
       <h2>Espacios de trabajo</h2>
       <p v-if="loading" class="muted">Cargando…</p>
-      <p v-else-if="error" class="error-text">{{ error }}</p>
+      <p v-else-if="error" role="alert" class="error-text">{{ error }}</p>
       <p v-else-if="workspaces.length === 0" class="muted">Aún no hay espacios de trabajo.</p>
       <ul v-else class="ws-list">
         <li v-for="workspace in workspaces" :key="workspace.id">
