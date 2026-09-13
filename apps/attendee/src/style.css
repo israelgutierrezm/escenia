@@ -1,0 +1,211 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--escenia-color-text);
+  font-family: var(--escenia-font-sans);
+  background: var(--escenia-color-bg-deep);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+a:focus-visible,
+button:focus-visible,
+select:focus-visible,
+[role='button']:focus-visible,
+[role='tab']:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--escenia-color-primary);
+  outline-offset: 2px;
+  border-radius: var(--escenia-radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.brand-bg {
+  position: relative;
+  background: var(--escenia-gradient-bg);
+  isolation: isolate;
+}
+
+.brand-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 520px at 108% 120%, rgba(23, 224, 166, 0.2), transparent 60%),
+    radial-gradient(700px 420px at 100% 100%, rgba(46, 166, 255, 0.13), transparent 62%);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--escenia-space-5);
+}
+
+.muted {
+  color: var(--escenia-color-text-muted);
+}
+
+.panel {
+  background: var(--escenia-color-surface);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--escenia-color-border);
+  border-radius: var(--escenia-radius-lg);
+  padding: var(--escenia-space-5);
+  box-shadow: var(--escenia-shadow);
+}
+
+.panel h2 {
+  margin: 0 0 var(--escenia-space-4);
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--escenia-space-1);
+  font-size: 0.9rem;
+}
+
+.field > span {
+  color: var(--escenia-color-text-muted);
+  font-weight: 500;
+}
+
+.field input,
+.field select,
+.field textarea,
+.control {
+  font: inherit;
+  padding: 12px var(--escenia-space-3);
+  background: rgba(4, 16, 29, 0.55);
+  border: 1px solid var(--escenia-color-border);
+  border-radius: var(--escenia-radius-sm);
+  color: var(--escenia-color-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field input::placeholder,
+.control::placeholder {
+  color: color-mix(in srgb, var(--escenia-color-text-muted) 75%, transparent);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.control:focus {
+  outline: none;
+  border-color: var(--escenia-color-primary);
+  box-shadow: var(--escenia-ring);
+}
+
+textarea.control {
+  resize: vertical;
+}
+
+.actions {
+  display: flex;
+  gap: var(--escenia-space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--escenia-color-border);
+  border-radius: var(--escenia-radius-pill);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--escenia-color-text-muted);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.chip--primary {
+  color: var(--escenia-color-primary);
+  border-color: color-mix(in srgb, var(--escenia-color-primary) 45%, transparent);
+  background: color-mix(in srgb, var(--escenia-color-primary) 12%, transparent);
+}
+
+.chip--live {
+  color: var(--escenia-color-accent);
+  border-color: color-mix(in srgb, var(--escenia-color-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--escenia-color-accent) 14%, transparent);
+}
+
+.chip--live::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--escenia-color-accent);
+}
+
+.error-text {
+  margin: 0;
+  color: var(--escenia-color-danger);
+  font-size: 0.9rem;
+}
+
+.ok-text {
+  margin: 0;
+  color: var(--escenia-color-accent);
+  font-size: 0.9rem;
+}
+
+.empty {
+  text-align: center;
+  color: var(--escenia-color-text-muted);
+  padding: var(--escenia-space-6) var(--escenia-space-4);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--escenia-space-4);
+  top: -60px;
+  z-index: 100;
+  padding: 10px var(--escenia-space-4);
+  background: var(--escenia-color-primary);
+  color: #fff;
+  font-weight: 600;
+  border-radius: var(--escenia-radius-sm);
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: var(--escenia-space-3);
+}
