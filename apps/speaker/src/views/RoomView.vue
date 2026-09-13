@@ -6,13 +6,20 @@ import type { ParticipantStage } from '@escenia/types'
 
 import { useSpeakerStore } from '@/stores/speaker'
 import { useDeviceCheck } from '@/composables/useDeviceCheck'
+import { esUrlDeMedios, useLiveKit } from '@/composables/useLiveKit'
 
 const router = useRouter()
 const store = useSpeakerStore()
 const video = ref<HTMLVideoElement | null>(null)
 
-const { stream, camaraOn, microOn, error: deviceError, activando, iniciar, toggleCamara, toggleMicro } =
-  useDeviceCheck()
+const dc = useDeviceCheck()
+const lk = useLiveKit()
+
+const enVivo = computed(() => lk.estado.value === 'conectado')
+const conectando = computed(() => lk.estado.value === 'conectando')
+const puedeIrEnVivo = computed(() => esUrlDeMedios(store.session?.access.url))
+const camaraOn = computed(() => (enVivo.value ? lk.camaraOn.value : dc.camaraOn.value))
+const microOn = computed(() => (enVivo.value ? lk.microOn.value : dc.microOn.value))
 
 const estadoEscenario: Record<ParticipantStage, { titulo: string; detalle: string; clase: string }> = {
   invited: { titulo: 'Invitación aceptada', detalle: 'El productor te dará paso a la sala.', clase: '' },
@@ -24,17 +31,35 @@ const estadoEscenario: Record<ParticipantStage, { titulo: string; detalle: strin
 
 const estado = computed(() => estadoEscenario[store.session?.participant.stage ?? 'green_room'])
 
-watch(stream, (s) => {
-  if (video.value !== null) video.value.srcObject = s
+watch(dc.stream, (s) => {
+  if (video.value !== null && !enVivo.value) video.value.srcObject = s
 })
 
+function alternarCamara(): void {
+  if (enVivo.value) void lk.toggleCamara()
+  else dc.toggleCamara()
+}
+
+function alternarMicro(): void {
+  if (enVivo.value) void lk.toggleMicro()
+  else dc.toggleMicro()
+}
+
+async function irEnVivo(): Promise<void> {
+  const acc = store.session?.access
+  if (acc === undefined || !puedeIrEnVivo.value) return
+  dc.detener()
+  await lk.conectar(acc.url, acc.token, video.value)
+}
+
 function salir(): void {
+  void lk.desconectar()
   store.logout()
   router.push({ name: 'home' })
 }
 
 onMounted(() => {
-  void iniciar()
+  void dc.iniciar()
 })
 </script>
 
@@ -49,20 +74,22 @@ onMounted(() => {
       <section class="preview panel">
         <div class="video-wrap">
           <video ref="video" autoplay playsinline muted class="video" :class="{ oculto: !camaraOn }"></video>
-          <div v-if="!camaraOn || stream === null" class="video-off">
-            <p v-if="activando" class="muted">Activando cámara…</p>
-            <p v-else-if="deviceError" class="muted">{{ deviceError }}</p>
+          <div v-if="!camaraOn || (dc.stream.value === null && !enVivo)" class="video-off">
+            <p v-if="conectando" class="muted">Conectando al vídeo en directo…</p>
+            <p v-else-if="dc.activando.value" class="muted">Activando cámara…</p>
+            <p v-else-if="dc.error.value && !enVivo" class="muted">{{ dc.error.value }}</p>
             <p v-else-if="!camaraOn" class="muted">Cámara apagada</p>
             <p v-else class="muted">Sin vista previa</p>
           </div>
+          <span v-if="enVivo" class="al-aire"><span class="dot"></span> En directo</span>
           <span class="etiqueta">{{ store.session?.participant.name }}</span>
         </div>
 
         <div class="controles">
-          <button type="button" class="ctrl" :class="{ off: !camaraOn }" :aria-pressed="camaraOn" @click="toggleCamara">
+          <button type="button" class="ctrl" :class="{ off: !camaraOn }" :aria-pressed="camaraOn" @click="alternarCamara">
             {{ camaraOn ? 'Cámara ✓' : 'Cámara ✕' }}
           </button>
-          <button type="button" class="ctrl" :class="{ off: !microOn }" :aria-pressed="microOn" @click="toggleMicro">
+          <button type="button" class="ctrl" :class="{ off: !microOn }" :aria-pressed="microOn" @click="alternarMicro">
             {{ microOn ? 'Micrófono ✓' : 'Micrófono ✕' }}
           </button>
         </div>
@@ -74,9 +101,17 @@ onMounted(() => {
         <dl>
           <div><dt>Sala</dt><dd class="mono">{{ store.session?.room }}</dd></div>
         </dl>
-        <p class="muted small">
-          El video en directo se conecta con el proveedor de medios del evento cuando el productor te pone al aire.
-        </p>
+
+        <template v-if="!enVivo">
+          <AppButton v-if="puedeIrEnVivo" :disabled="conectando" @click="irEnVivo">
+            {{ conectando ? 'Conectando…' : 'Conectar al vídeo en directo' }}
+          </AppButton>
+          <p v-else class="muted small">
+            El vídeo en directo se activa cuando el evento usa el servidor de medios en producción.
+          </p>
+          <p v-if="lk.error.value" class="error-text" role="alert">{{ lk.error.value }}</p>
+        </template>
+        <p v-else class="ok-text">Estás publicando tu cámara y micrófono en la sala.</p>
       </section>
     </main>
   </div>
@@ -156,6 +191,30 @@ onMounted(() => {
   place-items: center;
   text-align: center;
   padding: var(--escenia-space-4);
+}
+
+.al-aire {
+  position: absolute;
+  top: var(--escenia-space-3);
+  left: var(--escenia-space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--escenia-color-accent);
+  background: rgba(4, 16, 29, 0.7);
+  border-radius: var(--escenia-radius-pill);
+}
+
+.al-aire .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--escenia-color-accent);
 }
 
 .etiqueta {
