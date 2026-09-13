@@ -17,6 +17,7 @@ import type {
 
 import { fecha } from '@/lib/eventLabels'
 import { api } from '@/lib/api'
+import TabList from '@/components/TabList.vue'
 
 type Tab = 'dominios' | 'claves' | 'sso' | 'residencia' | 'auditoria'
 const tab = ref<Tab>('dominios')
@@ -257,18 +258,7 @@ onMounted(load)
       <p>Dominios propios, claves de API, inicio de sesión único, residencia de datos y auditoría.</p>
     </div>
 
-    <div class="tabs">
-      <button
-        v-for="[key, label] in tabs"
-        :key="key"
-        type="button"
-        class="tab"
-        :class="{ 'is-active': tab === key }"
-        @click="tab = key"
-      >
-        {{ label }}
-      </button>
-    </div>
+    <TabList v-model="tab" :tabs="tabs" label="Secciones de enterprise" base="enterprise" />
 
     <p v-if="loading" class="muted">Cargando…</p>
 

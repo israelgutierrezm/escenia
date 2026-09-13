@@ -15,6 +15,7 @@ import type {
 
 import { fecha } from '@/lib/eventLabels'
 import { api } from '@/lib/api'
+import TabList from '@/components/TabList.vue'
 
 const route = useRoute()
 const id = route.params.id as string
@@ -184,18 +185,7 @@ onMounted(load)
       <p>Agenda multi-track, patrocinadores, expo virtual y ranking de participación.</p>
     </div>
 
-    <div class="tabs">
-      <button
-        v-for="[key, label] in tabs"
-        :key="key"
-        type="button"
-        class="tab"
-        :class="{ 'is-active': tab === key }"
-        @click="tab = key"
-      >
-        {{ label }}
-      </button>
-    </div>
+    <TabList v-model="tab" :tabs="tabs" label="Secciones de agenda y expo" base="agenda" />
 
     <p v-if="loading" class="muted">Cargando…</p>
 

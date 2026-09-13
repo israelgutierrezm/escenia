@@ -20,6 +20,7 @@ import type {
 } from '@escenia/types'
 
 import { api } from '@/lib/api'
+import TabList from '@/components/TabList.vue'
 
 const route = useRoute()
 const id = route.params.id as string
@@ -342,19 +343,13 @@ onMounted(load)
         </div>
       </div>
 
-      <div class="tabs">
-        <button
-          v-for="[key, label] in tabs"
-          :key="key"
-          type="button"
-          class="tab"
-          :class="{ 'is-active': tab === key }"
-          @click="tab = key"
-        >
-          {{ label }}
-          <span v-if="key === 'sala' && participants.length" class="count">{{ participants.length }}</span>
-        </button>
-      </div>
+      <TabList
+        v-model="tab"
+        :tabs="tabs"
+        label="Secciones del studio"
+        base="studio"
+        :badges="{ sala: participants.length || undefined }"
+      />
 
       <!-- SALA -->
       <div v-if="tab === 'sala'" class="panel stack">

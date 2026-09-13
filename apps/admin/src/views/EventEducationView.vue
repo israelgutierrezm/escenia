@@ -11,6 +11,7 @@ import type {
 
 import { fecha } from '@/lib/eventLabels'
 import { api } from '@/lib/api'
+import TabList from '@/components/TabList.vue'
 
 interface OpcionForm {
   key: string
@@ -229,20 +230,13 @@ onMounted(load)
       <p>Evaluación, reglas de finalización, entregas y certificados del evento.</p>
     </div>
 
-    <div class="tabs">
-      <button
-        v-for="[key, label] in tabs"
-        :key="key"
-        type="button"
-        class="tab"
-        :class="{ 'is-active': tab === key }"
-        @click="tab = key"
-      >
-        {{ label }}
-        <span v-if="key === 'entregas' && submissions.length" class="count">{{ submissions.length }}</span>
-        <span v-else-if="key === 'certificados' && certificates.length" class="count">{{ certificates.length }}</span>
-      </button>
-    </div>
+    <TabList
+      v-model="tab"
+      :tabs="tabs"
+      label="Secciones de educación"
+      base="educacion"
+      :badges="{ entregas: submissions.length || undefined, certificados: certificates.length || undefined }"
+    />
 
     <p v-if="loading" class="muted">Cargando…</p>
 

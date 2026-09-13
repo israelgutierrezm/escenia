@@ -6,6 +6,7 @@ import { ApiError } from '@escenia/api-client'
 import type { ChatMessage, EventResource, Poll, PollStatus, Question } from '@escenia/types'
 
 import { api } from '@/lib/api'
+import TabList from '@/components/TabList.vue'
 
 const route = useRoute()
 const id = route.params.id as string
@@ -139,19 +140,13 @@ onMounted(load)
       <p>Chat, preguntas, encuestas y recursos del evento en vivo.</p>
     </div>
 
-    <div class="tabs">
-      <button
-        v-for="[key, label] in tabs"
-        :key="key"
-        type="button"
-        class="tab"
-        :class="{ 'is-active': tab === key }"
-        @click="tab = key"
-      >
-        {{ label }}
-        <span v-if="key === 'qa' && abiertas.length" class="count">{{ abiertas.length }}</span>
-      </button>
-    </div>
+    <TabList
+      v-model="tab"
+      :tabs="tabs"
+      label="Secciones de engagement"
+      base="engagement"
+      :badges="{ qa: abiertas.length || undefined }"
+    />
 
     <p v-if="loading" class="muted">Cargando…</p>
     <p v-else-if="error" role="alert" class="error-text">{{ error }}</p>
