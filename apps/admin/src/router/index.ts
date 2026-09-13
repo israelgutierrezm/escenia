@@ -133,3 +133,32 @@ router.beforeEach(async (to) => {
 
   return true
 })
+
+// Título de documento por ruta: orienta a usuarios de lector de pantalla y
+// distingue las entradas del historial del navegador.
+const TITULOS: Record<string, string> = {
+  login: 'Iniciar sesión',
+  dashboard: 'Resumen',
+  events: 'Eventos',
+  'event-detail': 'Evento',
+  'event-studio': 'Studio',
+  'event-registration': 'Registro',
+  'event-analytics': 'Analíticas',
+  'event-commerce': 'Comercio',
+  'event-engagement': 'Engagement',
+  'event-content': 'Contenido',
+  'event-education': 'Educación',
+  'event-agenda': 'Agenda y expo',
+  'event-ai': 'IA',
+  members: 'Miembros y roles',
+  automations: 'Automatizaciones',
+  settings: 'Configuración',
+  'payment-accounts': 'Cuentas de pago',
+  enterprise: 'Enterprise',
+  'system-settings': 'Sistema',
+}
+
+router.afterEach((to) => {
+  const titulo = typeof to.name === 'string' ? TITULOS[to.name] : undefined
+  document.title = titulo !== undefined ? `${titulo} · Escenia` : 'Escenia · Admin'
+})
