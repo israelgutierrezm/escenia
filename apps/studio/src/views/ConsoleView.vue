@@ -136,8 +136,27 @@ function mover(p: StudioParticipant, stage: ParticipantStage): void {
   })
 }
 
-function alSuelo(p: StudioParticipant): void {
-  mover(p, p.stage === 'stage' ? 'backstage' : 'stage')
+// The stage lifecycle is guarded: invited → green_room → backstage → stage
+// (and stage → backstage to pull someone off air). The tile button advances or
+// retreats one guarded step.
+const siguienteEtapa: Record<ParticipantStage, ParticipantStage | null> = {
+  invited: 'green_room',
+  green_room: 'backstage',
+  backstage: 'stage',
+  stage: 'backstage',
+  left: null,
+}
+const accionEtapa: Record<ParticipantStage, string> = {
+  invited: 'Admitir',
+  green_room: 'A backstage',
+  backstage: 'Al aire',
+  stage: 'Bajar',
+  left: '—',
+}
+
+function avanzar(p: StudioParticipant): void {
+  const destino = siguienteEtapa[p.stage]
+  if (destino !== null) mover(p, destino)
 }
 
 function iniciarEmision(): void {
@@ -235,10 +254,10 @@ onMounted(load)
                 <button
                   type="button"
                   class="tile__act"
-                  :disabled="busy"
-                  @click="alSuelo(p)"
+                  :disabled="busy || siguienteEtapa[p.stage] === null"
+                  @click="avanzar(p)"
                 >
-                  {{ p.stage === 'stage' ? 'Bajar' : 'Al aire' }}
+                  {{ accionEtapa[p.stage] }}
                 </button>
               </div>
               <select
