@@ -9,12 +9,14 @@ import type {
   BroadcastSession,
   BroadcastStatus,
   DestinationProtocol,
+  GuestLinkCreated,
   ParticipantRole,
   ParticipantStage,
   RunOfShowItem,
   Scene,
   StreamDestination,
   Studio,
+  StudioGuestLink,
   StudioParticipant,
   StudioStatus,
 } from '@escenia/types'
@@ -43,6 +45,10 @@ const destinations = ref<StreamDestination[]>([])
 const broadcast = ref<BroadcastSession | null>(null)
 const brandKits = ref<BrandKit[]>([])
 const nuevoKit = ref({ name: '', tokens: '', is_default: false })
+const guestLinks = ref<StudioGuestLink[]>([])
+const nuevoEnlace = ref({ name: '', role: 'speaker' as ParticipantRole })
+const enlaceCreado = ref<GuestLinkCreated | null>(null)
+const copiado = ref<string | null>(null)
 const previewSceneId = ref<string | null>(null)
 const programSceneId = ref<string | null>(null)
 
@@ -116,13 +122,14 @@ async function load(): Promise<void> {
   loading.value = true
   error.value = null
   try {
-    const [st, sc, ros, dest, bc, bk] = await Promise.all([
+    const [st, sc, ros, dest, bc, bk, gl] = await Promise.all([
       api.studio(id),
       api.scenes(id),
       api.runOfShow(id),
       api.streamDestinations(id),
       api.broadcast(id),
       api.brandKits(id),
+      api.guestLinks(id),
     ])
     studio.value = st.data
     scenes.value = sc.data
@@ -130,6 +137,7 @@ async function load(): Promise<void> {
     destinations.value = dest.data
     broadcast.value = bc.data
     brandKits.value = bk.data
+    guestLinks.value = gl.data
     if (st.data.status === 'live') {
       participants.value = (await api.studioParticipants(id)).data
     }
@@ -302,6 +310,37 @@ function predeterminarKit(kit: BrandKit): void {
   })
 }
 
+function crearEnlace(): void {
+  if (nuevoEnlace.value.name.trim() === '') return
+  run(async () => {
+    enlaceCreado.value = (await api.createGuestLink(id, {
+      name: nuevoEnlace.value.name,
+      role: nuevoEnlace.value.role,
+    })).data
+    nuevoEnlace.value = { name: '', role: 'speaker' }
+    guestLinks.value = (await api.guestLinks(id)).data
+  })
+}
+
+function revocarEnlace(l: StudioGuestLink): void {
+  run(async () => {
+    await api.revokeGuestLink(l.id)
+    guestLinks.value = (await api.guestLinks(id)).data
+  })
+}
+
+async function copiar(text: string, key: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text)
+    copiado.value = key
+    setTimeout(() => {
+      if (copiado.value === key) copiado.value = null
+    }, 1600)
+  } catch {
+    error.value = 'No se pudo copiar al portapapeles.'
+  }
+}
+
 const duracion = (segs: number | null): string => {
   if (segs === null) return '—'
   const m = Math.floor(segs / 60)
@@ -352,36 +391,71 @@ onMounted(load)
       />
 
       <!-- SALA -->
-      <div v-if="tab === 'sala'" class="panel stack">
-        <h2>Participantes</h2>
-        <p v-if="!enVivo" class="muted">Inicia el studio para admitir participantes.</p>
-        <template v-else>
+      <div v-if="tab === 'sala'" class="stack">
+        <div class="panel stack">
+          <h2>Participantes</h2>
+          <p v-if="!enVivo" class="muted">Inicia el studio para admitir participantes.</p>
+          <template v-else>
+            <div class="add">
+              <input v-model="nuevoParticipante.name" class="control grow" placeholder="Nombre del participante…" @keyup.enter="admitir" />
+              <select v-model="nuevoParticipante.role" class="control">
+                <option v-for="[r, label] in rolesParticipante" :key="r" :value="r">{{ label }}</option>
+              </select>
+              <AppButton :disabled="busy || !nuevoParticipante.name.trim()" @click="admitir">Admitir</AppButton>
+            </div>
+
+            <p v-if="participants.length === 0" class="empty">Aún no hay participantes.</p>
+            <ul v-else class="lista">
+              <li v-for="p in participants" :key="p.id">
+                <div>
+                  <strong>{{ p.name }}</strong>
+                  <span class="chip role-badge">{{ rolLabel[p.role] }}</span>
+                </div>
+                <select
+                  class="control stage-select"
+                  :value="p.stage"
+                  :disabled="busy"
+                  @change="moverParticipante(p, ($event.target as HTMLSelectElement).value as ParticipantStage)"
+                >
+                  <option v-for="[s, label] in escenarios" :key="s" :value="s">{{ label }}</option>
+                </select>
+              </li>
+            </ul>
+          </template>
+        </div>
+
+        <div class="panel stack">
+          <h2>Enlaces de invitación</h2>
+          <p class="muted small">Crea códigos para que ponentes e invitados entren a la sala desde la app de ponente.</p>
           <div class="add">
-            <input v-model="nuevoParticipante.name" class="control grow" placeholder="Nombre del participante…" @keyup.enter="admitir" />
-            <select v-model="nuevoParticipante.role" class="control">
+            <input v-model="nuevoEnlace.name" class="control grow" placeholder="Nombre del invitado…" @keyup.enter="crearEnlace" />
+            <select v-model="nuevoEnlace.role" class="control">
               <option v-for="[r, label] in rolesParticipante" :key="r" :value="r">{{ label }}</option>
             </select>
-            <AppButton :disabled="busy || !nuevoParticipante.name.trim()" @click="admitir">Admitir</AppButton>
+            <AppButton :disabled="busy || !nuevoEnlace.name.trim()" @click="crearEnlace">Crear enlace</AppButton>
           </div>
 
-          <p v-if="participants.length === 0" class="empty">Aún no hay participantes.</p>
+          <div v-if="enlaceCreado" class="token-box">
+            <p class="warn small">Comparte este código con el invitado (se muestra una sola vez):</p>
+            <div class="token-row">
+              <code class="token">{{ enlaceCreado.token }}</code>
+              <AppButton variant="ghost" @click="copiar(enlaceCreado.token, 'token')">{{ copiado === 'token' ? 'Copiado' : 'Copiar' }}</AppButton>
+            </div>
+          </div>
+
+          <p v-if="guestLinks.length === 0" class="empty">Aún no hay enlaces.</p>
           <ul v-else class="lista">
-            <li v-for="p in participants" :key="p.id">
+            <li v-for="l in guestLinks" :key="l.id">
               <div>
-                <strong>{{ p.name }}</strong>
-                <span class="chip role-badge">{{ rolLabel[p.role] }}</span>
+                <strong>{{ l.name }}</strong>
+                <span class="chip role-badge">{{ rolLabel[l.role] }}</span>
+                <span v-if="l.revoked_at" class="chip chip--danger">Revocado</span>
+                <span class="muted small usos">{{ l.uses }}<template v-if="l.max_uses">/{{ l.max_uses }}</template> usos</span>
               </div>
-              <select
-                class="control stage-select"
-                :value="p.stage"
-                :disabled="busy"
-                @change="moverParticipante(p, ($event.target as HTMLSelectElement).value as ParticipantStage)"
-              >
-                <option v-for="[s, label] in escenarios" :key="s" :value="s">{{ label }}</option>
-              </select>
+              <AppButton v-if="!l.revoked_at" variant="danger" :disabled="busy" @click="revocarEnlace(l)">Revocar</AppButton>
             </li>
           </ul>
-        </template>
+        </div>
       </div>
 
       <!-- ESCENAS -->
@@ -571,6 +645,12 @@ onMounted(load)
 .fila { display: flex; gap: var(--escenia-space-3); flex-wrap: wrap; align-items: end; }
 .stage-select { max-width: 170px; }
 textarea.control { resize: vertical; }
+.small { font-size: 0.8rem; }
+.usos { margin-left: 8px; }
+.token-box { padding: var(--escenia-space-3); border: 1px solid color-mix(in srgb, var(--escenia-color-primary) 45%, transparent); border-radius: var(--escenia-radius-sm); background: color-mix(in srgb, var(--escenia-color-primary) 8%, transparent); }
+.token-box .warn { margin: 0 0 var(--escenia-space-2); color: var(--escenia-color-text); }
+.token-row { display: flex; gap: var(--escenia-space-2); align-items: center; }
+.token { flex: 1; font-family: ui-monospace, monospace; font-size: 0.85rem; padding: 8px 10px; background: rgba(4, 16, 29, 0.6); border: 1px solid var(--escenia-color-border); border-radius: var(--escenia-radius-sm); word-break: break-all; }
 
 .lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--escenia-space-2); }
 .lista li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--escenia-color-border); border-radius: var(--escenia-radius-sm); background: rgba(4, 16, 29, 0.35); }

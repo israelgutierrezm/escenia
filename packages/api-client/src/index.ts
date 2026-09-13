@@ -76,6 +76,7 @@ import type {
   SceneVersion,
   StreamDestination,
   Studio,
+  StudioGuestLink,
   StudioParticipant,
   Tenant,
   User,
@@ -254,6 +255,8 @@ export function createApiClient(options: ApiClientOptions = {}) {
       request<ApiResource<StudioParticipant>>('POST', `/studio-participants/${participantId}/move`, { stage }),
     participantToken: (participantId: string) =>
       request<ApiResource<{ access: AccessTokenPayload }>>('POST', `/studio-participants/${participantId}/token`),
+    guestLinks: (eventId: string) =>
+      request<ApiCollection<StudioGuestLink>>('GET', `/events/${eventId}/studio/guest-links`),
     createGuestLink: (
       eventId: string,
       data: { name: string; role: ParticipantRole; expires_at?: string; single_use?: boolean; max_uses?: number },
