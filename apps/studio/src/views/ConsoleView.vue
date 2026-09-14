@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AppButton } from '@escenia/ui'
 import { ApiError } from '@escenia/api-client'
 import type {
   BroadcastSession,
+  ChatMessage,
   ParticipantStage,
   Scene,
   StreamDestination,
@@ -14,7 +15,7 @@ import type {
 
 import { api } from '@/lib/api'
 import { useStudioRoom, esUrlDeMedios } from '@/composables/useStudioRoom'
-import { useStudioChannel } from '@/composables/useStudioRealtime'
+import { useStudioChannel, useEventChannel } from '@/composables/useStudioRealtime'
 
 const route = useRoute()
 const router = useRouter()
@@ -63,6 +64,56 @@ async function refrescarParticipantes(): Promise<void> {
 useStudioChannel(id, {
   'participant.activity': () => {
     void refrescarParticipantes()
+  },
+})
+
+// Chat en vivo (canal público del evento) — el productor modera sin salir.
+const chat = ref<ChatMessage[]>([])
+const nuevoMensaje = ref('')
+const chatBusy = ref(false)
+const chatDisponible = ref(true)
+const chatScroll = ref<HTMLElement | null>(null)
+
+function alFondoChat(): void {
+  void nextTick(() => {
+    if (chatScroll.value !== null) chatScroll.value.scrollTop = chatScroll.value.scrollHeight
+  })
+}
+
+function agregarMensaje(m: ChatMessage): void {
+  if (chat.value.some((x) => x.id === m.id)) return
+  chat.value.push(m)
+  alFondoChat()
+}
+
+async function cargarChat(): Promise<void> {
+  try {
+    // El índice devuelve los más recientes primero; invertimos para leer arriba→abajo.
+    chat.value = (await api.eventChat(id)).data.slice().reverse()
+    alFondoChat()
+  } catch {
+    chatDisponible.value = false
+  }
+}
+
+async function enviarChat(): Promise<void> {
+  const body = nuevoMensaje.value.trim()
+  if (body === '') return
+  chatBusy.value = true
+  try {
+    await api.postEventChat(id, body)
+    nuevoMensaje.value = ''
+    // El broadcast `chat.posted` lo añadirá por WS (dedupe por id evita duplicado).
+  } catch {
+    // Reintentable; no rompe la consola.
+  } finally {
+    chatBusy.value = false
+  }
+}
+
+useEventChannel(id, {
+  'chat.posted': (payload) => {
+    agregarMensaje(payload as ChatMessage)
   },
 })
 
@@ -223,7 +274,10 @@ function salir(): void {
   router.push({ name: 'events' })
 }
 
-onMounted(load)
+onMounted(() => {
+  void load()
+  void cargarChat()
+})
 </script>
 
 <template>
@@ -345,6 +399,30 @@ onMounted(load)
                 <AppButton :disabled="busy || destinoSel.length === 0" @click="iniciarEmision">Iniciar emisión</AppButton>
               </div>
             </template>
+          </template>
+        </div>
+
+        <div class="panel chat">
+          <h2>Chat <span class="muted small">en vivo</span></h2>
+          <p v-if="!chatDisponible" class="muted small">No tienes permiso para ver el chat de este evento.</p>
+          <template v-else>
+            <div ref="chatScroll" class="chat__lista">
+              <p v-if="chat.length === 0" class="muted small">Sin mensajes todavía.</p>
+              <div v-for="m in chat" :key="m.id" class="chat__msg" :class="{ 'is-host': m.is_host }">
+                <span class="chat__autor">{{ m.author_name }}<span v-if="m.is_host" class="chat__host">host</span></span>
+                <span class="chat__cuerpo">{{ m.body }}</span>
+              </div>
+            </div>
+            <form class="chat__form" @submit.prevent="enviarChat">
+              <input
+                v-model="nuevoMensaje"
+                class="control"
+                placeholder="Mensaje como productor…"
+                :disabled="chatBusy"
+                aria-label="Mensaje de chat"
+              />
+              <AppButton type="submit" :disabled="chatBusy || nuevoMensaje.trim() === ''">Enviar</AppButton>
+            </form>
           </template>
         </div>
 
@@ -628,6 +706,63 @@ onMounted(load)
   border-radius: var(--escenia-radius-sm);
   background: color-mix(in srgb, var(--escenia-color-danger) 14%, var(--escenia-color-surface-solid));
   border: 1px solid color-mix(in srgb, var(--escenia-color-danger) 40%, transparent);
+}
+
+.chat__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-bottom: var(--escenia-space-2);
+}
+
+.chat__msg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.chat__autor {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.72rem;
+  color: var(--escenia-color-text-muted);
+}
+
+.chat__msg.is-host .chat__autor {
+  color: var(--escenia-color-accent);
+}
+
+.chat__host {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: var(--escenia-radius-pill);
+  color: var(--escenia-color-accent);
+  background: color-mix(in srgb, var(--escenia-color-accent) 16%, transparent);
+}
+
+.chat__cuerpo {
+  color: var(--escenia-color-text);
+  word-break: break-word;
+}
+
+.chat__form {
+  display: flex;
+  gap: 8px;
+}
+
+.chat__form .control {
+  flex: 1;
+  min-width: 0;
 }
 
 @media (max-width: 860px) {

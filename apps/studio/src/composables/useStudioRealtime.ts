@@ -9,7 +9,9 @@ interface RealtimeChannel {
 }
 interface RealtimeEcho {
   private(name: string): RealtimeChannel
+  channel(name: string): RealtimeChannel
   leave(name: string): void
+  leaveChannel(name: string): void
 }
 
 type Handlers = Record<string, (payload: unknown) => void>
@@ -71,6 +73,32 @@ export function useStudioChannel(eventId: string, handlers: Handlers): void {
       channel.listen(`.${nombre}`, cb)
     }
     limpiar = () => echo.leave(`studio.${eventId}`)
+  })
+
+  onBeforeUnmount(() => {
+    cancelado = true
+    limpiar?.()
+  })
+}
+
+/**
+ * Subscribe to the event's PUBLIC channel (`event.{ulid}`) — the same feed the
+ * attendee uses for chat/Q&A/polls — so the producer sees the live chat in the
+ * console. A no-op when realtime isn't configured.
+ */
+export function useEventChannel(eventId: string, handlers: Handlers): void {
+  if (!configurado()) return
+
+  let cancelado = false
+  let limpiar: (() => void) | null = null
+
+  void obtenerEcho().then((echo) => {
+    if (echo === null || cancelado) return
+    const channel = echo.channel(`event.${eventId}`)
+    for (const [nombre, cb] of Object.entries(handlers)) {
+      channel.listen(`.${nombre}`, cb)
+    }
+    limpiar = () => echo.leaveChannel(`event.${eventId}`)
   })
 
   onBeforeUnmount(() => {
