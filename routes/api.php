@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\V1\Education\Host\AssessmentController as HostAsses
 use App\Http\Controllers\Api\V1\Education\Host\CertificateController as HostCertificateController;
 use App\Http\Controllers\Api\V1\Education\Host\CompletionRuleController;
 use App\Http\Controllers\Api\V1\Education\Host\SubmissionController;
+use App\Http\Controllers\Api\V1\Engagement\Attendee\BroadcastAuthController as AttendeeBroadcastAuthController;
 use App\Http\Controllers\Api\V1\Engagement\Attendee\ChatController as AttendeeChatController;
 use App\Http\Controllers\Api\V1\Engagement\Attendee\PollController as AttendeePollController;
 use App\Http\Controllers\Api\V1\Engagement\Attendee\PresenceController as AttendeePresenceController;
@@ -121,6 +122,9 @@ Route::prefix('v1')->group(function (): void {
     Route::middleware(['attendee', 'throttle:120,1'])->prefix('attend')->group(function (): void {
         Route::post('presence/join', [AttendeePresenceController::class, 'join']);
         Route::post('presence/leave', [AttendeePresenceController::class, 'leave']);
+
+        // Presence-channel auth for the live viewer count (Reverb).
+        Route::post('broadcasting/auth', AttendeeBroadcastAuthController::class);
 
         Route::get('chat', [AttendeeChatController::class, 'index']);
         Route::post('chat', [AttendeeChatController::class, 'store']);

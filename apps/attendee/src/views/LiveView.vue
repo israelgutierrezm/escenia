@@ -14,12 +14,16 @@ import ResourcesPanel from '@/components/live/ResourcesPanel.vue'
 import AssessmentPanel from '@/components/live/AssessmentPanel.vue'
 import RankingPanel from '@/components/live/RankingPanel.vue'
 import { api } from '@/lib/attendeeApi'
+import { useViewerCount } from '@/composables/useRealtime'
 import { useAttendeeStore } from '@/stores/attendee'
 
 const route = useRoute()
 const router = useRouter()
 const store = useAttendeeStore()
 const eventId = route.params.eventId as string
+
+// Presencia: al unirse al canal, este asistente cuenta como espectador en vivo.
+const { enLinea } = useViewerCount(eventId)
 
 type Tab = 'envivo' | 'preguntas' | 'encuestas' | 'agenda' | 'expo' | 'recursos' | 'evaluacion' | 'ranking'
 const tab = ref<Tab>('envivo')
@@ -87,6 +91,7 @@ onBeforeUnmount(() => {
         <strong>{{ eventTitle }}</strong>
       </div>
       <div class="bar__right">
+        <span v-if="enLinea > 0" class="chip enlinea" :title="`${enLinea} en línea`">● {{ enLinea }} en línea</span>
         <span class="chip chip--primary puntos" :title="`${puntos} puntos`">{{ puntos }} pts</span>
         <span class="muted nombre">{{ store.attendee?.name }}</span>
         <AppButton variant="ghost" @click="salir">Salir</AppButton>
@@ -162,6 +167,10 @@ onBeforeUnmount(() => {
 
 .nombre {
   font-size: 0.85rem;
+}
+
+.enlinea {
+  color: var(--escenia-color-primary);
 }
 
 .contenido {

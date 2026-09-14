@@ -15,7 +15,7 @@ import type {
 
 import { api } from '@/lib/api'
 import { useStudioRoom, esUrlDeMedios } from '@/composables/useStudioRoom'
-import { useStudioChannel, useEventChannel } from '@/composables/useStudioRealtime'
+import { useStudioChannel, useEventChannel, useViewerCount } from '@/composables/useStudioRealtime'
 
 const route = useRoute()
 const router = useRouter()
@@ -116,6 +116,9 @@ useEventChannel(id, {
     agregarMensaje(payload as ChatMessage)
   },
 })
+
+// Presencia: nº de asistentes conectados en vivo.
+const { enLinea } = useViewerCount(id)
 
 const enVivo = computed(() => studio.value?.status === 'live')
 const emitiendo = computed(
@@ -288,6 +291,7 @@ onMounted(() => {
         <strong>{{ studio?.name ?? 'Studio' }}</strong>
         <span class="chip" :class="enVivo ? 'chip--live' : ''">{{ enVivo ? 'En vivo' : 'Inactivo' }}</span>
         <span v-if="emitiendo" class="chip chip--danger">● Emitiendo</span>
+        <span class="chip chip--online" :title="`${enLinea} asistentes en línea`">● {{ enLinea }} en línea</span>
       </div>
       <div class="bar__right">
         <AppButton v-if="!enVivo" :disabled="busy" @click="iniciar">Iniciar studio</AppButton>
@@ -763,6 +767,10 @@ onMounted(() => {
 .chat__form .control {
   flex: 1;
   min-width: 0;
+}
+
+.chip--online {
+  color: var(--escenia-color-primary);
 }
 
 @media (max-width: 860px) {

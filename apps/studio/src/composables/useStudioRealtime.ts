@@ -1,4 +1,4 @@
-import { onBeforeUnmount } from 'vue'
+import { onBeforeUnmount, ref, type Ref } from 'vue'
 
 /**
  * Minimal shape of the pieces of Laravel Echo we use, kept local so the
@@ -7,9 +7,22 @@ import { onBeforeUnmount } from 'vue'
 interface RealtimeChannel {
   listen(event: string, callback: (payload: unknown) => void): RealtimeChannel
 }
+// Laravel Echo is inconsistent: `here` yields flattened user_info ({id,role,…}),
+// while `joining`/`leaving` yield {id, info:{role,…}}. Accept both shapes.
+interface PresenceMember {
+  id: string | number
+  role?: string
+  info?: { role?: string }
+}
+interface PresenceChannel {
+  here(callback: (members: PresenceMember[]) => void): PresenceChannel
+  joining(callback: (member: PresenceMember) => void): PresenceChannel
+  leaving(callback: (member: PresenceMember) => void): PresenceChannel
+}
 interface RealtimeEcho {
   private(name: string): RealtimeChannel
   channel(name: string): RealtimeChannel
+  join(name: string): PresenceChannel
   leave(name: string): void
   leaveChannel(name: string): void
 }
@@ -105,4 +118,51 @@ export function useEventChannel(eventId: string, handlers: Handlers): void {
     cancelado = true
     limpiar?.()
   })
+}
+
+/**
+ * Join the event's presence channel and expose the live count of attendees
+ * online (deduped by attendee id; the producer joins tagged `host` and is not
+ * counted). Members drop automatically on WebSocket disconnect, so the count
+ * self-corrects. Returns 0 (and never connects) when realtime is off.
+ */
+export function useViewerCount(eventId: string): { enLinea: Ref<number> } {
+  const enLinea = ref(0)
+  if (!configurado()) return { enLinea }
+
+  const ids = new Set<string>()
+  const esAsistente = (m: PresenceMember): boolean => (m.info?.role ?? m.role) === 'attendee'
+  let cancelado = false
+  let limpiar: (() => void) | null = null
+
+  void obtenerEcho().then((echo) => {
+    if (echo === null || cancelado) return
+    const canal = echo.join(`viewers.${eventId}`)
+    canal
+      .here((members) => {
+        ids.clear()
+        for (const m of members) if (esAsistente(m)) ids.add(String(m.id))
+        enLinea.value = ids.size
+      })
+      .joining((m) => {
+        if (esAsistente(m)) {
+          ids.add(String(m.id))
+          enLinea.value = ids.size
+        }
+      })
+      .leaving((m) => {
+        if (esAsistente(m)) {
+          ids.delete(String(m.id))
+          enLinea.value = ids.size
+        }
+      })
+    limpiar = () => echo.leave(`viewers.${eventId}`)
+  })
+
+  onBeforeUnmount(() => {
+    cancelado = true
+    limpiar?.()
+  })
+
+  return { enLinea }
 }

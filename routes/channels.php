@@ -26,3 +26,28 @@ Broadcast::channel('studio.{eventUlid}', function (User $user, string $eventUlid
 
     return $user->can(Permission::StudioManage->value);
 });
+
+/**
+ * Presence channel for the live viewer count (`presence-viewers.{ulid}`).
+ * Attendees join through their own token-authenticated endpoint (they are the
+ * viewers, role `attendee`); a producer joins here via the Sanctum session to
+ * watch the count and is tagged role `host` so it never inflates it. Returning
+ * an array (not a bool) makes this a presence membership.
+ *
+ * @return array{id: string, name: string, role: string}|null
+ */
+Broadcast::channel('viewers.{eventUlid}', function (User $user, string $eventUlid): ?array {
+    $event = Event::query()->withoutGlobalScopes()->where('ulid', $eventUlid)->first();
+
+    if ($event === null) {
+        return null;
+    }
+
+    app(PermissionRegistrar::class)->setPermissionsTeamId($event->tenant_id);
+
+    if (! $user->can(Permission::StudioManage->value)) {
+        return null;
+    }
+
+    return ['id' => 'host-'.$user->getKey(), 'name' => $user->name, 'role' => 'host'];
+});
