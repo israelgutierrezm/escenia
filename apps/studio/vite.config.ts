@@ -25,6 +25,8 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': { target: apiProxy, changeOrigin: true },
         '/sanctum': { target: apiProxy, changeOrigin: true },
+        // Broadcasting auth (Reverb private channels) shares the SPA origin.
+        '/broadcasting': { target: apiProxy, changeOrigin: true },
       },
     },
     test: {

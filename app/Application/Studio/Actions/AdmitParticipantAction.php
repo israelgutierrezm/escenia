@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Studio\Actions;
 
 use App\Application\Studio\DTOs\AdmitParticipantData;
+use App\Application\Studio\Events\StudioParticipantActivity;
 use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Identity\Models\User;
 use App\Domain\Media\ValueObjects\AccessToken;
@@ -49,6 +50,12 @@ final class AdmitParticipantAction
 
             return $participant;
         });
+
+        // Real-time to the producer console (private studio channel), after commit.
+        $eventUlid = $session->studio?->event?->ulid;
+        if ($eventUlid !== null) {
+            event(StudioParticipantActivity::fromParticipant($participant, $eventUlid, 'joined'));
+        }
 
         return [
             'participant' => $participant,

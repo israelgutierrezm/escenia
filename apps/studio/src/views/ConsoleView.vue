@@ -14,6 +14,7 @@ import type {
 
 import { api } from '@/lib/api'
 import { useStudioRoom, esUrlDeMedios } from '@/composables/useStudioRoom'
+import { useStudioChannel } from '@/composables/useStudioRealtime'
 
 const route = useRoute()
 const router = useRouter()
@@ -48,6 +49,22 @@ async function conectarMedios(): Promise<void> {
     // Sin servidor de medios (dev/fake): los tiles muestran iniciales.
   }
 }
+
+async function refrescarParticipantes(): Promise<void> {
+  if (studio.value?.status !== 'live') return
+  try {
+    participants.value = (await api.studioParticipants(id)).data
+  } catch {
+    // Un fallo puntual de refetch no debe romper la consola.
+  }
+}
+
+// Real-time: el productor ve entrar/moverse/salir participantes sin recargar.
+useStudioChannel(id, {
+  'participant.activity': () => {
+    void refrescarParticipantes()
+  },
+})
 
 const enVivo = computed(() => studio.value?.status === 'live')
 const emitiendo = computed(

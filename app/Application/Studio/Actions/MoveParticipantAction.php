@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Studio\Actions;
 
+use App\Application\Studio\Events\StudioParticipantActivity;
 use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Identity\Models\User;
 use App\Domain\Studio\Enums\ParticipantStage;
@@ -33,7 +34,7 @@ final class MoveParticipantAction
             throw new InvalidParticipantStageTransitionException($from, $target);
         }
 
-        return DB::transaction(function () use ($participant, $actor, $from, $target): StudioParticipant {
+        $moved = DB::transaction(function () use ($participant, $actor, $from, $target): StudioParticipant {
             $updates = ['stage' => $target->value];
 
             if ($target->isInRoom() && $participant->joined_at === null) {
@@ -65,5 +66,17 @@ final class MoveParticipantAction
 
             return $participant;
         });
+
+        // Real-time to the producer console (private studio channel), after commit.
+        $eventUlid = $moved->session?->studio?->event?->ulid;
+        if ($eventUlid !== null) {
+            event(StudioParticipantActivity::fromParticipant(
+                $moved,
+                $eventUlid,
+                $target === ParticipantStage::Left ? 'left' : 'moved',
+            ));
+        }
+
+        return $moved;
     }
 }

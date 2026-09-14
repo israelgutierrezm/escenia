@@ -14,8 +14,10 @@
         "@escenia/api-client": "workspace:*",
         "@escenia/types": "workspace:*",
         "@escenia/ui": "workspace:*",
+        "laravel-echo": "^2.1.0",
         "livekit-client": "^2.7.0",
         "pinia": "^2.2.6",
+        "pusher-js": "^8.4.0",
         "vue": "^3.5.12",
         "vue-router": "^4.4.5"
     },

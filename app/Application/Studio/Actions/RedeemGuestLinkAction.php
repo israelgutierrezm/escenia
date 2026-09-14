@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Studio\Actions;
 
+use App\Application\Studio\Events\StudioParticipantActivity;
 use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Media\ValueObjects\AccessToken;
 use App\Domain\Studio\Enums\ParticipantStage;
@@ -54,7 +55,7 @@ final class RedeemGuestLinkAction
                 throw new GuestLinkInvalidException;
             }
 
-            return DB::transaction(function () use ($link, $guestName, $session): array {
+            $result = DB::transaction(function () use ($link, $guestName, $session): array {
                 $participant = StudioParticipant::create([
                     'tenant_id' => $link->tenant_id,
                     'studio_session_id' => $session->getKey(),
@@ -78,6 +79,14 @@ final class RedeemGuestLinkAction
                     'session' => $session,
                 ];
             });
+
+            // Real-time to the producer console (private studio channel), after commit.
+            $eventUlid = $studio->event?->ulid;
+            if ($eventUlid !== null) {
+                event(StudioParticipantActivity::fromParticipant($result['participant'], $eventUlid, 'joined'));
+            }
+
+            return $result;
         });
     }
 }
