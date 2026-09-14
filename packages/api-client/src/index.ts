@@ -40,6 +40,9 @@ import type {
   CapabilityKey,
   EngagementReport,
   ChatMessage,
+  Connection,
+  DirectoryPerson,
+  Meeting,
   EventCapability,
   EventModel,
   EventResource,
@@ -703,6 +706,30 @@ export function createAttendeeClient(options: AttendeeClientOptions = {}) {
     visitBooth: (boothId: string, note?: string) =>
       request<ApiResource<Booth>>('POST', `/attend/expo/booths/${boothId}/visit`, note ? { note } : {}),
     gamification: () => request<ApiResource<AttendeeGamification>>('GET', '/attend/gamification'),
+
+    // ---- Networking: connections + 1:1 meetings (token required) ----
+    networkingDirectory: (q?: string) =>
+      request<ApiCollection<DirectoryPerson>>(
+        'GET',
+        `/attend/networking/directory${q !== undefined && q !== '' ? `?q=${encodeURIComponent(q)}` : ''}`,
+      ),
+    connections: () => request<ApiCollection<Connection>>('GET', '/attend/networking/connections'),
+    requestConnection: (attendeeId: string, message?: string) =>
+      request<ApiResource<Connection>>(
+        'POST',
+        '/attend/networking/connections',
+        message !== undefined && message !== '' ? { attendee_id: attendeeId, message } : { attendee_id: attendeeId },
+      ),
+    acceptConnection: (id: string) =>
+      request<ApiResource<Connection>>('POST', `/attend/networking/connections/${id}/accept`),
+    declineConnection: (id: string) =>
+      request<ApiResource<Connection>>('POST', `/attend/networking/connections/${id}/decline`),
+    meetings: () => request<ApiCollection<Meeting>>('GET', '/attend/networking/meetings'),
+    proposeMeeting: (data: { attendee_id: string; scheduled_at: string; duration_minutes: number; topic?: string }) =>
+      request<ApiResource<Meeting>>('POST', '/attend/networking/meetings', data),
+    acceptMeeting: (id: string) => request<ApiResource<Meeting>>('POST', `/attend/networking/meetings/${id}/accept`),
+    declineMeeting: (id: string) => request<ApiResource<Meeting>>('POST', `/attend/networking/meetings/${id}/decline`),
+    cancelMeeting: (id: string) => request<ApiResource<Meeting>>('POST', `/attend/networking/meetings/${id}/cancel`),
   }
 }
 

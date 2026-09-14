@@ -853,6 +853,47 @@ export interface AttendeeGamification {
   leaderboard: LeaderboardEntry[]
 }
 
+// ---- Networking (connections + 1:1 meetings) ----
+
+export interface NetworkPerson {
+  id: string
+  name: string
+}
+
+export type ConnectionStatus = 'pending' | 'accepted' | 'declined'
+
+export interface Connection {
+  id: string
+  status: ConnectionStatus
+  message: string | null
+  requester: NetworkPerson | null
+  addressee: NetworkPerson | null
+  responded_at: string | null
+  created_at: string | null
+}
+
+export type MeetingStatus = 'proposed' | 'accepted' | 'declined' | 'canceled'
+
+export interface Meeting {
+  id: string
+  status: MeetingStatus
+  scheduled_at: string
+  duration_minutes: number
+  topic: string | null
+  proposer: NetworkPerson | null
+  invitee: NetworkPerson | null
+  created_at: string | null
+}
+
+export type DirectoryConnectionStatus = 'none' | 'pending_out' | 'pending_in' | 'connected'
+
+export interface DirectoryPerson {
+  id: string
+  name: string
+  connection_status: DirectoryConnectionStatus
+  connection_id: string | null
+}
+
 // ---- Enterprise (Fase 13) ----
 
 export type DomainStatus = 'pending' | 'active' | 'failed'

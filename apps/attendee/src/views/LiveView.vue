@@ -10,6 +10,7 @@ import QaPanel from '@/components/live/QaPanel.vue'
 import PollsPanel from '@/components/live/PollsPanel.vue'
 import AgendaPanel from '@/components/live/AgendaPanel.vue'
 import ExpoPanel from '@/components/live/ExpoPanel.vue'
+import NetworkingPanel from '@/components/live/NetworkingPanel.vue'
 import ResourcesPanel from '@/components/live/ResourcesPanel.vue'
 import AssessmentPanel from '@/components/live/AssessmentPanel.vue'
 import RankingPanel from '@/components/live/RankingPanel.vue'
@@ -25,7 +26,7 @@ const eventId = route.params.eventId as string
 // Presencia: al unirse al canal, este asistente cuenta como espectador en vivo.
 const { enLinea } = useViewerCount(eventId)
 
-type Tab = 'envivo' | 'preguntas' | 'encuestas' | 'agenda' | 'expo' | 'recursos' | 'evaluacion' | 'ranking'
+type Tab = 'envivo' | 'preguntas' | 'encuestas' | 'agenda' | 'expo' | 'personas' | 'recursos' | 'evaluacion' | 'ranking'
 const tab = ref<Tab>('envivo')
 const tabs: [Tab, string][] = [
   ['envivo', 'En vivo'],
@@ -33,6 +34,7 @@ const tabs: [Tab, string][] = [
   ['encuestas', 'Encuestas'],
   ['agenda', 'Agenda'],
   ['expo', 'Expo'],
+  ['personas', 'Personas'],
   ['recursos', 'Recursos'],
   ['evaluacion', 'Evaluación'],
   ['ranking', 'Ranking'],
@@ -108,6 +110,7 @@ onBeforeUnmount(() => {
       <PollsPanel v-else-if="tab === 'encuestas'" :event-id="eventId" />
       <AgendaPanel v-else-if="tab === 'agenda'" />
       <ExpoPanel v-else-if="tab === 'expo'" />
+      <NetworkingPanel v-else-if="tab === 'personas'" />
       <ResourcesPanel v-else-if="tab === 'recursos'" />
       <AssessmentPanel v-else-if="tab === 'evaluacion'" />
       <RankingPanel v-else />
