@@ -70,6 +70,9 @@ use App\Http\Controllers\Api\V1\Events\EventSpeakerController;
 use App\Http\Controllers\Api\V1\Events\EventTemplateController;
 use App\Http\Controllers\Api\V1\Events\EventTransitionController;
 use App\Http\Controllers\Api\V1\FeatureManagement\FeatureFlagController;
+use App\Http\Controllers\Api\V1\Networking\Attendee\ConnectionController as NetworkingConnectionController;
+use App\Http\Controllers\Api\V1\Networking\Attendee\DirectoryController as NetworkingDirectoryController;
+use App\Http\Controllers\Api\V1\Networking\Attendee\MeetingController as NetworkingMeetingController;
 use App\Http\Controllers\Api\V1\Production\BrandKitController;
 use App\Http\Controllers\Api\V1\Production\ProductionMixerController;
 use App\Http\Controllers\Api\V1\Production\RunOfShowController;
@@ -156,6 +159,18 @@ Route::prefix('v1')->group(function (): void {
         Route::post('expo/booths/{booth}/visit', [AttendeeExpoController::class, 'visit']);
 
         Route::get('gamification', [AttendeeGamificationController::class, 'index']);
+
+        // ---- Networking: connections + 1:1 meetings (TD-033) ----
+        Route::get('networking/directory', [NetworkingDirectoryController::class, 'index']);
+        Route::get('networking/connections', [NetworkingConnectionController::class, 'index']);
+        Route::post('networking/connections', [NetworkingConnectionController::class, 'store']);
+        Route::post('networking/connections/{connection}/accept', [NetworkingConnectionController::class, 'accept']);
+        Route::post('networking/connections/{connection}/decline', [NetworkingConnectionController::class, 'decline']);
+        Route::get('networking/meetings', [NetworkingMeetingController::class, 'index']);
+        Route::post('networking/meetings', [NetworkingMeetingController::class, 'store']);
+        Route::post('networking/meetings/{meeting}/accept', [NetworkingMeetingController::class, 'accept']);
+        Route::post('networking/meetings/{meeting}/decline', [NetworkingMeetingController::class, 'decline']);
+        Route::post('networking/meetings/{meeting}/cancel', [NetworkingMeetingController::class, 'cancel']);
     });
 
     // ---- Authenticated (any tenant) ----

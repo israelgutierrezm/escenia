@@ -25,6 +25,10 @@ use App\Domain\Enterprise\Exceptions\SsoAuthenticationException;
 use App\Domain\Events\Exceptions\CapabilityNotEntitledException;
 use App\Domain\Events\Exceptions\EventTransitionConflictException;
 use App\Domain\Events\Exceptions\InvalidEventTransitionException;
+use App\Domain\Networking\Exceptions\ConnectionAlreadyExistsException;
+use App\Domain\Networking\Exceptions\InvalidConnectionTransitionException;
+use App\Domain\Networking\Exceptions\InvalidMeetingTransitionException;
+use App\Domain\Networking\Exceptions\SelfNetworkingException;
 use App\Domain\Registration\Exceptions\RegistrationClosedException;
 use App\Domain\Studio\Exceptions\GuestLinkInvalidException;
 use App\Domain\Studio\Exceptions\InvalidParticipantStageTransitionException;
@@ -73,6 +77,10 @@ final class ApiExceptionMapper
             $e instanceof AssessmentNotAvailableException => [422, 'assessment_not_available', $e->getMessage(), null],
             $e instanceof AlreadySubmittedException => [409, 'already_submitted', $e->getMessage(), null],
             $e instanceof SessionFullException => [422, 'session_full', $e->getMessage(), null],
+            $e instanceof SelfNetworkingException => [422, 'self_networking', $e->getMessage(), null],
+            $e instanceof ConnectionAlreadyExistsException => [409, 'connection_exists', $e->getMessage(), null],
+            $e instanceof InvalidConnectionTransitionException => [422, 'invalid_connection_transition', $e->getMessage(), null],
+            $e instanceof InvalidMeetingTransitionException => [422, 'invalid_meeting_transition', $e->getMessage(), null],
             $e instanceof DomainVerificationFailedException => [422, 'domain_verification_failed', $e->getMessage(), null],
             $e instanceof SsoAuthenticationException => [401, 'sso_authentication_failed', $e->getMessage(), null],
             $e instanceof SystemRoleException => [422, 'system_role', $e->getMessage(), null],
