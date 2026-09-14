@@ -8,6 +8,7 @@ import type { FieldType, Registrant, RegistrationField } from '@escenia/types'
 import ListToolbar from '@/components/ListToolbar.vue'
 import PaginationBar from '@/components/PaginationBar.vue'
 import { usePagination } from '@/composables/usePagination'
+import { useEventChannel } from '@/composables/useRealtime'
 import { fecha } from '@/lib/eventLabels'
 import { api } from '@/lib/api'
 
@@ -72,6 +73,28 @@ async function load(): Promise<void> {
     loading.value = false
   }
 }
+
+// Real-time: nuevas inscripciones aparecen sin recargar.
+const realtime = Boolean(import.meta.env.VITE_REVERB_APP_KEY)
+const nuevo = ref(false)
+let destacarTimer: ReturnType<typeof setTimeout> | undefined
+
+async function refrescarInscritos(): Promise<void> {
+  try {
+    registrants.value = (await api.registrations(id)).data
+    nuevo.value = true
+    clearTimeout(destacarTimer)
+    destacarTimer = setTimeout(() => (nuevo.value = false), 2500)
+  } catch {
+    // Un fallo puntual de refetch no debe romper la vista.
+  }
+}
+
+useEventChannel(id, {
+  'registration.completed': () => {
+    void refrescarInscritos()
+  },
+})
 
 function addField(): void {
   fields.value.push({ key: '', label: '', type: 'text', required: false })
@@ -149,7 +172,10 @@ onMounted(load)
       <ListToolbar v-model:search="search" :with-view="false" placeholder="Buscar inscrito…" />
 
       <div class="panel">
-        <h2>Inscritos <span class="muted">({{ registrants.length }})</span></h2>
+        <h2>
+          Inscritos <span class="muted">({{ registrants.length }})</span>
+          <span v-if="realtime" class="live-reg" :class="{ 'is-nuevo': nuevo }" aria-live="polite">● en vivo</span>
+        </h2>
         <p v-if="total === 0" class="empty">Aún no hay inscritos.</p>
         <div v-else class="table-wrap">
           <table class="admin-table">
@@ -174,6 +200,20 @@ onMounted(load)
 </template>
 
 <style scoped>
+.live-reg {
+  margin-left: 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--escenia-color-text-muted);
+  transition: color 0.3s ease;
+}
+
+.live-reg.is-nuevo {
+  color: var(--escenia-color-accent);
+}
+
 .back {
   text-decoration: none;
   font-size: 0.85rem;

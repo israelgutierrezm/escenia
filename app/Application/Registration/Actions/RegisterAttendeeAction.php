@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Registration\Actions;
 
 use App\Application\Registration\DTOs\RegisterAttendeeData;
+use App\Application\Registration\Events\AttendeeRegistered;
 use App\Domain\Analytics\Contracts\AnalyticsCollector;
 use App\Domain\Analytics\Enums\AnalyticsEventName;
 use App\Domain\Audit\Contracts\AuditLogger;
@@ -59,7 +60,7 @@ final class RegisterAttendeeAction
                 throw new RegistrationClosedException;
             }
 
-            return DB::transaction(function () use ($event, $data): array {
+            $result = DB::transaction(function () use ($event, $data): array {
                 $issued = $this->issueAttendee->execute($event, $data->name, $data->email);
                 $attendee = $issued['attendee'];
 
@@ -96,6 +97,15 @@ final class RegisterAttendeeAction
                     'token' => $issued['token'],
                 ];
             });
+
+            // Real-time to organizers: only on a genuinely new attendee, and only
+            // the running count (no PII) on the event's public channel.
+            if ($result['attendee']->wasRecentlyCreated) {
+                $total = Attendee::query()->where('event_id', $event->getKey())->count();
+                event(new AttendeeRegistered($event->ulid, $total));
+            }
+
+            return $result;
         });
     }
 }
