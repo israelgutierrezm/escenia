@@ -13,6 +13,7 @@ import type {
 } from '@escenia/types'
 
 import { api } from '@/lib/api'
+import { useStudioRoom, esUrlDeMedios } from '@/composables/useStudioRoom'
 
 const route = useRoute()
 const router = useRouter()
@@ -31,6 +32,22 @@ const grabar = ref(true)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const busy = ref(false)
+
+// Media plane: the producer connects as host to monitor participant video.
+const { conVideo, registrarVideo, conectar, desconectar } = useStudioRoom()
+
+function fijarVideo(identity: string, el: unknown): void {
+  registrarVideo(identity, el instanceof HTMLVideoElement ? el : null)
+}
+
+async function conectarMedios(): Promise<void> {
+  try {
+    const { access } = (await api.studioHostToken(id)).data
+    if (esUrlDeMedios(access.url)) await conectar(access.url, access.token)
+  } catch {
+    // Sin servidor de medios (dev/fake): los tiles muestran iniciales.
+  }
+}
 
 const enVivo = computed(() => studio.value?.status === 'live')
 const emitiendo = computed(
@@ -76,7 +93,10 @@ async function load(): Promise<void> {
     scenes.value = sc.data
     destinations.value = dest.data
     broadcast.value = bc.data
-    if (st.data.status === 'live') participants.value = (await api.studioParticipants(id)).data
+    if (st.data.status === 'live') {
+      participants.value = (await api.studioParticipants(id)).data
+      void conectarMedios()
+    }
   } catch (e) {
     error.value = message(e)
   } finally {
@@ -100,6 +120,7 @@ function iniciar(): void {
   run(async () => {
     studio.value = (await api.startStudio(id)).data
     participants.value = (await api.studioParticipants(id)).data
+    await conectarMedios()
   })
 }
 
@@ -108,6 +129,7 @@ function finalizar(): void {
     studio.value = (await api.endStudio(id)).data
     participants.value = []
     broadcast.value = (await api.broadcast(id)).data
+    await desconectar()
   })
 }
 
@@ -248,7 +270,17 @@ onMounted(load)
           <p v-else-if="participants.length === 0" class="empty">Aún no hay participantes.</p>
           <div v-else class="tiles">
             <div v-for="p in participants" :key="p.id" class="tile" :class="{ 'on-air': p.stage === 'stage' }">
-              <div class="tile__video"><span class="tile__ini">{{ iniciales(p.name) }}</span></div>
+              <div class="tile__video">
+                <video
+                  v-show="conVideo.includes(p.identity)"
+                  :ref="(el) => fijarVideo(p.identity, el)"
+                  class="tile__stream"
+                  autoplay
+                  playsinline
+                  muted
+                ></video>
+                <span v-if="!conVideo.includes(p.identity)" class="tile__ini">{{ iniciales(p.name) }}</span>
+              </div>
               <div class="tile__row">
                 <strong class="tile__name">{{ p.name }}</strong>
                 <button
@@ -495,10 +527,21 @@ onMounted(load)
 }
 
 .tile__video {
+  position: relative;
   aspect-ratio: 16 / 9;
   display: grid;
   place-items: center;
   border-radius: 6px;
+  background: #04101d;
+  overflow: hidden;
+}
+
+.tile__stream {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   background: #04101d;
 }
 

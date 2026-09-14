@@ -20,6 +20,7 @@ class StudioParticipantResource extends JsonResource
     {
         return [
             'id' => $this->ulid,
+            'identity' => $this->identity,
             'name' => $this->name,
             'role' => $this->role->value,
             'stage' => $this->stage->value,

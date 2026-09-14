@@ -247,6 +247,8 @@ export function createApiClient(options: ApiClientOptions = {}) {
       request<ApiResource<Studio>>('POST', `/events/${eventId}/studio/start`),
     endStudio: (eventId: string) =>
       request<ApiResource<Studio>>('POST', `/events/${eventId}/studio/end`),
+    studioHostToken: (eventId: string) =>
+      request<ApiResource<{ access: AccessTokenPayload }>>('POST', `/events/${eventId}/studio/host-token`),
     studioParticipants: (eventId: string) =>
       request<ApiCollection<StudioParticipant>>('GET', `/events/${eventId}/studio/participants`),
     admitParticipant: (eventId: string, data: { name: string; role: ParticipantRole }) =>

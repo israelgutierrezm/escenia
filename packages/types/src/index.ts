@@ -208,6 +208,7 @@ export interface Studio {
 
 export interface StudioParticipant {
   id: string
+  identity: string
   name: string
   role: ParticipantRole
   stage: ParticipantStage

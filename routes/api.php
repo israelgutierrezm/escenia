@@ -220,6 +220,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('events/{event}/studio', [StudioController::class, 'show']);
             Route::post('events/{event}/studio/start', [StudioController::class, 'start']);
             Route::post('events/{event}/studio/end', [StudioController::class, 'end']);
+            Route::post('events/{event}/studio/host-token', [StudioController::class, 'hostToken']);
 
             Route::get('events/{event}/studio/participants', [StudioParticipantController::class, 'index']);
             Route::post('events/{event}/studio/participants', [StudioParticipantController::class, 'store']);

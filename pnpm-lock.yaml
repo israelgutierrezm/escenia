@@ -226,6 +226,9 @@ importers:
       '@escenia/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      livekit-client:
+        specifier: ^2.7.0
+        version: 2.22.3(@types/dom-mediacapture-record@1.0.22)
       pinia:
         specifier: ^2.2.6
         version: 2.3.1(typescript@5.9.3)(vue@3.5.42(typescript@5.9.3))

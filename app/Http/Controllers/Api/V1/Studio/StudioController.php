@@ -6,9 +6,11 @@ namespace App\Http\Controllers\Api\V1\Studio;
 
 use App\Application\Studio\Actions\EndStudioSessionAction;
 use App\Application\Studio\Actions\EnsureStudioAction;
+use App\Application\Studio\Actions\IssueHostTokenAction;
 use App\Application\Studio\Actions\StartStudioSessionAction;
 use App\Domain\Events\Models\Event;
 use App\Domain\Studio\Models\Studio;
+use App\Http\Concerns\FormatsAccessToken;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\StudioResource;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +19,8 @@ use Illuminate\Http\Response;
 
 class StudioController extends Controller
 {
+    use FormatsAccessToken;
+
     public function show(Request $request, EnsureStudioAction $ensure, string $event): JsonResponse
     {
         $studio = $ensure->execute($this->resolveEvent($event), $request->user());
@@ -49,6 +53,27 @@ class StudioController extends Controller
         }
 
         return $this->ok($studio->refresh());
+    }
+
+    /**
+     * Issues a media token for the producer driving this console. Requires a
+     * live session; the host connects to its room with full grants to monitor
+     * and direct. Returns 409 when the studio is not live.
+     */
+    public function hostToken(Request $request, EnsureStudioAction $ensure, IssueHostTokenAction $issue, string $event): JsonResponse
+    {
+        $studio = $ensure->execute($this->resolveEvent($event), $request->user());
+
+        $this->authorize('manage', $studio);
+
+        $session = $studio->currentSession();
+        if ($session === null) {
+            return response()->json(['message' => 'El studio no está en vivo.'], Response::HTTP_CONFLICT);
+        }
+
+        return response()->json([
+            'data' => ['access' => $this->accessTokenArray($issue->execute($session, $request->user()))],
+        ]);
     }
 
     private function resolveEvent(string $ulid): Event
