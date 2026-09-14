@@ -34,8 +34,8 @@
 
 ## Stack instalado
 
-- **Backend**: Laravel 12.69.1 sobre PHP 8.3.6; MySQL 8.3 (InnoDB, `utf8mb4`); Laravel Sanctum 4.3; Spatie Laravel Permission 8.3 (teams). Redis vía `predis` (opcional en local). Horizon/Reverb aún no instalados (documentados para fases posteriores).
-- **Frontend**: monorepo pnpm — Vue 3.5 + TypeScript strict + Pinia + Vue Router + Tailwind 3 + Vitest. `apps/admin` + `packages/{types,api-client,ui}`.
+- **Backend**: Laravel 12.69.1 sobre PHP 8.3.6; MySQL 8.3 (InnoDB, `utf8mb4`); Laravel Sanctum 4.3; Spatie Laravel Permission 8.3 (teams). Redis vía `predis` (opcional en local). **Laravel Reverb instalado y activo** como broadcaster de tiempo real (ver «Tiempo real y consola de estudio»); Horizon aún no instalado.
+- **Frontend**: monorepo pnpm — Vue 3.5 + TypeScript strict + Pinia + Vue Router + Tailwind 3 + Vitest. Cuatro apps por persona — `apps/{admin,studio,attendee,speaker}` — sobre `packages/{types,api-client,ui}`.
 - **Calidad**: Laravel Pint, Larastan/PHPStan nivel 6, Pest (SQLite in-memory); ESLint (flat) + vue-tsc + Prettier.
 
 ## Implementado en Foundation
@@ -182,6 +182,11 @@
 - **Rewire de proveedores**: `AiServiceProvider`/`ScaleServiceProvider`/`EnterpriseServiceProvider` (+ `domain_target`) resuelven selección/credenciales vía `Settings` con **fallback a `config`** (comportamiento idéntico con el store vacío). Contratos de frontend: `systemSettings`/`updateSystemSettings`/`tenantConfig`/`updateTenantConfig`.
 - Tablas: `settings` (+ columna `is_super_admin` en `users`). **Diferido (TD-045)**: binding per-tenant en caliente de proveedores singleton, rotación/versionado de secretos, caché distribuida de settings.
 
+### Tiempo real y consola de estudio (post-roadmap, 2026-09-13)
+- **Reverb activado (verificado E2E)**: instalado `laravel/reverb` + `config/reverb.php`; los eventos de engagement (chat/preguntas/encuestas) que ya implementaban `ShouldBroadcast` sobre el canal público `event.{ulid}` ahora tienen un servidor WebSocket real detrás. Activación por `.env` (gitignored): `BROADCAST_CONNECTION=reverb` + `REVERB_*` (documentados en `.env.example`) y `VITE_REVERB_*` por app; **sin esas claves el frontend sigue en su baseline de polling** (no-op), así que el cambio es aditivo y seguro por defecto. Verificado localmente extremo a extremo: `chat POST → ChatMessagePosted (encolado) → worker → Reverb :8080 → frame WebSocket → navegador` (una sonda WS cruda capturó el payload, descartando el polling como vía de entrega).
+- **Vídeo de participantes en la consola de estudio (LiveKit)**: el productor no es un `StudioParticipant`, así que se añadió `IssueHostTokenAction` + `POST /events/{event}/studio/host-token` (identidad `host-{id}`, grants `full` sobre la sesión viva; `409` si el studio no está en vivo). El dominio no toca el SDK — identidad/grants se resuelven en la Action y se entregan al `MediaProviderContract`. `StudioParticipantResource` expone `identity` para casar las pistas remotas con cada tile. En el frontend, `useStudioRoom` conecta como host, se suscribe a las pistas de vídeo y las pinta por identidad; `livekit-client` se importa dinámico (chunk aparte) y **solo conecta si la URL es real** (`esUrlDeMedios`), de modo que dev/`fake` muestra iniciales. Verificado por tests (incl. decodificar un JWT LiveKit real con grants de host, sin servidor) y sin regresión contra el proveedor `fake`. **Pendiente**: E2E con un servidor LiveKit real (bloqueado en local por Docker Desktop sin distro WSL; es infra del entorno, no código).
+- **Apps de asistente, ponente y studio**: además de `apps/admin`, se construyeron `apps/attendee` (registro público + hub en vivo con chat/Q&A/encuestas/agenda/expo/recursos/evaluación/ranking, auth por token), `apps/speaker` (canje de guest-link + sala con chequeo de dispositivo y `useLiveKit`), y `apps/studio` (consola de productor: mixer preview/program, escenas, tiles de participantes con ciclo de vida guardado, emisión). Tiempo real de asistente vía `useEventChannel` (config-gated por `VITE_REVERB_APP_KEY`).
+
 ### Frontend (`apps/`, `packages/`)
 - `apps/admin`: login + `AdminLayout` (shell con navegación por permisos + switcher de tenant), store Pinia de auth (tenant activo + gates `isSuperAdmin`/`canManageMembers`/`canManageTenant`), guard de router (incl. super-admin), cliente tipado con CSRF de Sanctum y header `X-Tenant-Id`. **Superficies de administración**: Overview (tenants/workspaces); **Members & roles** (`members.manage`: miembros + editor de acceso por usuario rol-base/roles/permisos/efectivos + CRUD de roles con `PermissionPicker`); **Tenant settings** (`tenant.manage`) y **System settings** (super-admin) con `SettingsForm` generado del catálogo (controles por tipo, secretos write-only).
 - `packages/types` (contratos de API), `packages/api-client`, `packages/ui` (design tokens + `AppButton`).
@@ -194,7 +199,7 @@
 
 ## No implementar todavía
 
-LiveKit productivo · networking/virtual-venue/hybrid (resto de Enterprise Events) · SSO real (SAML/OIDC con validación de firma) · SCIM · enforcement de residencia + infra dedicada · TLS/edge para dominios custom · ClickHouse/warehouse real · Kafka/Redpanda real + consumer groups · multi-region (pinning/replicación) · autoscaling (Horizon/HPA) + madurez de DR · Qdrant productivo · Reverb · envío real de email/SMS · transcripción/storage/LLM reales · render de clips/certificados — salvo contratos/stubs estrictamente necesarios. **Los seams de código ya existen** (ADR-031 y anteriores); solo falta activar/integrar la infra por config.
+LiveKit productivo (servidor de medios real + egress; el token de host y los tiles de vídeo ya están cableados, ver «Tiempo real y consola de estudio») · networking/virtual-venue/hybrid (resto de Enterprise Events) · SSO real (SAML/OIDC con validación de firma) · SCIM · enforcement de residencia + infra dedicada · TLS/edge para dominios custom · ClickHouse/warehouse real · Kafka/Redpanda real + consumer groups · multi-region (pinning/replicación) · autoscaling (Horizon/HPA) + madurez de DR · Qdrant productivo · envío real de email/SMS · transcripción/storage/LLM reales · render de clips/certificados — salvo contratos/stubs estrictamente necesarios. **Los seams de código ya existen** (ADR-031 y anteriores); solo falta activar/integrar la infra por config. **Reverb ya está activado** (broadcaster de tiempo real, verificado E2E).
 
 ## Deuda técnica
 
@@ -203,3 +208,5 @@ Ver `docs/progress/technical-debt.md`.
 ## Última actualización
 
 2026-09-09 — Fase 14 (Scale) implementada y verificada en `main`. **Roadmap completo (Fases 0–14).**
+
+2026-09-13 — Post-roadmap en `main`: construidas las apps `studio`/`attendee`/`speaker` (además de `admin`); **Reverb activado y verificado E2E** como tiempo real; **consola de estudio con token de host + tiles de vídeo LiveKit** (verificado por tests y contra el proveedor `fake`; E2E con servidor LiveKit real pendiente — bloqueado en local por Docker/WSL, es infra del entorno).
