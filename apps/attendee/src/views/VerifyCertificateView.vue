@@ -19,6 +19,10 @@ function fecha(iso: string | undefined): string {
   return new Date(iso).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+function pdfUrl(code: string | undefined): string {
+  return code === undefined ? '#' : `${import.meta.env.VITE_API_URL ?? ''}/api/v1/certificates/${encodeURIComponent(code)}/pdf`
+}
+
 async function verificar(): Promise<void> {
   if (codigo.value.trim() === '') return
   cargando.value = true
@@ -65,6 +69,7 @@ onMounted(() => {
             <div><dt>Fecha de emisión</dt><dd>{{ fecha(resultado.issued_at) }}</dd></div>
             <div><dt>Código</dt><dd class="mono">{{ resultado.code }}</dd></div>
           </dl>
+          <a class="descargar" :href="pdfUrl(resultado.code)" target="_blank" rel="noopener">Descargar certificado (PDF)</a>
         </template>
         <p v-else class="estado invalido">No se encontró ningún certificado con ese código.</p>
       </div>
@@ -167,6 +172,22 @@ dd {
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.82rem;
+}
+
+.descargar {
+  display: inline-block;
+  margin-top: var(--escenia-space-3);
+  padding: 9px 18px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--escenia-color-primary);
+  border: 1px solid color-mix(in srgb, var(--escenia-color-primary) 45%, transparent);
+  border-radius: var(--escenia-radius-pill);
+}
+
+.descargar:hover {
+  border-color: var(--escenia-color-primary);
 }
 
 .volver {

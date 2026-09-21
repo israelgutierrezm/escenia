@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Billing\Contracts\EntitlementResolver;
+use App\Domain\Education\Contracts\CertificateRenderer;
 use App\Domain\Events\Models\Event;
 use App\Domain\FeatureManagement\Contracts\FeatureFlagResolver;
 use App\Domain\Notifications\Contracts\Notifier;
@@ -19,6 +20,7 @@ use App\Http\Policies\StudioPolicy;
 use App\Http\Policies\WorkspacePolicy;
 use App\Infrastructure\Audit\DatabaseAuditLogger;
 use App\Infrastructure\Billing\PlanEntitlementResolver;
+use App\Infrastructure\Education\DompdfCertificateRenderer;
 use App\Infrastructure\FeatureManagement\DatabaseFeatureFlagResolver;
 use App\Infrastructure\Logging\RequestContext;
 use App\Infrastructure\Notifications\LogNotifier;
@@ -38,6 +40,7 @@ class DomainServiceProvider extends ServiceProvider
      */
     public array $bindings = [
         AuditLogger::class => DatabaseAuditLogger::class,
+        CertificateRenderer::class => DompdfCertificateRenderer::class,
         EntitlementResolver::class => PlanEntitlementResolver::class,
         FeatureFlagResolver::class => DatabaseFeatureFlagResolver::class,
         Notifier::class => LogNotifier::class,

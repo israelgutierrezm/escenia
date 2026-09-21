@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\V1\Content\ClipController;
 use App\Http\Controllers\Api\V1\Content\RecordingController;
 use App\Http\Controllers\Api\V1\Content\TranscriptController;
 use App\Http\Controllers\Api\V1\Education\Attendee\AssessmentController as AttendeeAssessmentController;
+use App\Http\Controllers\Api\V1\Education\CertificateDownloadController;
 use App\Http\Controllers\Api\V1\Education\CertificateVerifyController;
 use App\Http\Controllers\Api\V1\Education\Host\AssessmentController as HostAssessmentController;
 use App\Http\Controllers\Api\V1\Education\Host\CertificateController as HostCertificateController;
@@ -111,6 +112,7 @@ Route::prefix('v1')->group(function (): void {
 
     // ---- Public certificate verification (Fase 11 — Education). ----
     Route::get('certificates/verify/{code}', [CertificateVerifyController::class, 'verify'])->middleware('throttle:60,1');
+    Route::get('certificates/{code}/pdf', [CertificateDownloadController::class, 'download'])->middleware('throttle:30,1');
 
     // ---- Enterprise: custom-domain routing resolution + SSO (public, Fase 13) ----
     Route::get('domains/resolve', [DomainResolveController::class, 'resolve'])->middleware('throttle:120,1');
