@@ -8,6 +8,7 @@ use App\Domain\Commerce\Contracts\PaymentGateway;
 use App\Domain\Commerce\Enums\PaymentStatus;
 use App\Domain\Commerce\Exceptions\WebhookVerificationException;
 use App\Domain\Commerce\Models\Order;
+use App\Domain\Commerce\Models\Payment;
 use App\Domain\Commerce\Models\PaymentAccount;
 use App\Domain\Commerce\ValueObjects\GatewayEvent;
 use App\Domain\Commerce\ValueObjects\PaymentIntentResult;
@@ -52,5 +53,11 @@ final class FakePaymentGateway implements PaymentGateway
         };
 
         return new GatewayEvent($reference, $status);
+    }
+
+    public function refund(Order $order, Payment $payment, ?PaymentAccount $account): void
+    {
+        // Deterministic no-op: no real money moves. The domain applies the
+        // paid → refunded transition after this returns.
     }
 }

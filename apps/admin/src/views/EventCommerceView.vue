@@ -64,6 +64,24 @@ async function load(): Promise<void> {
   }
 }
 
+const reembolsando = ref<string | null>(null)
+
+async function reembolsar(o: Order): Promise<void> {
+  if (!confirm(`¿Reembolsar la orden de ${o.buyer_name} por ${dinero(o.total)}? Se libera el cupo y no se puede deshacer.`)) return
+  reembolsando.value = o.id
+  error.value = null
+  try {
+    const actualizada = (await api.refundOrder(id, o.id)).data
+    const i = orders.value.findIndex((x) => x.id === o.id)
+    if (i !== -1) orders.value[i] = actualizada
+    revenue.value = (await api.revenue(id)).data
+  } catch (e) {
+    error.value = message(e)
+  } finally {
+    reembolsando.value = null
+  }
+}
+
 async function crearTicket(): Promise<void> {
   if (form.value.name.trim() === '') return
   guardando.value = true
@@ -208,7 +226,7 @@ onMounted(load)
         <div v-else class="table-wrap">
           <table class="admin-table">
             <thead>
-              <tr><th>Comprador</th><th>Total</th><th>Estado</th><th>Fecha</th></tr>
+              <tr><th>Comprador</th><th>Total</th><th>Estado</th><th>Fecha</th><th></th></tr>
             </thead>
             <tbody>
               <tr v-for="o in orders" :key="o.id">
@@ -219,6 +237,17 @@ onMounted(load)
                 <td>{{ dinero(o.total) }}</td>
                 <td><span class="chip" :class="estadoOrden[o.status].clase">{{ estadoOrden[o.status].label }}</span></td>
                 <td class="muted">{{ fecha(o.paid_at ?? o.created_at) }}</td>
+                <td class="col-acc">
+                  <button
+                    v-if="o.status === 'paid'"
+                    type="button"
+                    class="link-danger"
+                    :disabled="reembolsando === o.id"
+                    @click="reembolsar(o)"
+                  >
+                    {{ reembolsando === o.id ? 'Reembolsando…' : 'Reembolsar' }}
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -274,6 +303,28 @@ onMounted(load)
 </template>
 
 <style scoped>
+.col-acc {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.link-danger {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  color: var(--escenia-color-danger);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--escenia-color-danger) 40%, transparent);
+  border-radius: var(--escenia-radius-pill);
+  cursor: pointer;
+}
+
+.link-danger:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .back {
   text-decoration: none;
   font-size: 0.85rem;

@@ -25,9 +25,14 @@ final class EventCommerceReport
      */
     public function revenue(Event $event): array
     {
+        // Gross = everything ever collected, so a later refund does not erase the
+        // sale; net subtracts what was returned. (Orders that were paid then
+        // refunded still count as gross sales.)
+        $collected = [OrderStatus::Paid->value, OrderStatus::Refunded->value];
+
         $grossMinor = (int) Order::query()
             ->where('event_id', $event->getKey())
-            ->where('status', OrderStatus::Paid->value)
+            ->whereIn('status', $collected)
             ->sum('total_minor');
 
         $refundedMinor = (int) Order::query()
@@ -37,7 +42,7 @@ final class EventCommerceReport
 
         $ordersPaid = Order::query()
             ->where('event_id', $event->getKey())
-            ->where('status', OrderStatus::Paid->value)
+            ->whereIn('status', $collected)
             ->count();
 
         $currency = (string) (Ticket::query()->where('event_id', $event->getKey())->value('currency')

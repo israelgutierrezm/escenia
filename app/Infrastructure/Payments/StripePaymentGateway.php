@@ -8,6 +8,7 @@ use App\Domain\Commerce\Contracts\PaymentGateway;
 use App\Domain\Commerce\Enums\PaymentStatus;
 use App\Domain\Commerce\Exceptions\WebhookVerificationException;
 use App\Domain\Commerce\Models\Order;
+use App\Domain\Commerce\Models\Payment;
 use App\Domain\Commerce\Models\PaymentAccount;
 use App\Domain\Commerce\ValueObjects\GatewayEvent;
 use App\Domain\Commerce\ValueObjects\PaymentIntentResult;
@@ -67,6 +68,14 @@ final class StripePaymentGateway implements PaymentGateway
         }
 
         return new GatewayEvent($reference, $status);
+    }
+
+    public function refund(Order $order, Payment $payment, ?PaymentAccount $account): void
+    {
+        Http::withToken($this->secretKey($account))
+            ->asForm()
+            ->post(self::API.'/refunds', ['payment_intent' => $payment->gateway_reference])
+            ->throw();
     }
 
     private function verifySignature(string $payload, string $signature, string $secret): void

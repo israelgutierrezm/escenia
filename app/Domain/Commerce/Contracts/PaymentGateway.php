@@ -6,6 +6,7 @@ namespace App\Domain\Commerce\Contracts;
 
 use App\Domain\Commerce\Exceptions\WebhookVerificationException;
 use App\Domain\Commerce\Models\Order;
+use App\Domain\Commerce\Models\Payment;
 use App\Domain\Commerce\Models\PaymentAccount;
 use App\Domain\Commerce\ValueObjects\GatewayEvent;
 use App\Domain\Commerce\ValueObjects\PaymentIntentResult;
@@ -29,4 +30,10 @@ interface PaymentGateway
      * @throws WebhookVerificationException
      */
     public function parseWebhook(string $payload, string $signature, PaymentAccount $account): GatewayEvent;
+
+    /**
+     * Refund a succeeded payment (host-initiated). Implementations perform the
+     * external call; the domain applies the paid → refunded transition itself.
+     */
+    public function refund(Order $order, Payment $payment, ?PaymentAccount $account): void;
 }

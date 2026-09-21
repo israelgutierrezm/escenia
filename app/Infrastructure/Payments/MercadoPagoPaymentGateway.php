@@ -8,6 +8,7 @@ use App\Domain\Commerce\Contracts\PaymentGateway;
 use App\Domain\Commerce\Enums\PaymentStatus;
 use App\Domain\Commerce\Exceptions\WebhookVerificationException;
 use App\Domain\Commerce\Models\Order;
+use App\Domain\Commerce\Models\Payment;
 use App\Domain\Commerce\Models\PaymentAccount;
 use App\Domain\Commerce\ValueObjects\GatewayEvent;
 use App\Domain\Commerce\ValueObjects\PaymentIntentResult;
@@ -77,6 +78,15 @@ final class MercadoPagoPaymentGateway implements PaymentGateway
         };
 
         return new GatewayEvent((string) $payment->json('external_reference'), $status);
+    }
+
+    public function refund(Order $order, Payment $payment, ?PaymentAccount $account): void
+    {
+        // Stub: MP's refund needs the MP payment id (resolved via webhook), not
+        // the external_reference we store; confirm before production (TD-019).
+        Http::withToken($this->accessToken($account))
+            ->post(self::API.'/v1/payments/'.$payment->gateway_reference.'/refunds', [])
+            ->throw();
     }
 
     private function verifySignature(string $payload, string $signature, string $secret): void

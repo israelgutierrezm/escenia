@@ -309,6 +309,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('events/{event}/commerce/tickets', [HostTicketController::class, 'index']);
             Route::post('events/{event}/commerce/tickets', [HostTicketController::class, 'store']);
             Route::get('events/{event}/commerce/orders', [HostOrderController::class, 'index']);
+            Route::post('events/{event}/commerce/orders/{order}/refund', [HostOrderController::class, 'refund']);
             Route::get('events/{event}/commerce/ctas', [HostCtaController::class, 'index']);
             Route::post('events/{event}/commerce/ctas', [HostCtaController::class, 'store']);
             Route::get('events/{event}/commerce/revenue', [CommerceReportController::class, 'revenue']);

@@ -27,13 +27,14 @@ final class ConfirmPaymentAction
 {
     public function __construct(
         private readonly AuditLogger $audit,
+        private readonly RefundOrderAction $refunds,
     ) {}
 
     public function execute(Order $order, Payment $payment, GatewayEvent $event): Order
     {
         return match ($event->status) {
             PaymentStatus::Succeeded => $this->markPaid($order, $payment),
-            PaymentStatus::Refunded => $this->markRefunded($order, $payment),
+            PaymentStatus::Refunded => $this->refunds->execute($order, $payment),
             default => $this->markFailed($order, $payment),
         };
     }
@@ -73,40 +74,6 @@ final class ConfirmPaymentAction
             $order->refresh();
 
             $this->audit->log('commerce.order.paid', tenant: $order->tenant, auditable: $order);
-
-            return $order;
-        });
-    }
-
-    private function markRefunded(Order $order, Payment $payment): Order
-    {
-        if ($order->status === OrderStatus::Refunded) {
-            return $order; // idempotent replay
-        }
-
-        if (! $order->status->canTransitionTo(OrderStatus::Refunded)) {
-            throw new InvalidOrderTransitionException($order->status, OrderStatus::Refunded);
-        }
-
-        return DB::transaction(function () use ($order, $payment): Order {
-            $applied = Order::query()
-                ->whereKey($order->getKey())
-                ->where('status', OrderStatus::Paid->value)
-                ->update(['status' => OrderStatus::Refunded->value, 'refunded_at' => now()]);
-
-            if ($applied === 0) {
-                throw new OrderTransitionConflictException(OrderStatus::Paid, OrderStatus::Refunded);
-            }
-
-            $payment->forceFill(['status' => PaymentStatus::Refunded])->save();
-
-            foreach ($order->items as $item) {
-                Ticket::query()->whereKey($item->ticket_id)->decrement('sold_count', $item->quantity);
-            }
-
-            $order->refresh();
-
-            $this->audit->log('commerce.order.refunded', tenant: $order->tenant, auditable: $order);
 
             return $order;
         });

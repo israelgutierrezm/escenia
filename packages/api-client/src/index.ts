@@ -378,6 +378,8 @@ export function createApiClient(options: ApiClientOptions = {}) {
     ) => request<ApiResource<Ticket>>('POST', `/events/${eventId}/commerce/tickets`, data),
     orders: (eventId: string) =>
       request<ApiCollection<Order>>('GET', `/events/${eventId}/commerce/orders`),
+    refundOrder: (eventId: string, orderId: string) =>
+      request<ApiResource<Order>>('POST', `/events/${eventId}/commerce/orders/${orderId}/refund`),
     ctas: (eventId: string) =>
       request<ApiCollection<Cta>>('GET', `/events/${eventId}/commerce/ctas`),
     createCta: (
