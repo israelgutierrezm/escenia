@@ -24,6 +24,7 @@ class CheckoutRequest extends FormRequest
             'items' => ['required', 'array', 'min:1', 'max:20'],
             'items.*.ticket' => ['required', 'string'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100'],
+            'coupon_code' => ['nullable', 'string', 'max:64'],
         ];
     }
 }

@@ -10,6 +10,7 @@ use App\Domain\Agenda\Exceptions\SessionFullException;
 use App\Domain\Broadcasting\Exceptions\BroadcastTransitionConflictException;
 use App\Domain\Broadcasting\Exceptions\InvalidBroadcastTransitionException;
 use App\Domain\Commerce\Exceptions\CheckoutUnavailableException;
+use App\Domain\Commerce\Exceptions\CouponNotApplicableException;
 use App\Domain\Commerce\Exceptions\InvalidOrderTransitionException;
 use App\Domain\Commerce\Exceptions\OrderTransitionConflictException;
 use App\Domain\Commerce\Exceptions\WebhookVerificationException;
@@ -70,6 +71,7 @@ final class ApiExceptionMapper
             $e instanceof PollNotOpenException => [422, 'poll_not_open', $e->getMessage(), null],
             $e instanceof AlreadyVotedException => [409, 'already_voted', $e->getMessage(), null],
             $e instanceof CheckoutUnavailableException => [422, 'checkout_unavailable', $e->getMessage(), null],
+            $e instanceof CouponNotApplicableException => [422, 'coupon_not_applicable', $e->getMessage(), null],
             $e instanceof InvalidOrderTransitionException => [422, 'invalid_order_transition', $e->getMessage(), null],
             $e instanceof OrderTransitionConflictException => [409, 'order_conflict', $e->getMessage(), null],
             $e instanceof WebhookVerificationException => [403, 'webhook_verification_failed', $e->getMessage(), null],

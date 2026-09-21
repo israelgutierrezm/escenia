@@ -515,11 +515,29 @@ export interface Order {
   status: OrderStatus
   buyer_name: string
   buyer_email: string
+  subtotal?: Money
+  discount?: Money
   total: Money
+  coupon_code?: string | null
   gateway: string
   paid_at: string | null
   created_at: string | null
   items?: OrderItem[]
+}
+
+export type DiscountType = 'percent' | 'fixed'
+
+export interface Coupon {
+  id: string
+  code: string
+  discount_type: DiscountType
+  discount_value: number
+  max_redemptions: number | null
+  redeemed_count: number
+  starts_at: string | null
+  ends_at: string | null
+  is_active: boolean
+  created_at: string | null
 }
 
 /** Returned once at checkout — how the client completes payment. */

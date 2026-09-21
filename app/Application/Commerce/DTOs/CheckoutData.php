@@ -13,6 +13,7 @@ final class CheckoutData
         public readonly string $buyerName,
         public readonly string $buyerEmail,
         public readonly array $items,
+        public readonly ?string $couponCode = null,
     ) {}
 
     /**
@@ -29,10 +30,13 @@ final class CheckoutData
             is_array($data['items'] ?? null) ? $data['items'] : [],
         ));
 
+        $coupon = $data['coupon_code'] ?? null;
+
         return new self(
             buyerName: (string) $data['buyer_name'],
             buyerEmail: (string) $data['buyer_email'],
             items: $items,
+            couponCode: is_string($coupon) && trim($coupon) !== '' ? trim($coupon) : null,
         );
     }
 }

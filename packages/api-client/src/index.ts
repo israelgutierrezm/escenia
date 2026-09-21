@@ -41,7 +41,9 @@ import type {
   EngagementReport,
   ChatMessage,
   Connection,
+  Coupon,
   DirectoryPerson,
+  DiscountType,
   Meeting,
   EventCapability,
   EventModel,
@@ -380,6 +382,21 @@ export function createApiClient(options: ApiClientOptions = {}) {
       request<ApiCollection<Order>>('GET', `/events/${eventId}/commerce/orders`),
     refundOrder: (eventId: string, orderId: string) =>
       request<ApiResource<Order>>('POST', `/events/${eventId}/commerce/orders/${orderId}/refund`),
+    coupons: (eventId: string) =>
+      request<ApiCollection<Coupon>>('GET', `/events/${eventId}/commerce/coupons`),
+    createCoupon: (
+      eventId: string,
+      data: {
+        code: string
+        discount_type: DiscountType
+        discount_value: number
+        max_redemptions?: number | null
+        starts_at?: string | null
+        ends_at?: string | null
+      },
+    ) => request<ApiResource<Coupon>>('POST', `/events/${eventId}/commerce/coupons`, data),
+    deactivateCoupon: (eventId: string, couponId: string) =>
+      request<ApiResource<Coupon>>('POST', `/events/${eventId}/commerce/coupons/${couponId}/deactivate`),
     ctas: (eventId: string) =>
       request<ApiCollection<Cta>>('GET', `/events/${eventId}/commerce/ctas`),
     createCta: (

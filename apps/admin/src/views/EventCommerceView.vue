@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { AppButton } from '@escenia/ui'
 import { ApiError } from '@escenia/api-client'
-import type { Cta, Money, Order, OrderStatus, RevenueReport, Ticket } from '@escenia/types'
+import type { Coupon, Cta, DiscountType, Money, Order, OrderStatus, RevenueReport, Ticket } from '@escenia/types'
 
 import { fecha } from '@/lib/eventLabels'
 import { api } from '@/lib/api'
@@ -15,6 +15,7 @@ const tickets = ref<Ticket[]>([])
 const orders = ref<Order[]>([])
 const revenue = ref<RevenueReport | null>(null)
 const ctas = ref<Cta[]>([])
+const coupons = ref<Coupon[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 
@@ -52,11 +53,18 @@ async function load(): Promise<void> {
   loading.value = true
   error.value = null
   try {
-    const [t, o, r, c] = await Promise.all([api.tickets(id), api.orders(id), api.revenue(id), api.ctas(id)])
+    const [t, o, r, c, cp] = await Promise.all([
+      api.tickets(id),
+      api.orders(id),
+      api.revenue(id),
+      api.ctas(id),
+      api.coupons(id),
+    ])
     tickets.value = t.data
     orders.value = o.data
     revenue.value = r.data
     ctas.value = c.data
+    coupons.value = cp.data
   } catch (e) {
     error.value = message(e)
   } finally {
@@ -79,6 +87,43 @@ async function reembolsar(o: Order): Promise<void> {
     error.value = message(e)
   } finally {
     reembolsando.value = null
+  }
+}
+
+const creandoCupon = ref(false)
+const guardandoCupon = ref(false)
+const cuponForm = ref({ code: '', discount_type: 'percent' as DiscountType, discount_value: 10, max_redemptions: '' })
+
+async function crearCupon(): Promise<void> {
+  if (cuponForm.value.code.trim() === '') return
+  guardandoCupon.value = true
+  error.value = null
+  try {
+    await api.createCoupon(id, {
+      code: cuponForm.value.code.trim(),
+      discount_type: cuponForm.value.discount_type,
+      discount_value: cuponForm.value.discount_value,
+      max_redemptions: cuponForm.value.max_redemptions === '' ? null : Number(cuponForm.value.max_redemptions),
+    })
+    cuponForm.value = { code: '', discount_type: 'percent', discount_value: 10, max_redemptions: '' }
+    creandoCupon.value = false
+    coupons.value = (await api.coupons(id)).data
+  } catch (e) {
+    error.value = message(e)
+  } finally {
+    guardandoCupon.value = false
+  }
+}
+
+async function desactivarCupon(c: Coupon): Promise<void> {
+  if (!confirm(`¿Desactivar el cupón ${c.code}?`)) return
+  error.value = null
+  try {
+    const actualizado = (await api.deactivateCoupon(id, c.id)).data
+    const i = coupons.value.findIndex((x) => x.id === c.id)
+    if (i !== -1) coupons.value[i] = actualizado
+  } catch (e) {
+    error.value = message(e)
   }
 }
 
@@ -254,6 +299,48 @@ onMounted(load)
         </div>
       </div>
 
+      <!-- Cupones -->
+      <div class="panel stack">
+        <div class="actions" style="justify-content: space-between">
+          <h2 style="margin: 0">Cupones <span class="muted">({{ coupons.length }})</span></h2>
+          <AppButton @click="creandoCupon = !creandoCupon">{{ creandoCupon ? 'Cerrar' : '+ Nuevo cupón' }}</AppButton>
+        </div>
+        <p class="muted small">Códigos de descuento que los compradores aplican al pagar.</p>
+
+        <form v-if="creandoCupon" class="cupon-form" @submit.prevent="crearCupon">
+          <label class="field"><span>Código</span><input v-model="cuponForm.code" class="control" placeholder="EJ: VERANO20" required /></label>
+          <label class="field"><span>Tipo</span>
+            <select v-model="cuponForm.discount_type" class="control">
+              <option value="percent">Porcentaje (%)</option>
+              <option value="fixed">Monto fijo (centavos)</option>
+            </select>
+          </label>
+          <label class="field"><span>Valor</span><input v-model.number="cuponForm.discount_value" type="number" min="1" class="control" required /></label>
+          <label class="field"><span>Máx. usos</span><input v-model="cuponForm.max_redemptions" type="number" min="1" class="control" placeholder="Ilimitado" /></label>
+          <AppButton type="submit" :disabled="guardandoCupon || cuponForm.code.trim() === ''">{{ guardandoCupon ? 'Guardando…' : 'Crear cupón' }}</AppButton>
+        </form>
+
+        <p v-if="coupons.length === 0" class="empty">Aún no hay cupones.</p>
+        <div v-else class="table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr><th>Código</th><th>Descuento</th><th>Usos</th><th>Estado</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="c in coupons" :key="c.id">
+                <td><strong>{{ c.code }}</strong></td>
+                <td>{{ c.discount_type === 'percent' ? c.discount_value + '%' : dineroMinor(c.discount_value, revenue?.currency ?? 'MXN') }}</td>
+                <td class="muted">{{ c.redeemed_count }}<template v-if="c.max_redemptions"> / {{ c.max_redemptions }}</template></td>
+                <td><span class="chip" :class="c.is_active ? 'chip--primary' : ''">{{ c.is_active ? 'Activo' : 'Inactivo' }}</span></td>
+                <td class="col-acc">
+                  <button v-if="c.is_active" type="button" class="link-danger" @click="desactivarCupon(c)">Desactivar</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Llamadas a la acción (CTAs) -->
       <div class="panel stack">
         <div class="actions" style="justify-content: space-between">
@@ -306,6 +393,17 @@ onMounted(load)
 .col-acc {
   text-align: right;
   white-space: nowrap;
+}
+
+.cupon-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--escenia-space-3);
+}
+
+.cupon-form .field {
+  flex: 1 1 130px;
 }
 
 .link-danger {

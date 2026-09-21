@@ -9,6 +9,7 @@ use App\Domain\Commerce\Enums\OrderStatus;
 use App\Domain\Commerce\Enums\PaymentStatus;
 use App\Domain\Commerce\Exceptions\InvalidOrderTransitionException;
 use App\Domain\Commerce\Exceptions\OrderTransitionConflictException;
+use App\Domain\Commerce\Models\Coupon;
 use App\Domain\Commerce\Models\Order;
 use App\Domain\Commerce\Models\Payment;
 use App\Domain\Commerce\Models\Ticket;
@@ -63,6 +64,10 @@ final class ConfirmPaymentAction
 
             foreach ($order->items as $item) {
                 Ticket::query()->whereKey($item->ticket_id)->increment('sold_count', $item->quantity);
+            }
+
+            if ($order->coupon_id !== null) {
+                Coupon::query()->whereKey($order->coupon_id)->increment('redeemed_count');
             }
 
             OutboxEvent::query()->create([

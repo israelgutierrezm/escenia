@@ -32,7 +32,9 @@ use Illuminate\Support\Carbon;
  * @property OrderStatus $status
  * @property string $currency
  * @property int $subtotal_minor
+ * @property int $discount_minor
  * @property int $total_minor
+ * @property int|null $coupon_id
  * @property string $gateway
  * @property Carbon|null $paid_at
  * @property Carbon|null $canceled_at
@@ -59,7 +61,9 @@ class Order extends Model
         'status',
         'currency',
         'subtotal_minor',
+        'discount_minor',
         'total_minor',
+        'coupon_id',
         'gateway',
         'paid_at',
         'canceled_at',
@@ -86,6 +90,16 @@ class Order extends Model
     public function total(): Money
     {
         return Money::of($this->total_minor, $this->currency);
+    }
+
+    public function subtotal(): Money
+    {
+        return Money::of($this->subtotal_minor, $this->currency);
+    }
+
+    public function discount(): Money
+    {
+        return Money::of($this->discount_minor, $this->currency);
     }
 
     /**
@@ -126,5 +140,13 @@ class Order extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * @return BelongsTo<Coupon, $this>
+     */
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
     }
 }

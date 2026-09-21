@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\V1\Broadcasting\BroadcastController;
 use App\Http\Controllers\Api\V1\Broadcasting\StreamDestinationController;
 use App\Http\Controllers\Api\V1\Commerce\Attendee\CtaController as AttendeeCtaController;
 use App\Http\Controllers\Api\V1\Commerce\Host\CommerceReportController;
+use App\Http\Controllers\Api\V1\Commerce\Host\CouponController as HostCouponController;
 use App\Http\Controllers\Api\V1\Commerce\Host\CtaController as HostCtaController;
 use App\Http\Controllers\Api\V1\Commerce\Host\OrderController as HostOrderController;
 use App\Http\Controllers\Api\V1\Commerce\Host\PaymentAccountController;
@@ -310,6 +311,9 @@ Route::prefix('v1')->group(function (): void {
             Route::post('events/{event}/commerce/tickets', [HostTicketController::class, 'store']);
             Route::get('events/{event}/commerce/orders', [HostOrderController::class, 'index']);
             Route::post('events/{event}/commerce/orders/{order}/refund', [HostOrderController::class, 'refund']);
+            Route::get('events/{event}/commerce/coupons', [HostCouponController::class, 'index']);
+            Route::post('events/{event}/commerce/coupons', [HostCouponController::class, 'store']);
+            Route::post('events/{event}/commerce/coupons/{coupon}/deactivate', [HostCouponController::class, 'deactivate']);
             Route::get('events/{event}/commerce/ctas', [HostCtaController::class, 'index']);
             Route::post('events/{event}/commerce/ctas', [HostCtaController::class, 'store']);
             Route::get('events/{event}/commerce/revenue', [CommerceReportController::class, 'revenue']);

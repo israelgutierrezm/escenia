@@ -11,6 +11,8 @@ use App\Domain\Commerce\Enums\OrderStatus;
 use App\Domain\Commerce\Enums\PaymentGatewayName;
 use App\Domain\Commerce\Enums\PaymentStatus;
 use App\Domain\Commerce\Exceptions\CheckoutUnavailableException;
+use App\Domain\Commerce\Exceptions\CouponNotApplicableException;
+use App\Domain\Commerce\Models\Coupon;
 use App\Domain\Commerce\Models\Order;
 use App\Domain\Commerce\Models\OrderItem;
 use App\Domain\Commerce\Models\Payment;
@@ -59,13 +61,17 @@ final class StartCheckoutAction
         return $this->tenantContext->runFor($event->tenant, function () use ($event, $data): array {
             [$lines, $subtotal, $currency] = $this->resolveLines($event, $data);
 
+            $coupon = $this->resolveCoupon($event, $data->couponCode);
+            $discount = $coupon?->discountFor($subtotal) ?? 0;
+            $total = $subtotal - $discount;
+
             $account = PaymentAccount::query()->where('is_active', true)->first();
             $gatewayName = $account !== null
                 ? $account->gateway
                 : PaymentGatewayName::from((string) config('payments.default', 'fake'));
 
             /** @var array{order: Order, attendee: Attendee, token: string} $created */
-            $created = DB::transaction(function () use ($event, $data, $lines, $subtotal, $currency, $gatewayName): array {
+            $created = DB::transaction(function () use ($event, $data, $lines, $subtotal, $total, $discount, $coupon, $currency, $gatewayName): array {
                 $issued = $this->issueAttendee->execute($event, $data->buyerName, $data->buyerEmail);
 
                 $order = Order::query()->create([
@@ -77,7 +83,9 @@ final class StartCheckoutAction
                     'status' => OrderStatus::Pending,
                     'currency' => $currency,
                     'subtotal_minor' => $subtotal,
-                    'total_minor' => $subtotal,
+                    'discount_minor' => $discount,
+                    'total_minor' => $total,
+                    'coupon_id' => $coupon?->getKey(),
                     'gateway' => $gatewayName->value,
                 ]);
 
@@ -106,7 +114,7 @@ final class StartCheckoutAction
                 'gateway' => $gatewayName->value,
                 'gateway_reference' => $intent->reference,
                 'status' => PaymentStatus::Pending,
-                'amount_minor' => $subtotal,
+                'amount_minor' => $total,
                 'currency' => $currency,
             ]);
 
@@ -117,6 +125,28 @@ final class StartCheckoutAction
                 'intent' => $intent,
             ];
         });
+    }
+
+    /**
+     * Resolve and validate the coupon code, if any. Codes are matched
+     * case-insensitively (stored upper-cased).
+     */
+    private function resolveCoupon(Event $event, ?string $code): ?Coupon
+    {
+        if ($code === null) {
+            return null;
+        }
+
+        $coupon = Coupon::query()
+            ->where('event_id', $event->getKey())
+            ->where('code', strtoupper($code))
+            ->first();
+
+        if ($coupon === null || ! $coupon->isRedeemable()) {
+            throw new CouponNotApplicableException;
+        }
+
+        return $coupon;
     }
 
     /**
