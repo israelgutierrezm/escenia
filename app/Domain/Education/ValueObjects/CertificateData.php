@@ -18,5 +18,6 @@ final class CertificateData
         public readonly string $issuedOnLabel,
         public readonly string $accentColor,
         public readonly ?string $verifyUrl,
+        public readonly ?string $logoDataUri = null,
     ) {}
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domain\Education\Models\Certificate;
 use App\Domain\Registration\Models\Attendee;
+use App\Domain\Shared\Contracts\QrCodeGenerator;
 
 it('renders a certificate as a downloadable PDF by code', function () {
     [, $tenant, $event] = makeWebinarHost();
@@ -28,4 +29,11 @@ it('renders a certificate as a downloadable PDF by code', function () {
 
 it('returns 404 for an unknown certificate code', function () {
     $this->get('/api/v1/certificates/NOPE/pdf')->assertNotFound();
+});
+
+it('generates the verification QR as a PNG data URI', function () {
+    $qr = app(QrCodeGenerator::class)
+        ->dataUri('https://app.escenia.com/verificar/ABC123', 160);
+
+    expect($qr)->toStartWith('data:image/png;base64,');
 });

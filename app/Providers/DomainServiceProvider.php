@@ -12,6 +12,7 @@ use App\Domain\FeatureManagement\Contracts\FeatureFlagResolver;
 use App\Domain\Notifications\Contracts\Notifier;
 use App\Domain\Production\Contracts\SceneDefinitionMigrator;
 use App\Domain\Registration\Context\AttendeeContext;
+use App\Domain\Shared\Contracts\QrCodeGenerator;
 use App\Domain\Studio\Models\Studio;
 use App\Domain\Tenancy\Context\TenantContext;
 use App\Domain\Workspaces\Models\Workspace;
@@ -25,6 +26,7 @@ use App\Infrastructure\FeatureManagement\DatabaseFeatureFlagResolver;
 use App\Infrastructure\Logging\RequestContext;
 use App\Infrastructure\Notifications\LogNotifier;
 use App\Infrastructure\Production\DefaultSceneDefinitionMigrator;
+use App\Infrastructure\Shared\EndroidQrCodeGenerator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -44,6 +46,7 @@ class DomainServiceProvider extends ServiceProvider
         EntitlementResolver::class => PlanEntitlementResolver::class,
         FeatureFlagResolver::class => DatabaseFeatureFlagResolver::class,
         Notifier::class => LogNotifier::class,
+        QrCodeGenerator::class => EndroidQrCodeGenerator::class,
         SceneDefinitionMigrator::class => DefaultSceneDefinitionMigrator::class,
     ];
 
