@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Networking\Actions;
 
+use App\Application\Networking\Events\NetworkingNotification;
 use App\Domain\Networking\Enums\MeetingStatus;
 use App\Domain\Networking\Exceptions\InvalidMeetingTransitionException;
 use App\Domain\Networking\Models\Meeting;
@@ -37,6 +38,18 @@ final class CancelMeetingAction
             throw new InvalidMeetingTransitionException($from, MeetingStatus::Canceled);
         }
 
-        return $meeting->refresh();
+        $meeting->refresh()->loadMissing(['proposer', 'invitee']);
+
+        // Notify the other party (the one who did not cancel).
+        $other = $meeting->proposer_id === $actor->getKey() ? $meeting->invitee : $meeting->proposer;
+        if ($other !== null) {
+            event(new NetworkingNotification(
+                $other->ulid,
+                'meeting.canceled',
+                "{$actor->name} canceló la reunión 1:1.",
+            ));
+        }
+
+        return $meeting;
     }
 }

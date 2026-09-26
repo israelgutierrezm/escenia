@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Networking\Actions;
 
+use App\Application\Networking\Events\NetworkingNotification;
 use App\Domain\Networking\Enums\ConnectionStatus;
 use App\Domain\Networking\Exceptions\ConnectionAlreadyExistsException;
 use App\Domain\Networking\Exceptions\NetworkingUnavailableException;
@@ -56,6 +57,12 @@ final class SendConnectionRequestAction
                 'responded_at' => null,
             ],
         );
+
+        event(new NetworkingNotification(
+            $addressee->ulid,
+            'connection.requested',
+            "{$requester->name} quiere conectar contigo.",
+        ));
 
         return $connection;
     }

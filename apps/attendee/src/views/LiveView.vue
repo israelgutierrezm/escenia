@@ -15,7 +15,7 @@ import ResourcesPanel from '@/components/live/ResourcesPanel.vue'
 import AssessmentPanel from '@/components/live/AssessmentPanel.vue'
 import RankingPanel from '@/components/live/RankingPanel.vue'
 import { api } from '@/lib/attendeeApi'
-import { useViewerCount } from '@/composables/useRealtime'
+import { usePrivateChannel, useViewerCount } from '@/composables/useRealtime'
 import { useAttendeeStore } from '@/stores/attendee'
 
 const route = useRoute()
@@ -25,6 +25,32 @@ const eventId = route.params.eventId as string
 
 // Presencia: al unirse al canal, este asistente cuenta como espectador en vivo.
 const { enLinea } = useViewerCount(eventId)
+
+// Avisos de networking en vivo (canal privado del asistente).
+interface Aviso {
+  id: number
+  message: string
+}
+const avisos = ref<Aviso[]>([])
+let avisoSeq = 0
+
+function mostrarAviso(mensaje: string): void {
+  const id = ++avisoSeq
+  avisos.value.push({ id, message: mensaje })
+  setTimeout(() => {
+    avisos.value = avisos.value.filter((a) => a.id !== id)
+  }, 6000)
+}
+
+const miId = store.attendee?.id
+if (typeof miId === 'string' && miId !== '') {
+  usePrivateChannel(`attendee.${miId}`, {
+    'networking.notification': (payload) => {
+      const msg = (payload as { message?: string }).message
+      if (typeof msg === 'string') mostrarAviso(msg)
+    },
+  })
+}
 
 type Tab = 'envivo' | 'preguntas' | 'encuestas' | 'agenda' | 'expo' | 'personas' | 'recursos' | 'evaluacion' | 'ranking'
 const tab = ref<Tab>('envivo')
@@ -87,6 +113,10 @@ onBeforeUnmount(() => {
   <div class="live">
     <a href="#contenido" class="skip-link">Saltar al contenido</a>
 
+    <div class="avisos" aria-live="polite">
+      <div v-for="a in avisos" :key="a.id" class="aviso">{{ a.message }}</div>
+    </div>
+
     <header class="bar">
       <div class="bar__title">
         <span class="live-dot" aria-hidden="true"></span>
@@ -119,6 +149,28 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.avisos {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 320px;
+}
+
+.aviso {
+  padding: 12px 14px;
+  font-size: 0.85rem;
+  color: var(--escenia-color-text);
+  background: color-mix(in srgb, var(--escenia-color-primary) 16%, var(--escenia-color-surface-solid, #0b1f33));
+  border: 1px solid color-mix(in srgb, var(--escenia-color-primary) 45%, transparent);
+  border-radius: var(--escenia-radius-sm);
+  box-shadow: 0 8px 24px rgba(4, 16, 29, 0.4);
+}
+
+
 .live {
   min-height: 100dvh;
   display: flex;

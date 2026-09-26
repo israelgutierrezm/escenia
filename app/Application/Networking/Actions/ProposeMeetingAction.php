@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Networking\Actions;
 
 use App\Application\Networking\DTOs\ProposeMeetingData;
+use App\Application\Networking\Events\NetworkingNotification;
 use App\Domain\Networking\Enums\MeetingStatus;
 use App\Domain\Networking\Exceptions\NetworkingUnavailableException;
 use App\Domain\Networking\Exceptions\SelfNetworkingException;
@@ -38,6 +39,12 @@ final class ProposeMeetingAction
             'duration_minutes' => $data->durationMinutes,
             'topic' => $data->topic,
         ]);
+
+        event(new NetworkingNotification(
+            $invitee->ulid,
+            'meeting.proposed',
+            "{$proposer->name} te propuso una reunión 1:1.",
+        ));
 
         return $meeting;
     }

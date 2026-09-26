@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Application\Networking\Events\NetworkingNotification;
 use App\Domain\Registration\Models\Attendee;
+use Illuminate\Support\Facades\Event;
 
 function attendeeUlid(string $email): string
 {
@@ -141,6 +143,25 @@ it('rejects a connection request to an attendee who has not opted in', function 
         ->postJson('/api/v1/attend/networking/connections', ['attendee_id' => $bobUlid])
         ->assertStatus(422)
         ->assertJsonPath('error_code', 'networking_unavailable');
+});
+
+it('notifies the addressee when a connection is requested', function () {
+    [, , $event] = makeWebinarHost();
+    $alice = registerAttendee($event->ulid, 'Alice', 'alice@x.test');
+    $bob = registerAttendee($event->ulid, 'Bob', 'bob@x.test');
+    optIn($bob);
+    $bobUlid = attendeeUlid('bob@x.test');
+
+    Event::fake([NetworkingNotification::class]);
+
+    $this->withHeaders(['X-Attendee-Token' => $alice])
+        ->postJson('/api/v1/attend/networking/connections', ['attendee_id' => $bobUlid])
+        ->assertCreated();
+
+    Event::assertDispatched(
+        NetworkingNotification::class,
+        fn (NetworkingNotification $e): bool => $e->recipientUlid === $bobUlid && $e->kind === 'connection.requested',
+    );
 });
 
 it('toggles the networking opt-in preference', function () {

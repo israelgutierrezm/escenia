@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Domain\Registration\Models\Attendee;
 
 it('signs a valid presence auth for the attendee\'s own event', function () {
     [, , $event] = makeWebinarHost();
@@ -45,4 +46,33 @@ it('requires an attendee token for presence auth', function () {
         'socket_id' => '1.1',
         'channel_name' => "presence-viewers.{$event->ulid}",
     ])->assertUnauthorized();
+});
+
+it('signs a private auth for the attendee\'s own notification channel', function () {
+    [, , $event] = makeWebinarHost();
+    $token = registerAttendee($event->ulid, 'Ava', 'ava@x.test');
+    $ulid = Attendee::withoutGlobalScopes()->where('email', 'ava@x.test')->firstOrFail()->ulid;
+
+    $channel = "private-attendee.{$ulid}";
+    $res = $this->withHeaders(['X-Attendee-Token' => $token])
+        ->postJson('/api/v1/attend/broadcasting/auth', ['socket_id' => '1.1', 'channel_name' => $channel])
+        ->assertOk()
+        ->assertJsonStructure(['auth']);
+
+    /** @var array<string, mixed> $app */
+    $app = (array) config('reverb.apps.apps.0');
+    $expected = $app['key'].':'.hash_hmac('sha256', '1.1:'.$channel, (string) $app['secret']);
+    expect($res->json('auth'))->toBe($expected)
+        ->and($res->json('channel_data'))->toBeNull();
+});
+
+it('refuses a private auth for another attendee\'s channel', function () {
+    [, , $event] = makeWebinarHost();
+    $token = registerAttendee($event->ulid, 'Ava', 'ava@x.test');
+
+    $this->withHeaders(['X-Attendee-Token' => $token])
+        ->postJson('/api/v1/attend/broadcasting/auth', [
+            'socket_id' => '1.1',
+            'channel_name' => 'private-attendee.01SOMEONEELSEULIDXXXXXXXXX',
+        ])->assertStatus(403);
 });

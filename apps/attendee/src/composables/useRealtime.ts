@@ -23,6 +23,7 @@ interface PresenceChannel {
 }
 interface RealtimeEcho {
   channel(name: string): RealtimeChannel
+  private(name: string): RealtimeChannel
   join(name: string): PresenceChannel
   leaveChannel(name: string): void
   leave(name: string): void
@@ -79,6 +80,32 @@ export function useEventChannel(eventId: string, handlers: Handlers): void {
       channel.listen(`.${nombre}`, cb)
     }
     limpiar = () => echo.leaveChannel(`event.${eventId}`)
+  })
+
+  onBeforeUnmount(() => {
+    cancelado = true
+    limpiar?.()
+  })
+}
+
+/**
+ * Subscribe to a PRIVATE channel (authorized via the attendee token) and bind
+ * broadcast handlers by their `broadcastAs` name. Used for per-attendee
+ * notifications (`attendee.{ulid}`). A no-op when realtime isn't configured.
+ */
+export function usePrivateChannel(name: string, handlers: Handlers): void {
+  if (!configurado()) return
+
+  let cancelado = false
+  let limpiar: (() => void) | null = null
+
+  void obtenerEcho().then((echo) => {
+    if (echo === null || cancelado) return
+    const channel = echo.private(name)
+    for (const [nombre, cb] of Object.entries(handlers)) {
+      channel.listen(`.${nombre}`, cb)
+    }
+    limpiar = () => echo.leave(name)
   })
 
   onBeforeUnmount(() => {

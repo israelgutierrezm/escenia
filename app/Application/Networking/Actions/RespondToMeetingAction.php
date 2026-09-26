@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Networking\Actions;
 
+use App\Application\Networking\Events\NetworkingNotification;
 use App\Domain\Networking\Enums\MeetingStatus;
 use App\Domain\Networking\Exceptions\InvalidMeetingTransitionException;
 use App\Domain\Networking\Models\Meeting;
@@ -32,6 +33,20 @@ final class RespondToMeetingAction
             throw new InvalidMeetingTransitionException($from, $target);
         }
 
-        return $meeting->refresh();
+        $meeting->refresh()->loadMissing(['proposer', 'invitee']);
+
+        $proposerUlid = $meeting->proposer?->ulid;
+        if ($proposerUlid !== null) {
+            $actorName = $meeting->invitee->name;
+            event(new NetworkingNotification(
+                $proposerUlid,
+                $accept ? 'meeting.accepted' : 'meeting.declined',
+                $accept
+                    ? "{$actorName} confirmó tu reunión 1:1."
+                    : "{$actorName} rechazó tu reunión 1:1.",
+            ));
+        }
+
+        return $meeting;
     }
 }

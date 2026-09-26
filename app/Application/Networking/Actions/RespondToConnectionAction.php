@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Networking\Actions;
 
+use App\Application\Networking\Events\NetworkingNotification;
 use App\Domain\Networking\Enums\ConnectionStatus;
 use App\Domain\Networking\Exceptions\InvalidConnectionTransitionException;
 use App\Domain\Networking\Models\Connection;
@@ -34,6 +35,20 @@ final class RespondToConnectionAction
             throw new InvalidConnectionTransitionException($from, $target);
         }
 
-        return $connection->refresh();
+        $connection->refresh()->loadMissing(['requester', 'addressee']);
+
+        $requesterUlid = $connection->requester?->ulid;
+        if ($requesterUlid !== null) {
+            $actorName = $connection->addressee->name;
+            event(new NetworkingNotification(
+                $requesterUlid,
+                $accept ? 'connection.accepted' : 'connection.declined',
+                $accept
+                    ? "{$actorName} aceptó tu solicitud de conexión."
+                    : "{$actorName} rechazó tu solicitud de conexión.",
+            ));
+        }
+
+        return $connection;
     }
 }
