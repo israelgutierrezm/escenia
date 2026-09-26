@@ -6,6 +6,7 @@ namespace App\Application\Networking\Actions;
 
 use App\Application\Networking\DTOs\ProposeMeetingData;
 use App\Domain\Networking\Enums\MeetingStatus;
+use App\Domain\Networking\Exceptions\NetworkingUnavailableException;
 use App\Domain\Networking\Exceptions\SelfNetworkingException;
 use App\Domain\Networking\Models\Meeting;
 use App\Domain\Registration\Models\Attendee;
@@ -20,6 +21,10 @@ final class ProposeMeetingAction
     {
         if ($proposer->getKey() === $invitee->getKey()) {
             throw new SelfNetworkingException;
+        }
+
+        if (! $invitee->networking_opt_in) {
+            throw new NetworkingUnavailableException;
         }
 
         /** @var Meeting $meeting */

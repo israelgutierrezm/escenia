@@ -727,6 +727,10 @@ export function createAttendeeClient(options: AttendeeClientOptions = {}) {
     gamification: () => request<ApiResource<AttendeeGamification>>('GET', '/attend/gamification'),
 
     // ---- Networking: connections + 1:1 meetings (token required) ----
+    networkingPreferences: () =>
+      request<ApiResource<{ opt_in: boolean }>>('GET', '/attend/networking/preferences'),
+    setNetworkingOptIn: (optIn: boolean) =>
+      request<ApiResource<{ opt_in: boolean }>>('PUT', '/attend/networking/preferences', { opt_in: optIn }),
     networkingDirectory: (q?: string) =>
       request<ApiCollection<DirectoryPerson>>(
         'GET',

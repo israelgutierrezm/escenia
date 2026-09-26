@@ -6,6 +6,7 @@ namespace App\Application\Networking\Actions;
 
 use App\Domain\Networking\Enums\ConnectionStatus;
 use App\Domain\Networking\Exceptions\ConnectionAlreadyExistsException;
+use App\Domain\Networking\Exceptions\NetworkingUnavailableException;
 use App\Domain\Networking\Exceptions\SelfNetworkingException;
 use App\Domain\Networking\Models\Connection;
 use App\Domain\Registration\Models\Attendee;
@@ -22,6 +23,10 @@ final class SendConnectionRequestAction
     {
         if ($requester->getKey() === $addressee->getKey()) {
             throw new SelfNetworkingException;
+        }
+
+        if (! $addressee->networking_opt_in) {
+            throw new NetworkingUnavailableException;
         }
 
         $live = Connection::query()

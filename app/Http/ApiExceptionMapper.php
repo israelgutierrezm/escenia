@@ -29,6 +29,7 @@ use App\Domain\Events\Exceptions\InvalidEventTransitionException;
 use App\Domain\Networking\Exceptions\ConnectionAlreadyExistsException;
 use App\Domain\Networking\Exceptions\InvalidConnectionTransitionException;
 use App\Domain\Networking\Exceptions\InvalidMeetingTransitionException;
+use App\Domain\Networking\Exceptions\NetworkingUnavailableException;
 use App\Domain\Networking\Exceptions\SelfNetworkingException;
 use App\Domain\Registration\Exceptions\RegistrationClosedException;
 use App\Domain\Studio\Exceptions\GuestLinkInvalidException;
@@ -83,6 +84,7 @@ final class ApiExceptionMapper
             $e instanceof ConnectionAlreadyExistsException => [409, 'connection_exists', $e->getMessage(), null],
             $e instanceof InvalidConnectionTransitionException => [422, 'invalid_connection_transition', $e->getMessage(), null],
             $e instanceof InvalidMeetingTransitionException => [422, 'invalid_meeting_transition', $e->getMessage(), null],
+            $e instanceof NetworkingUnavailableException => [422, 'networking_unavailable', $e->getMessage(), null],
             $e instanceof DomainVerificationFailedException => [422, 'domain_verification_failed', $e->getMessage(), null],
             $e instanceof SsoAuthenticationException => [401, 'sso_authentication_failed', $e->getMessage(), null],
             $e instanceof SystemRoleException => [422, 'system_role', $e->getMessage(), null],

@@ -31,6 +31,7 @@ class DirectoryController extends Controller
 
         $others = Attendee::query()
             ->where('event_id', $me->event_id)
+            ->where('networking_opt_in', true)
             ->whereKeyNot($me->getKey())
             ->when($query !== '', fn (Builder $q): Builder => $q->where('name', 'like', "%{$query}%"))
             ->orderBy('name')

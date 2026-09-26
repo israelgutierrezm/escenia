@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $registration_id
  * @property string $name
  * @property string|null $email
+ * @property bool $networking_opt_in
  * @property string $join_token_hash
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -45,6 +46,7 @@ class Attendee extends Model
         'registration_id',
         'name',
         'email',
+        'networking_opt_in',
         'join_token_hash',
     ];
 
@@ -54,6 +56,16 @@ class Attendee extends Model
     protected $hidden = [
         'join_token_hash',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'networking_opt_in' => 'boolean',
+        ];
+    }
 
     /**
      * @return BelongsTo<Event, $this>

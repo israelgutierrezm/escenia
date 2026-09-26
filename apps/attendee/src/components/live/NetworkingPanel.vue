@@ -24,6 +24,7 @@ const reuniones = ref<Meeting[]>([])
 const busqueda = ref('')
 const error = ref<string | null>(null)
 const busy = ref(false)
+const optIn = ref(false)
 
 // Propuesta de reunión.
 const paraId = ref('')
@@ -62,6 +63,15 @@ async function cargarConexiones(): Promise<void> {
 }
 async function cargarReuniones(): Promise<void> {
   reuniones.value = (await api.meetings()).data
+}
+async function cargarPreferencias(): Promise<void> {
+  optIn.value = (await api.networkingPreferences()).data.opt_in
+}
+
+function cambiarOptIn(valor: boolean): void {
+  run(async () => {
+    optIn.value = (await api.setNetworkingOptIn(valor)).data.opt_in
+  })
 }
 
 async function run(fn: () => Promise<void>): Promise<void> {
@@ -130,7 +140,7 @@ const estadoReunion: Record<string, string> = {
 
 onMounted(() => {
   void run(async () => {
-    await Promise.all([cargarPersonas(), cargarConexiones(), cargarReuniones()])
+    await Promise.all([cargarPersonas(), cargarConexiones(), cargarReuniones(), cargarPreferencias()])
   })
 })
 </script>
@@ -153,6 +163,16 @@ onMounted(() => {
     </div>
 
     <p v-if="error" class="error-text" role="alert">{{ error }}</p>
+
+    <div class="optin" :class="{ 'is-on': optIn }">
+      <div class="optin__text">
+        <strong>{{ optIn ? 'Tu perfil de networking está activo' : 'Activa tu perfil de networking' }}</strong>
+        <span class="muted small">{{ optIn ? 'Apareces en el directorio y otros pueden invitarte a conectar o reunirse.' : 'Para aparecer en el directorio y recibir solicitudes de conexión y reuniones.' }}</span>
+      </div>
+      <button type="button" class="mini" :class="{ 'mini--ghost': optIn }" :disabled="busy" @click="cambiarOptIn(!optIn)">
+        {{ optIn ? 'Desactivar' : 'Activar' }}
+      </button>
+    </div>
 
     <!-- Personas -->
     <div v-if="sub === 'personas'" class="net__body">
@@ -238,6 +258,30 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.optin {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--escenia-space-3);
+  padding: 12px 14px;
+  margin-bottom: var(--escenia-space-3);
+  border: 1px solid color-mix(in srgb, var(--escenia-color-primary) 30%, transparent);
+  border-radius: var(--escenia-radius-sm);
+  background: color-mix(in srgb, var(--escenia-color-primary) 8%, transparent);
+}
+
+.optin.is-on {
+  border-color: var(--escenia-color-border);
+  background: rgba(4, 16, 29, 0.3);
+}
+
+.optin__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .net__tabs {
   display: flex;
   gap: 6px;

@@ -75,6 +75,7 @@ use App\Http\Controllers\Api\V1\FeatureManagement\FeatureFlagController;
 use App\Http\Controllers\Api\V1\Networking\Attendee\ConnectionController as NetworkingConnectionController;
 use App\Http\Controllers\Api\V1\Networking\Attendee\DirectoryController as NetworkingDirectoryController;
 use App\Http\Controllers\Api\V1\Networking\Attendee\MeetingController as NetworkingMeetingController;
+use App\Http\Controllers\Api\V1\Networking\Attendee\PreferenceController as NetworkingPreferenceController;
 use App\Http\Controllers\Api\V1\Production\BrandKitController;
 use App\Http\Controllers\Api\V1\Production\ProductionMixerController;
 use App\Http\Controllers\Api\V1\Production\RunOfShowController;
@@ -164,6 +165,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('gamification', [AttendeeGamificationController::class, 'index']);
 
         // ---- Networking: connections + 1:1 meetings (TD-033) ----
+        Route::get('networking/preferences', [NetworkingPreferenceController::class, 'show']);
+        Route::put('networking/preferences', [NetworkingPreferenceController::class, 'update']);
         Route::get('networking/directory', [NetworkingDirectoryController::class, 'index']);
         Route::get('networking/connections', [NetworkingConnectionController::class, 'index']);
         Route::post('networking/connections', [NetworkingConnectionController::class, 'store']);
