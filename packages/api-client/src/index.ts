@@ -699,7 +699,12 @@ export function createAttendeeClient(options: AttendeeClientOptions = {}) {
     tickets: (eventId: string) => request<ApiCollection<Ticket>>('GET', `/events/${eventId}/tickets`),
     checkout: (
       eventId: string,
-      data: { buyer_name: string; buyer_email: string; items: Array<{ ticket: string; quantity: number }> },
+      data: {
+        buyer_name: string
+        buyer_email: string
+        items: Array<{ ticket: string; quantity: number }>
+        coupon_code?: string
+      },
     ) => request<ApiResource<CheckoutResult>>('POST', `/events/${eventId}/checkout`, data),
 
     // ---- Commerce: attendee CTAs (token required) ----

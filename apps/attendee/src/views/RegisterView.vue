@@ -89,6 +89,8 @@ onMounted(load)
         <div class="marca"><span class="marca__punto"></span><strong>escenia</strong></div>
         <h1>{{ eventTitle }}</h1>
 
+        <RouterLink :to="{ name: 'checkout', params: { eventId } }" class="comprar-link">¿Vas a comprar entradas? →</RouterLink>
+
         <template v-if="form.is_open">
           <p class="muted">Regístrate para entrar al evento en vivo.</p>
 
@@ -135,6 +137,18 @@ onMounted(load)
 </template>
 
 <style scoped>
+.comprar-link {
+  align-self: flex-start;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--escenia-color-primary);
+  text-decoration: none;
+}
+
+.comprar-link:hover {
+  text-decoration: underline;
+}
+
 .centro {
   min-height: 100dvh;
   display: grid;

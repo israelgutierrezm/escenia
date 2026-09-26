@@ -16,6 +16,11 @@ export const router = createRouter({
       component: () => import('@/views/RegisterView.vue'),
     },
     {
+      path: '/e/:eventId/entradas',
+      name: 'checkout',
+      component: () => import('@/views/CheckoutView.vue'),
+    },
+    {
       path: '/e/:eventId/vivo',
       name: 'live',
       component: () => import('@/views/LiveView.vue'),
@@ -52,6 +57,7 @@ router.beforeEach((to) => {
 
 const TITULOS: Record<string, string> = {
   home: 'Escenia',
+  checkout: 'Comprar entradas',
   register: 'Registro',
   live: 'En vivo',
   verify: 'Verificar certificado',
