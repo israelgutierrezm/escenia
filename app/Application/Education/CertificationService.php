@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Education;
 
+use App\Application\Education\Jobs\GenerateCertificatePdfJob;
 use App\Domain\Education\Models\Assessment;
 use App\Domain\Education\Models\AssessmentSubmission;
 use App\Domain\Education\Models\Certificate;
@@ -69,7 +70,7 @@ final class CertificationService
 
     public function issueFor(Event $event, Attendee $attendee): Certificate
     {
-        return Certificate::query()->firstOrCreate(
+        $certificate = Certificate::query()->firstOrCreate(
             ['event_id' => $event->getKey(), 'attendee_id' => $attendee->getKey()],
             [
                 'code' => $this->generateCode(),
@@ -77,6 +78,14 @@ final class CertificationService
                 'issued_at' => now(),
             ],
         );
+
+        // Pre-generate the PDF off the request thread (TD-031); download falls
+        // back to on-demand render until it lands.
+        if ($certificate->wasRecentlyCreated && (bool) config('education.pregenerate', true)) {
+            GenerateCertificatePdfJob::dispatch($certificate->getKey())->afterCommit();
+        }
+
+        return $certificate;
     }
 
     private function generateCode(): string

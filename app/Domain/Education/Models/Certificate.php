@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property string $code
  * @property string $recipient_name
  * @property Carbon $issued_at
+ * @property string|null $pdf_path
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -42,6 +43,7 @@ class Certificate extends Model
         'code',
         'recipient_name',
         'issued_at',
+        'pdf_path',
     ];
 
     /**
