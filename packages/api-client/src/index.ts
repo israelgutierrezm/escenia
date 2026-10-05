@@ -190,6 +190,37 @@ export function createApiClient(options: ApiClientOptions = {}) {
     return payload as T
   }
 
+  async function upload<T>(path: string, formData: FormData): Promise<T> {
+    await ensureCsrfCookie()
+    const headers: Record<string, string> = { Accept: 'application/json' }
+    const xsrf = readCookie('XSRF-TOKEN')
+    if (xsrf) headers['X-XSRF-TOKEN'] = xsrf
+    const tenantId = options.tenantId?.()
+    if (tenantId) headers['X-Tenant-Id'] = tenantId
+
+    // No Content-Type: the browser sets the multipart boundary.
+    const response = await fetch(`${baseUrl}/api/v1${path}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: formData,
+    })
+
+    const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload & Record<string, unknown>
+
+    if (!response.ok) {
+      throw new ApiError(
+        response.status,
+        payload.message ?? 'Request failed',
+        payload.error_code ?? 'error',
+        payload.errors,
+        payload.request_id,
+      )
+    }
+
+    return payload as T
+  }
+
   return {
     register: (data: RegisterPayload) => request<ApiResource<User>>('POST', '/auth/register', data),
     login: (data: LoginPayload) => request<ApiResource<User>>('POST', '/auth/login', data),
@@ -294,6 +325,13 @@ export function createApiClient(options: ApiClientOptions = {}) {
     ) => request<ApiResource<BrandKit>>('POST', `/events/${eventId}/studio/brand-kits`, data),
     setDefaultBrandKit: (kitId: string) =>
       request<ApiResource<BrandKit>>('POST', `/brand-kits/${kitId}/default`),
+    uploadBrandKitLogo: (kitId: string, file: File) => {
+      const form = new FormData()
+      form.append('logo', file)
+      return upload<ApiResource<BrandKit>>(`/brand-kits/${kitId}/logo`, form)
+    },
+    removeBrandKitLogo: (kitId: string) =>
+      request<ApiResource<BrandKit>>('DELETE', `/brand-kits/${kitId}/logo`),
     runOfShow: (eventId: string) =>
       request<ApiCollection<RunOfShowItem>>('GET', `/events/${eventId}/studio/run-of-show`),
     addRunOfShowItem: (

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1\Production;
 
 use App\Application\Production\Actions\CreateBrandKitAction;
 use App\Application\Production\Actions\SetDefaultBrandKitAction;
+use App\Application\Production\Actions\UploadBrandKitLogoAction;
 use App\Application\Production\DTOs\CreateBrandKitData;
 use App\Domain\AccessControl\Enums\Permission;
 use App\Domain\Events\Models\Event;
@@ -13,11 +14,14 @@ use App\Domain\Production\Models\BrandKit;
 use App\Domain\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Production\CreateBrandKitRequest;
+use App\Http\Requests\Production\UploadBrandKitLogoRequest;
 use App\Http\Resources\BrandKitResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Brand kits are workspace-level (reusable), not studio-specific. Tenant
@@ -63,6 +67,32 @@ class BrandKitController extends Controller
         $this->requirePermission($request, Permission::ProductionManage);
 
         return BrandKitResource::make($action->execute($model, $request->user()));
+    }
+
+    public function uploadLogo(UploadBrandKitLogoRequest $request, UploadBrandKitLogoAction $action, string $kit): BrandKitResource
+    {
+        $model = BrandKit::query()->where('ulid', $kit)->firstOrFail();
+        $this->requirePermission($request, Permission::ProductionManage);
+
+        $file = $request->file('logo');
+        abort_unless($file instanceof UploadedFile, Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        return BrandKitResource::make($action->execute($model, $request->user(), $file));
+    }
+
+    public function removeLogo(Request $request, string $kit): BrandKitResource
+    {
+        $model = BrandKit::query()->where('ulid', $kit)->firstOrFail();
+        $this->requirePermission($request, Permission::ProductionManage);
+
+        $disk = Storage::disk((string) config('branding.logo_disk'));
+        if ($model->logo_path !== null && $disk->exists($model->logo_path)) {
+            $disk->delete($model->logo_path);
+        }
+
+        $model->forceFill(['logo_path' => null, 'logo_mime' => null])->save();
+
+        return BrandKitResource::make($model);
     }
 
     private function resolveEvent(string $ulid): Event

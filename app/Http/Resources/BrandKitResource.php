@@ -22,6 +22,8 @@ class BrandKitResource extends JsonResource
             'id' => $this->ulid,
             'name' => $this->name,
             'tokens' => $this->tokens,
+            'has_logo' => $this->logo_path !== null,
+            'logo' => $this->logoDataUri(),
             'is_default' => $this->is_default,
         ];
     }

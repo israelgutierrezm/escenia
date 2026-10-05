@@ -269,6 +269,8 @@ Route::prefix('v1')->group(function (): void {
             Route::get('events/{event}/studio/brand-kits', [BrandKitController::class, 'index']);
             Route::post('events/{event}/studio/brand-kits', [BrandKitController::class, 'store']);
             Route::post('brand-kits/{kit}/default', [BrandKitController::class, 'setDefault']);
+            Route::post('brand-kits/{kit}/logo', [BrandKitController::class, 'uploadLogo']);
+            Route::delete('brand-kits/{kit}/logo', [BrandKitController::class, 'removeLogo']);
 
             Route::get('events/{event}/studio/run-of-show', [RunOfShowController::class, 'index']);
             Route::post('events/{event}/studio/run-of-show', [RunOfShowController::class, 'store']);

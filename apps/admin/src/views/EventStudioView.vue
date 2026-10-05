@@ -310,6 +310,26 @@ function predeterminarKit(kit: BrandKit): void {
   })
 }
 
+function subirLogo(kit: BrandKit, e: Event): void {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (file === undefined) return
+  run(async () => {
+    const actualizado = (await api.uploadBrandKitLogo(kit.id, file)).data
+    const i = brandKits.value.findIndex((x) => x.id === kit.id)
+    if (i !== -1) brandKits.value[i] = actualizado
+  })
+}
+
+function quitarLogo(kit: BrandKit): void {
+  run(async () => {
+    const actualizado = (await api.removeBrandKitLogo(kit.id)).data
+    const i = brandKits.value.findIndex((x) => x.id === kit.id)
+    if (i !== -1) brandKits.value[i] = actualizado
+  })
+}
+
 function crearEnlace(): void {
   if (nuevoEnlace.value.name.trim() === '') return
   run(async () => {
@@ -554,12 +574,23 @@ onMounted(load)
 
         <p v-if="brandKits.length === 0" class="panel empty">Aún no hay kits de marca.</p>
         <ul v-else class="lista">
-          <li v-for="k in brandKits" :key="k.id">
-            <div>
+          <li v-for="k in brandKits" :key="k.id" class="kit">
+            <div class="kit__logo">
+              <img v-if="k.logo" :src="k.logo" alt="" />
+              <span v-else class="kit__ph">Sin logo</span>
+            </div>
+            <div class="kit__info">
               <strong>{{ k.name }}</strong>
               <span v-if="k.is_default" class="chip chip--live">Predeterminado</span>
             </div>
-            <AppButton v-if="!k.is_default" variant="ghost" :disabled="busy" @click="predeterminarKit(k)">Predeterminar</AppButton>
+            <div class="kit__acc">
+              <label class="btn-file" :class="{ 'is-disabled': busy }">
+                <input type="file" accept="image/png,image/jpeg,image/gif,image/svg+xml" hidden :disabled="busy" @change="subirLogo(k, $event)" />
+                {{ k.has_logo ? 'Cambiar logo' : 'Subir logo' }}
+              </label>
+              <button v-if="k.has_logo" type="button" class="link-danger" :disabled="busy" @click="quitarLogo(k)">Quitar</button>
+              <AppButton v-if="!k.is_default" variant="ghost" :disabled="busy" @click="predeterminarKit(k)">Predeterminar</AppButton>
+            </div>
           </li>
         </ul>
       </div>
@@ -654,6 +685,19 @@ textarea.control { resize: vertical; }
 
 .lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--escenia-space-2); }
 .lista li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--escenia-color-border); border-radius: var(--escenia-radius-sm); background: rgba(4, 16, 29, 0.35); }
+
+.kit { gap: var(--escenia-space-3); }
+.kit__logo { display: grid; place-items: center; width: 56px; height: 56px; flex-shrink: 0; overflow: hidden; border-radius: var(--escenia-radius-sm); border: 1px solid var(--escenia-color-border); background: #fff; }
+.kit__logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.kit__ph { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--escenia-color-text-muted); background: rgba(4, 16, 29, 0.6); display: grid; place-items: center; width: 100%; height: 100%; }
+.kit__info { flex: 1; display: flex; align-items: center; gap: var(--escenia-space-2); flex-wrap: wrap; }
+.kit__acc { display: flex; align-items: center; gap: var(--escenia-space-2); flex-wrap: wrap; justify-content: flex-end; }
+.btn-file { font: inherit; font-size: 0.85rem; cursor: pointer; padding: 7px 12px; border-radius: var(--escenia-radius-sm); border: 1px solid var(--escenia-color-border-strong); color: var(--escenia-color-text); background: transparent; white-space: nowrap; }
+.btn-file:hover { border-color: var(--escenia-color-primary); color: var(--escenia-color-primary); }
+.btn-file.is-disabled { opacity: 0.5; cursor: not-allowed; }
+.link-danger { font: inherit; font-size: 0.85rem; cursor: pointer; background: transparent; border: 0; padding: 0 4px; color: var(--escenia-color-danger, #ff6b6b); }
+.link-danger:hover:not(:disabled) { text-decoration: underline; }
+.link-danger:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .bus { display: grid; grid-template-columns: 1fr 1fr; gap: var(--escenia-space-4); }
 .bus__slot { padding: var(--escenia-space-4); border-radius: var(--escenia-radius-md); border: 1px solid var(--escenia-color-border); background: rgba(4, 16, 29, 0.4); display: flex; flex-direction: column; gap: 6px; }

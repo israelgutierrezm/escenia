@@ -70,7 +70,18 @@ final class RenderCertificatePdfAction
      */
     private function logoDataUri(?BrandKit $brand): ?string
     {
-        $tokens = is_array($brand?->tokens) ? $brand->tokens : [];
+        if ($brand === null) {
+            return null;
+        }
+
+        // Prefer an uploaded logo (stored on the branding disk); fall back to a
+        // logo already supplied as a data URI in the brand tokens.
+        $stored = $brand->logoDataUri();
+        if ($stored !== null) {
+            return $stored;
+        }
+
+        $tokens = is_array($brand->tokens) ? $brand->tokens : [];
         $logo = $tokens['logo'] ?? null;
 
         return is_string($logo) && str_starts_with($logo, 'data:image/') ? $logo : null;

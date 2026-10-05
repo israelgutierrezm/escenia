@@ -276,6 +276,8 @@ export interface BrandKit {
   id: string
   name: string
   tokens: Record<string, unknown> | null
+  has_logo: boolean
+  logo: string | null
   is_default: boolean
 }
 
