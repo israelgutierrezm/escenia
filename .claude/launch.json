@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "admin",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@escenia/admin", "dev"],
+      "port": 5180
+    },
+    {
+      "name": "attendee",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@escenia/attendee", "dev"],
+      "port": 5182
+    },
+    {
+      "name": "speaker",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@escenia/speaker", "dev"],
+      "port": 5183
+    },
+    {
+      "name": "studio",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@escenia/studio", "dev"],
+      "port": 5184
+    }
+  ]
+}
