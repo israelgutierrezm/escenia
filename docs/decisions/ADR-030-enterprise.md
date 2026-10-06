@@ -52,6 +52,10 @@ difiriendo con deuda explícita lo que exige infraestructura real.
   establece la sesión Sanctum (mismas semánticas que el login por password).
   **El `default_role` se restringe a `admin|member`**: la propiedad del tenant
   (`owner`) nunca se delega a un IdP externo (guard anti escalada de privilegios).
+  **Enmendado por ADR-034**: enlazar por email global permitía tomar cuentas de
+  otros tenants; ahora la conexión solo responde por su dominio verificado por
+  DNS, los fakes fallan cerrado en producción y el flujo usa state/nonce/PKCE con
+  `id_token` validado.
 
 - **Residencia + dedicado**: `data_region` (`us|eu|ap`) e `is_dedicated` en el
   tenant, leídos/editados por el Owner en `GET/PUT /enterprise/settings`.
