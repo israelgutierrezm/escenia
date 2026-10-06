@@ -11,6 +11,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Tenancy\Context\TenantContext;
 use App\Domain\Tenancy\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -114,4 +115,53 @@ function registerAttendee(string $eventUlid, string $name = 'Ava Attendee', ?str
         'name' => $name,
         'email' => $email ?? fake()->unique()->safeEmail(),
     ])->assertCreated()->json('data.token');
+}
+
+/**
+ * Create an SSO connection as the acting tenant owner and verify its email
+ * domain (the fake DNS verifier passes). Returns the connection's public id.
+ *
+ * @param  array<string, string>  $headers
+ * @param  array<string, mixed>  $attributes
+ */
+function makeVerifiedSsoConnection(array $headers, array $attributes = []): string
+{
+    $id = test()->withHeaders($headers)
+        ->postJson('/api/v1/enterprise/sso-connections', array_merge([
+            'provider' => 'oidc',
+            'display_name' => 'Acme IdP',
+            'domain' => 'acme.com',
+            'default_role' => 'member',
+        ], $attributes))
+        ->assertCreated()
+        ->json('data.id');
+
+    test()->withHeaders($headers)
+        ->postJson("/api/v1/enterprise/sso-connections/{$id}/verify-domain")
+        ->assertOk()
+        ->assertJsonPath('data.domain_verified', true);
+
+    return $id;
+}
+
+/**
+ * The public SSO round trip as a browser runs it: start (state in the body,
+ * binding in a cookie), then post the callback carrying both. JSON test
+ * requests only send cookies `withCredentials()`, like `fetch` in the SPA.
+ *
+ * @param  array<string, mixed>  $body  extra callback fields (fake-provider hints)
+ */
+function completeSsoLogin(string $connection, array $body = []): TestResponse
+{
+    app(TenantContext::class)->forget();
+
+    $start = test()->getJson("/api/v1/sso/{$connection}")->assertOk();
+
+    return test()
+        ->withCredentials()
+        ->withUnencryptedCookie('escenia_sso', (string) $start->getCookie('escenia_sso', false)?->getValue())
+        ->postJson("/api/v1/sso/{$connection}/callback", array_merge([
+            'code' => 'ok',
+            'state' => $start->json('data.state'),
+        ], $body));
 }

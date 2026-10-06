@@ -25,7 +25,7 @@ final class VerifyCustomDomainAction
 
     public function execute(User $actor, CustomDomain $domain): CustomDomain
     {
-        $result = $this->verifier->verify($domain);
+        $result = $this->verifier->verify($domain->dnsChallenge());
 
         if (! $result->verified) {
             $domain->update(['status' => DomainStatus::Failed]);

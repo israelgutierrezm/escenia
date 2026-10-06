@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Enterprise\Models;
 
+use App\Domain\Enterprise\DTOs\DnsChallenge;
 use App\Domain\Enterprise\Enums\DomainStatus;
 use App\Domain\Shared\Concerns\BelongsToTenant;
 use App\Domain\Shared\Concerns\HasPublicId;
@@ -60,16 +61,10 @@ class CustomDomain extends Model
 
     /**
      * The DNS record the tenant must create to prove ownership.
-     *
-     * @return array{type: string, name: string, value: string}
      */
-    public function dnsChallenge(): array
+    public function dnsChallenge(): DnsChallenge
     {
-        return [
-            'type' => 'TXT',
-            'name' => '_escenia-challenge.'.$this->hostname,
-            'value' => $this->verification_token,
-        ];
+        return new DnsChallenge('_escenia-challenge.'.$this->hostname, $this->verification_token);
     }
 
     /**

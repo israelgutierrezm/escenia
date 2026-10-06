@@ -140,42 +140,13 @@ it('revokes an API key so it can no longer authenticate', function () {
         ->assertUnauthorized();
 });
 
-// ---- SSO ---------------------------------------------------------------------
-
-it('provisions a member via SSO and starts a session', function () {
-    [, $tenant, $headers] = enterpriseOwner();
-
-    $conn = $this->withHeaders($headers)
-        ->postJson('/api/v1/enterprise/sso-connections', [
-            'provider' => 'oidc',
-            'display_name' => 'Acme IdP',
-            'domain' => 'acme.com',
-            'default_role' => 'member',
-            'config' => [],
-        ])
-        ->assertCreated()
-        ->json('data.id');
-
-    app(TenantContext::class)->forget();
-
-    $this->postJson("/api/v1/sso/{$conn}/callback", ['code' => 'ok', 'email' => 'dev@acme.com', 'name' => 'Dev'])
-        ->assertOk()
-        ->assertJsonPath('data.email', 'dev@acme.com');
-
-    $this->assertDatabaseHas('users', ['email' => 'dev@acme.com']);
-    $this->assertDatabaseHas('tenant_memberships', ['tenant_id' => $tenant->getKey(), 'role' => 'member']);
-});
+// ---- SSO (the login flow itself: SsoLoginTest) --------------------------------
 
 it('rejects an SSO callback with an invalid code', function () {
     [, , $headers] = enterpriseOwner();
+    $conn = makeVerifiedSsoConnection($headers);
 
-    $conn = $this->withHeaders($headers)
-        ->postJson('/api/v1/enterprise/sso-connections', [
-            'provider' => 'oidc', 'display_name' => 'Acme', 'default_role' => 'member',
-        ])
-        ->json('data.id');
-
-    $this->postJson("/api/v1/sso/{$conn}/callback", ['code' => 'invalid'])
+    completeSsoLogin($conn, ['code' => 'invalid'])
         ->assertStatus(401)
         ->assertJsonPath('error_code', 'sso_authentication_failed');
 });
@@ -197,6 +168,7 @@ it('never exposes the SSO config and stores it encrypted', function () {
         ->postJson('/api/v1/enterprise/sso-connections', [
             'provider' => 'oidc',
             'display_name' => 'Acme',
+            'domain' => 'acme.com',
             'config' => ['client_secret' => 'supersecret'],
         ])
         ->assertCreated()
@@ -264,16 +236,9 @@ it('requires authentication for the enterprise surface', function () {
 
 it('forbids a non-owner from managing the enterprise surface', function () {
     [$owner, $tenant, $headers] = enterpriseOwner();
+    $conn = makeVerifiedSsoConnection($headers);
 
-    $conn = $this->withHeaders($headers)
-        ->postJson('/api/v1/enterprise/sso-connections', [
-            'provider' => 'oidc', 'display_name' => 'IdP', 'default_role' => 'member', 'config' => [],
-        ])
-        ->json('data.id');
-
-    app(TenantContext::class)->forget();
-    $this->postJson("/api/v1/sso/{$conn}/callback", ['code' => 'ok', 'email' => 'member@acme.com', 'name' => 'Mem'])
-        ->assertOk();
+    completeSsoLogin($conn, ['email' => 'member@acme.com', 'name' => 'Mem'])->assertOk();
 
     $member = User::query()->where('email', 'member@acme.com')->firstOrFail();
 

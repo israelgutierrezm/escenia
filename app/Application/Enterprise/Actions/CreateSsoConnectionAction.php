@@ -9,12 +9,13 @@ use App\Domain\Enterprise\Enums\SsoProvider;
 use App\Domain\Enterprise\Models\SsoConnection;
 use App\Domain\Identity\Models\User;
 use App\Domain\Tenancy\Enums\TenantRole;
-use Illuminate\Support\Str;
 
 /**
  * Creates an SSO connection for the current tenant. The provider `config`
  * (secrets/endpoints) is encrypted by the model cast; it is never written to
- * the audit context.
+ * the audit context. The email domain starts unverified: the connection cannot
+ * log anyone in until the tenant passes its DNS challenge
+ * ({@see VerifySsoDomainAction}).
  */
 final class CreateSsoConnectionAction
 {
@@ -33,14 +34,15 @@ final class CreateSsoConnectionAction
         array $config,
         TenantRole $defaultRole,
     ): SsoConnection {
-        $connection = SsoConnection::query()->create([
+        $connection = new SsoConnection([
             'provider' => $provider,
             'display_name' => $displayName,
-            'domain' => $domain !== null ? Str::lower($domain) : null,
             'config' => $config,
             'default_role' => $defaultRole,
             'is_active' => true,
         ]);
+        $connection->assignDomain($domain);
+        $connection->save();
 
         $this->audit->log('enterprise.sso.connection_created', actor: $actor, auditable: $connection, context: [
             'provider' => $provider->value,

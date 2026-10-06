@@ -385,6 +385,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('enterprise/sso-connections', [SsoConnectionController::class, 'index']);
             Route::post('enterprise/sso-connections', [SsoConnectionController::class, 'store']);
             Route::match(['put', 'patch'], 'enterprise/sso-connections/{connection}', [SsoConnectionController::class, 'update']);
+            Route::post('enterprise/sso-connections/{connection}/verify-domain', [SsoConnectionController::class, 'verifyDomain']);
             Route::delete('enterprise/sso-connections/{connection}', [SsoConnectionController::class, 'destroy']);
 
             Route::get('enterprise/settings', [TenantSettingsController::class, 'show']);

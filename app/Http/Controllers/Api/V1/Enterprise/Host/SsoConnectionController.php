@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1\Enterprise\Host;
 use App\Application\Enterprise\Actions\CreateSsoConnectionAction;
 use App\Application\Enterprise\Actions\DeleteSsoConnectionAction;
 use App\Application\Enterprise\Actions\UpdateSsoConnectionAction;
+use App\Application\Enterprise\Actions\VerifySsoDomainAction;
 use App\Domain\AccessControl\Enums\Permission;
 use App\Domain\Enterprise\Enums\SsoProvider;
 use App\Domain\Enterprise\Models\SsoConnection;
@@ -24,7 +25,8 @@ use Illuminate\Http\Response;
 /**
  * Tenant-level management of SSO connections. Configuring an external login path
  * is owner-level administration (`tenant.manage`). The encrypted provider
- * config is never returned.
+ * config is never returned. `verifyDomain` runs the email-domain DNS challenge
+ * that lets a connection vouch for logins (ADR-034).
  */
 class SsoConnectionController extends Controller
 {
@@ -73,6 +75,15 @@ class SsoConnectionController extends Controller
         }
 
         return SsoConnectionResource::make($action->execute($request->user(), $model, $attributes));
+    }
+
+    public function verifyDomain(Request $request, VerifySsoDomainAction $action, string $connection): SsoConnectionResource
+    {
+        $this->authorizePermission($request, Permission::TenantManage);
+
+        $model = SsoConnection::query()->where('ulid', $connection)->firstOrFail();
+
+        return SsoConnectionResource::make($action->execute($request->user(), $model));
     }
 
     public function destroy(Request $request, DeleteSsoConnectionAction $action, string $connection): Response

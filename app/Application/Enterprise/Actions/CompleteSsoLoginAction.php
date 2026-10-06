@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Application\Enterprise\Actions;
 
+use App\Application\Enterprise\SsoLoginAttempts;
 use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Enterprise\Contracts\IdentityProvider;
+use App\Domain\Enterprise\DTOs\SsoCallback;
 use App\Domain\Enterprise\Exceptions\SsoAuthenticationException;
 use App\Domain\Enterprise\Models\SsoConnection;
 use App\Domain\Identity\Models\User;
@@ -13,35 +15,60 @@ use App\Domain\Tenancy\Context\TenantContext;
 use App\Domain\Tenancy\Enums\MembershipStatus;
 use App\Domain\Tenancy\Models\TenantMembership;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Verifies an SSO callback and provisions the user into the connection's tenant
- * (just-in-time). A local {@see User} is linked by email (global identity); a
- * tenant membership with the connection's default role is created on first
- * login. An existing member keeps their current role — SSO never downgrades a
- * standing role. Establishing the HTTP session is the controller's job.
+ * Completes an SSO login and provisions the user into the connection's tenant
+ * (just-in-time). The callback must redeem an attempt this server issued — same
+ * connection, same browser, once (ADR-034). The identity must belong to the
+ * connection's verified email domain: the IdP is tenant-configured, so it never
+ * vouches for anyone else. A local {@see User} is then linked by email (global
+ * identity); a tenant membership with the connection's default role is created
+ * on first login. An existing member keeps their current role — SSO never
+ * downgrades a standing role. Establishing the HTTP session is the controller's
+ * job.
  */
 final class CompleteSsoLoginAction
 {
     public function __construct(
         private readonly IdentityProvider $identityProvider,
+        private readonly SsoLoginAttempts $attempts,
         private readonly TenantContext $tenantContext,
         private readonly AuditLogger $audit,
     ) {}
 
     /**
-     * @param  array<string, mixed>  $payload
+     * @param  array<string, string>  $hints  untrusted extras only the dev/test fake reads
      */
-    public function execute(SsoConnection $connection, array $payload): User
+    public function execute(SsoConnection $connection, string $state, ?string $binding, string $code, array $hints = []): User
     {
         if (! $connection->is_active) {
             throw new SsoAuthenticationException;
         }
 
+        $attempt = $this->attempts->claim($state, $connection, $binding)
+            ?? throw $this->rejected($connection, 'invalid_state');
+
+        $identity = $this->identityProvider->verifyCallback($connection, new SsoCallback(
+            code: $code,
+            redirectUri: $attempt->redirectUri,
+            nonce: $attempt->nonce,
+            codeVerifier: $attempt->codeVerifier,
+            hints: $hints,
+        ));
+
         $tenant = $connection->tenant;
-        $identity = $this->identityProvider->verifyCallback($connection, $payload);
+
+        if (filter_var($identity->email, FILTER_VALIDATE_EMAIL) === false || ! $connection->vouchesFor($identity->email)) {
+            $this->audit->log('enterprise.sso.login_rejected', tenant: $tenant, auditable: $connection, context: [
+                'reason' => $connection->hasVerifiedDomain() ? 'email_outside_domain' : 'domain_not_verified',
+                'email_domain' => Str::lower(Str::afterLast($identity->email, '@')),
+            ]);
+
+            throw $this->rejected($connection, 'email_not_vouched');
+        }
 
         return DB::transaction(fn (): User => $this->tenantContext->runFor($tenant, function () use ($connection, $tenant, $identity): User {
             $user = User::query()->where('email', $identity->email)->first();
@@ -83,5 +110,15 @@ final class CompleteSsoLoginAction
 
             return $user;
         }));
+    }
+
+    /**
+     * The caller only ever sees the generic failure; the reason goes to the log.
+     */
+    private function rejected(SsoConnection $connection, string $reason): SsoAuthenticationException
+    {
+        Log::notice('SSO login rejected.', ['connection' => $connection->ulid, 'reason' => $reason]);
+
+        return new SsoAuthenticationException;
     }
 }

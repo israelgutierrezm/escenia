@@ -40,8 +40,8 @@ final class SettingCatalog
             new SettingDefinition('outbox.kafka.rest_proxy', 'outbox', SettingScope::System, SettingType::String, 'outbox.kafka.rest_proxy', 'Kafka/Redpanda REST proxy URL'),
 
             // ---- Enterprise providers ----
-            new SettingDefinition('enterprise.domain_verifier', 'enterprise', SettingScope::System, SettingType::Select, 'enterprise.domain_verifier', 'Custom-domain verifier', null, ['fake', 'dns']),
-            new SettingDefinition('enterprise.identity_provider', 'enterprise', SettingScope::System, SettingType::Select, 'enterprise.identity_provider', 'SSO identity provider', null, ['fake', 'oidc']),
+            new SettingDefinition('enterprise.domain_verifier', 'enterprise', SettingScope::System, SettingType::Select, 'enterprise.domain_verifier', 'Domain verifier', 'Proves domain ownership for custom domains and SSO. `fake` approves everything and is refused in production.', ['fake', 'dns']),
+            new SettingDefinition('enterprise.identity_provider', 'enterprise', SettingScope::System, SettingType::Select, 'enterprise.identity_provider', 'SSO identity provider', '`fake` trusts the callback and is refused in production (SSO stays disabled until `oidc` is set).', ['fake', 'oidc']),
             new SettingDefinition('enterprise.domain_target', 'enterprise', SettingScope::System, SettingType::String, 'enterprise.domain_target', 'Custom-domain CNAME target'),
         ];
     }

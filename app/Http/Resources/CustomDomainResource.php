@@ -23,7 +23,7 @@ class CustomDomainResource extends JsonResource
             'hostname' => $this->hostname,
             'status' => $this->status->value,
             'target' => $this->target,
-            'dns_challenge' => $this->dnsChallenge(),
+            'dns_challenge' => $this->dnsChallenge()->toArray(),
             'workspace_id' => $this->whenLoaded('workspace', fn () => $this->workspace?->ulid),
             'verified_at' => $this->verified_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),

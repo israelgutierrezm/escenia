@@ -7,10 +7,11 @@ namespace App\Http\Requests\Enterprise;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * The SSO callback payload. `code` is the provider's authorization code; the
- * remaining fields are optional hints the fake/OIDC adapters may use. The
- * adapter is responsible for verifying the payload before any identity is
- * trusted.
+ * The SSO callback payload. `code` is the provider's authorization code and
+ * `state` the value the start step issued — it must be presented from the same
+ * browser (binding cookie) and only once. The redirect URI, nonce and PKCE
+ * verifier come from the server-side attempt, never from this body. `email` /
+ * `name` are hints only the dev/test fake reads; real adapters ignore them.
  */
 class SsoCallbackRequest extends FormRequest
 {
@@ -26,8 +27,7 @@ class SsoCallbackRequest extends FormRequest
     {
         return [
             'code' => ['required', 'string', 'max:2048'],
-            'state' => ['nullable', 'string', 'max:255'],
-            'redirect_uri' => ['nullable', 'string', 'max:2048'],
+            'state' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email'],
             'name' => ['nullable', 'string', 'max:255'],
         ];

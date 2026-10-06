@@ -6,106 +6,90 @@ namespace App\Infrastructure\Enterprise\Sso;
 
 use App\Domain\Enterprise\Contracts\IdentityProvider;
 use App\Domain\Enterprise\DTOs\ExternalIdentity;
+use App\Domain\Enterprise\DTOs\SsoAuthorizationRequest;
+use App\Domain\Enterprise\DTOs\SsoCallback;
 use App\Domain\Enterprise\Exceptions\SsoAuthenticationException;
 use App\Domain\Enterprise\Models\SsoConnection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use Throwable;
 
 /**
- * OIDC authorization-code adapter (stub). Builds the authorization request from
- * the connection config and exchanges the code at the token endpoint.
+ * OIDC authorization-code adapter with PKCE (S256) and nonce. Redeems the code
+ * at the token endpoint and returns an identity only after
+ * {@see OidcIdTokenValidator} has verified the id_token's signature (JWKS) and
+ * claims. Endpoints come from the connection's encrypted config.
  *
- * NOT integration-tested and NOT production-ready: it reads the id_token claims
- * without validating the JWT signature against the provider's JWKS. A real
- * deployment MUST verify the signature, `iss`, `aud`, `exp` and `nonce` before
- * trusting the identity (see technical debt). The default provider is the fake.
+ * Not yet exercised against a live IdP (tests fake one with real signed tokens);
+ * SAML connections are refused until a SAML adapter exists (see technical debt).
  */
 final class OidcIdentityProvider implements IdentityProvider
 {
-    public function authorizationUrl(SsoConnection $connection, string $redirectUri, string $state): string
+    public function __construct(
+        private readonly OidcIdTokenValidator $validator,
+    ) {}
+
+    public function authorizationUrl(SsoConnection $connection, SsoAuthorizationRequest $request): string
     {
-        $config = $connection->config;
+        $client = OidcClientConfig::fromConnection($connection);
 
-        $endpoint = (string) ($config['authorization_endpoint'] ?? '');
-
-        if ($endpoint === '') {
-            throw new SsoAuthenticationException('SSO connection is not configured.');
-        }
-
-        return $endpoint.'?'.http_build_query([
+        $query = http_build_query([
             'response_type' => 'code',
-            'client_id' => (string) ($config['client_id'] ?? ''),
-            'redirect_uri' => $redirectUri,
-            'scope' => (string) ($config['scope'] ?? 'openid email profile'),
-            'state' => $state,
+            'client_id' => $client->clientId,
+            'redirect_uri' => $request->redirectUri,
+            'scope' => $client->scope,
+            'state' => $request->state,
+            'nonce' => $request->nonce,
+            'code_challenge' => $request->codeChallenge,
+            'code_challenge_method' => 'S256',
         ]);
+
+        $separator = str_contains($client->authorizationEndpoint, '?') ? '&' : '?';
+
+        return $client->authorizationEndpoint.$separator.$query;
     }
 
-    public function verifyCallback(SsoConnection $connection, array $payload): ExternalIdentity
+    public function verifyCallback(SsoConnection $connection, SsoCallback $callback): ExternalIdentity
     {
-        $config = $connection->config;
-        $code = isset($payload['code']) ? (string) $payload['code'] : '';
-        $tokenEndpoint = (string) ($config['token_endpoint'] ?? '');
-
-        if ($code === '' || $tokenEndpoint === '') {
-            throw new SsoAuthenticationException;
-        }
+        $client = OidcClientConfig::fromConnection($connection);
 
         try {
-            $response = Http::asForm()->post($tokenEndpoint, [
-                'grant_type' => 'authorization_code',
-                'code' => $code,
-                'client_id' => (string) ($config['client_id'] ?? ''),
-                'client_secret' => (string) ($config['client_secret'] ?? ''),
-                'redirect_uri' => (string) ($payload['redirect_uri'] ?? ''),
-            ])->throw();
-        } catch (\Throwable) {
+            $response = Http::asForm()->acceptJson()->timeout(10)->withoutRedirecting()
+                ->post($client->tokenEndpoint, [
+                    'grant_type' => 'authorization_code',
+                    'code' => $callback->code,
+                    'redirect_uri' => $callback->redirectUri,
+                    'client_id' => $client->clientId,
+                    'client_secret' => $client->clientSecret,
+                    'code_verifier' => $callback->codeVerifier,
+                ])
+                ->throw();
+        } catch (Throwable) {
             throw new SsoAuthenticationException;
         }
 
-        $idToken = (string) $response->json('id_token', '');
-        $claims = $this->decodeClaims($idToken);
+        $idToken = $response->json('id_token');
 
-        $email = isset($claims['email']) ? (string) $claims['email'] : '';
-        $subject = isset($claims['sub']) ? (string) $claims['sub'] : '';
-
-        if ($email === '' || $subject === '') {
+        if (! is_string($idToken) || $idToken === '') {
             throw new SsoAuthenticationException;
         }
+
+        $claims = $this->validator->validate($idToken, $client, $callback->nonce);
+
+        $subject = is_string($claims['sub'] ?? null) ? $claims['sub'] : '';
+        $email = is_string($claims['email'] ?? null) ? Str::lower(trim($claims['email'])) : '';
+
+        if ($subject === '' || $email === '') {
+            throw new SsoAuthenticationException;
+        }
+
+        $name = $claims['name'] ?? null;
 
         return new ExternalIdentity(
             subject: $subject,
-            email: strtolower($email),
-            name: isset($claims['name']) ? (string) $claims['name'] : $email,
+            email: $email,
+            // IdP-controlled free text: bounded to the column it lands in.
+            name: is_string($name) && $name !== '' ? Str::limit($name, 255, '') : $email,
         );
-    }
-
-    /**
-     * Decode the (unverified) claims segment of a JWT. Signature validation is
-     * intentionally out of scope for this stub — see the class docblock.
-     *
-     * @return array<string, mixed>
-     */
-    private function decodeClaims(string $jwt): array
-    {
-        $parts = explode('.', $jwt);
-
-        if (count($parts) !== 3) {
-            throw new SsoAuthenticationException;
-        }
-
-        $decoded = base64_decode(strtr($parts[1], '-_', '+/'), true);
-
-        if ($decoded === false) {
-            throw new SsoAuthenticationException;
-        }
-
-        /** @var array<string, mixed>|null $claims */
-        $claims = json_decode($decoded, true);
-
-        if (! is_array($claims)) {
-            throw new SsoAuthenticationException;
-        }
-
-        return $claims;
     }
 }
