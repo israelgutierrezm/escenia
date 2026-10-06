@@ -9,6 +9,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Production\Models\BrandKit;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 
 /**
  * Stores an uploaded logo for a brand kit on the branding disk and records its
@@ -25,21 +26,26 @@ final class UploadBrandKitLogoAction
     {
         $disk = Storage::disk((string) config('branding.logo_disk'));
 
-        if ($kit->logo_path !== null && $disk->exists($kit->logo_path)) {
-            $disk->delete($kit->logo_path);
-        }
+        // The extension comes from the sniffed content type (validated upstream),
+        // never from the client's file name: a real PNG named `logo.html` stays `.png`.
+        $mime = (string) $file->getMimeType();
+        $extension = BrandKit::LOGO_MIME_EXTENSIONS[$mime]
+            ?? throw new InvalidArgumentException("Unsupported logo type [{$mime}].");
+        $path = "brand-kits/{$kit->ulid}/logo.{$extension}";
+        $previous = $kit->logo_path;
 
-        $extension = $file->getClientOriginalExtension() !== ''
-            ? $file->getClientOriginalExtension()
-            : (string) $file->extension();
-        $path = "brand-kits/{$kit->ulid}/logo.".strtolower($extension);
-
+        // Write first, repoint the kit, then drop the old file: the kit never
+        // references a file that is already gone.
         $disk->put($path, (string) $file->getContent());
 
         $kit->forceFill([
             'logo_path' => $path,
-            'logo_mime' => (string) $file->getMimeType(),
+            'logo_mime' => $mime,
         ])->save();
+
+        if ($previous !== null && $previous !== $path) {
+            $disk->delete($previous);
+        }
 
         $this->audit->log('brand_kit.logo_uploaded', actor: $actor, tenant: $kit->tenant, auditable: $kit);
 

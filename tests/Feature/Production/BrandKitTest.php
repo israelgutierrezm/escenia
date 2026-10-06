@@ -19,6 +19,27 @@ function makeBrandKit(string $eventUlid, array $headers): string
         ->assertCreated()->json('data.id');
 }
 
+/**
+ * A real upload (not a fake, whose type follows its name): the type is sniffed
+ * from the bytes, so the client-supplied name can lie — as it can in production.
+ */
+function makeRealUpload(string $bytes, string $clientName): UploadedFile
+{
+    $path = (string) tempnam(sys_get_temp_dir(), 'upl');
+    file_put_contents($path, $bytes);
+
+    return new UploadedFile($path, $clientName, null, null, true);
+}
+
+function makePngBytes(int $width = 32, int $height = 32): string
+{
+    $image = imagecreatetruecolor($width, $height);
+    ob_start();
+    imagepng($image);
+
+    return (string) ob_get_clean();
+}
+
 it('creates a default brand kit and unsets the previous default', function () {
     [$user, $tenant, $event] = makeEventOwner();
     Sanctum::actingAs($user);
@@ -101,5 +122,46 @@ it('rejects a non-image logo upload', function () {
 
     $this->withHeaders($headers)
         ->post("/api/v1/brand-kits/{$kitId}/logo", ['logo' => UploadedFile::fake()->create('notes.txt', 10, 'text/plain')])
+        ->assertStatus(422);
+});
+
+it('names the stored logo from its sniffed type, not the client file name', function () {
+    Storage::fake('local');
+    [$user, $tenant, $event] = makeEventOwner();
+    Sanctum::actingAs($user);
+    $headers = ['X-Tenant-Id' => $tenant->ulid];
+    $kitId = makeBrandKit($event->ulid, $headers);
+
+    $this->withHeaders($headers)
+        ->post("/api/v1/brand-kits/{$kitId}/logo", ['logo' => makeRealUpload(makePngBytes(), 'logo.html')])
+        ->assertOk();
+
+    $kit = BrandKit::withoutGlobalScopes()->where('ulid', $kitId)->firstOrFail();
+    expect($kit->logo_path)->toBe("brand-kits/{$kitId}/logo.png")
+        ->and($kit->logo_mime)->toBe('image/png');
+});
+
+it('rejects SVG markup even when it is named as a PNG', function () {
+    [$user, $tenant, $event] = makeEventOwner();
+    Sanctum::actingAs($user);
+    $headers = ['X-Tenant-Id' => $tenant->ulid];
+    $kitId = makeBrandKit($event->ulid, $headers);
+
+    $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><image href="file:///etc/passwd"/></svg>';
+
+    $this->withHeaders($headers)
+        ->post("/api/v1/brand-kits/{$kitId}/logo", ['logo' => makeRealUpload($svg, 'logo.png')])
+        ->assertStatus(422);
+});
+
+it('rejects a logo over the pixel cap', function () {
+    [$user, $tenant, $event] = makeEventOwner();
+    Sanctum::actingAs($user);
+    $headers = ['X-Tenant-Id' => $tenant->ulid];
+    $kitId = makeBrandKit($event->ulid, $headers);
+
+    // Default cap is 2000px a side; the file itself is tiny.
+    $this->withHeaders($headers)
+        ->post("/api/v1/brand-kits/{$kitId}/logo", ['logo' => UploadedFile::fake()->image('wide.png', 2100, 10)])
         ->assertStatus(422);
 });

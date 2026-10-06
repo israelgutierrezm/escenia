@@ -28,6 +28,19 @@ class BrandKit extends Model
     use HasPublicId;
 
     /**
+     * Accepted logo formats, mapped to the stored file extension. Raster only:
+     * dompdf renders these natively, whereas SVG would hand tenant-authored
+     * markup (and its sub-resource references) to the server-side parser.
+     *
+     * @var array<string, string>
+     */
+    public const LOGO_MIME_EXTENSIONS = [
+        'image/png' => 'png',
+        'image/jpeg' => 'jpg',
+        'image/gif' => 'gif',
+    ];
+
+    /**
      * @var list<string>
      */
     protected $fillable = [
@@ -66,7 +79,9 @@ class BrandKit extends Model
      */
     public function logoDataUri(): ?string
     {
-        if ($this->logo_path === null) {
+        $mime = $this->logo_mime;
+
+        if ($this->logo_path === null || $mime === null || ! array_key_exists($mime, self::LOGO_MIME_EXTENSIONS)) {
             return null;
         }
 
@@ -75,8 +90,6 @@ class BrandKit extends Model
         if (! $disk->exists($this->logo_path)) {
             return null;
         }
-
-        $mime = $this->logo_mime ?? 'image/png';
 
         return 'data:'.$mime.';base64,'.base64_encode((string) $disk->get($this->logo_path));
     }

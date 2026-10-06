@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 use App\Application\Education\Actions\RenderCertificatePdfAction;
 use App\Application\Education\Jobs\GenerateCertificatePdfJob;
+use App\Domain\Education\Contracts\CertificateRenderer;
 use App\Domain\Education\Models\Certificate;
+use App\Domain\Education\ValueObjects\CertificateData;
+use App\Domain\Events\Models\Event;
+use App\Domain\Production\Models\BrandKit;
 use App\Domain\Registration\Models\Attendee;
 use App\Domain\Shared\Contracts\QrCodeGenerator;
 use Illuminate\Support\Facades\Storage;
@@ -86,4 +90,39 @@ it('serves the pre-generated PDF from storage instead of re-rendering', function
 
     // The exact stored bytes are returned (not a fresh render).
     expect((string) $response->getContent())->toBe('%PDF-STORED-SENTINEL');
+});
+
+it('embeds a raster logo from the brand tokens but never an SVG one', function () {
+    [$certificate] = makeCertificate('CERT-LOGO-1');
+    $workspaceId = Event::query()->withoutGlobalScopes()->whereKey($certificate->event_id)->value('workspace_id');
+
+    $kit = BrandKit::create([
+        'tenant_id' => $certificate->tenant_id,
+        'workspace_id' => $workspaceId,
+        'name' => 'Marca',
+        'tokens' => ['logo' => 'data:image/svg+xml;base64,'.base64_encode('<svg xmlns="http://www.w3.org/2000/svg"/>')],
+        'is_default' => true,
+    ]);
+
+    $renderer = new class implements CertificateRenderer
+    {
+        public ?CertificateData $last = null;
+
+        public function render(CertificateData $data): string
+        {
+            $this->last = $data;
+
+            return '%PDF-FAKE';
+        }
+    };
+    app()->instance(CertificateRenderer::class, $renderer);
+
+    app(RenderCertificatePdfAction::class)->execute($certificate);
+    expect($renderer->last?->logoDataUri)->toBeNull();
+
+    $png = 'data:image/png;base64,'.base64_encode('png-bytes');
+    $kit->forceFill(['tokens' => ['logo' => $png]])->save();
+
+    app(RenderCertificatePdfAction::class)->execute($certificate);
+    expect($renderer->last?->logoDataUri)->toBe($png);
 });

@@ -14,7 +14,10 @@ return [
     */
     'logo_disk' => env('BRAND_LOGO_DISK', 'local'),
 
-    // Max upload size (KB) and accepted image types for a brand-kit logo.
+    // Upload limits for a brand-kit logo: file size (KB) and pixel dimensions.
+    // The pixel cap protects the PDF worker from decompression bombs (a small
+    // PNG that decodes to a huge bitmap). Accepted formats are a domain rule:
+    // see BrandKit::LOGO_MIME_EXTENSIONS.
     'logo_max_kb' => (int) env('BRAND_LOGO_MAX_KB', 1024),
-    'logo_mimes' => ['png', 'jpg', 'jpeg', 'gif', 'svg'],
+    'logo_max_px' => (int) env('BRAND_LOGO_MAX_PX', 2000),
 ];

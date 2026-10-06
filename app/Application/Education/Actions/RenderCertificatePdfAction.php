@@ -65,8 +65,9 @@ final class RenderCertificatePdfAction
     }
 
     /**
-     * A tenant-supplied logo is embedded only when it is already a data URI —
-     * never fetched from a remote URL (offline render + no SSRF).
+     * A tenant-supplied logo is embedded only as a raster data URI — never
+     * fetched from a remote URL (offline render + no SSRF) and never as SVG
+     * markup handed to the renderer.
      */
     private function logoDataUri(?BrandKit $brand): ?string
     {
@@ -84,7 +85,17 @@ final class RenderCertificatePdfAction
         $tokens = is_array($brand->tokens) ? $brand->tokens : [];
         $logo = $tokens['logo'] ?? null;
 
-        return is_string($logo) && str_starts_with($logo, 'data:image/') ? $logo : null;
+        if (! is_string($logo)) {
+            return null;
+        }
+
+        foreach (array_keys(BrandKit::LOGO_MIME_EXTENSIONS) as $mime) {
+            if (str_starts_with($logo, 'data:'.$mime.';base64,')) {
+                return $logo;
+            }
+        }
+
+        return null;
     }
 
     private function verifyUrl(string $code): string

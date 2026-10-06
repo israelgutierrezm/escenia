@@ -585,7 +585,7 @@ onMounted(load)
             </div>
             <div class="kit__acc">
               <label class="btn-file" :class="{ 'is-disabled': busy }">
-                <input type="file" accept="image/png,image/jpeg,image/gif,image/svg+xml" hidden :disabled="busy" @change="subirLogo(k, $event)" />
+                <input type="file" accept="image/png,image/jpeg,image/gif" hidden :disabled="busy" @change="subirLogo(k, $event)" />
                 {{ k.has_logo ? 'Cambiar logo' : 'Subir logo' }}
               </label>
               <button v-if="k.has_logo" type="button" class="link-danger" :disabled="busy" @click="quitarLogo(k)">Quitar</button>
