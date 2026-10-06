@@ -182,7 +182,7 @@ function revocarClave(k: ApiKey): void {
 
 // SSO
 function crearSso(): void {
-  if (nuevoSso.value.display_name.trim() === '') return
+  if (nuevoSso.value.display_name.trim() === '' || nuevoSso.value.domain.trim() === '') return
   let config: Record<string, unknown> = {}
   if (nuevoSso.value.config.trim() !== '') {
     try {
@@ -196,12 +196,19 @@ function crearSso(): void {
     await api.createSsoConnection({
       provider: nuevoSso.value.provider,
       display_name: nuevoSso.value.display_name,
-      domain: nuevoSso.value.domain || undefined,
+      domain: nuevoSso.value.domain.trim(),
       default_role: nuevoSso.value.default_role,
       config,
     })
     nuevoSso.value = { provider: 'oidc', display_name: '', domain: '', default_role: 'member', config: '' }
     ssos.value = (await api.ssoConnections()).data
+  })
+}
+function verificarDominioSso(c: SsoConnection): void {
+  run(async () => {
+    const updated = (await api.verifySsoDomain(c.id)).data
+    const i = ssos.value.findIndex((x) => x.id === c.id)
+    if (i !== -1) ssos.value[i] = updated
   })
 }
 function alternarSso(c: SsoConnection): void {
@@ -369,7 +376,7 @@ onMounted(load)
               </select>
             </label>
             <label class="field grow"><span>Nombre visible</span><input v-model="nuevoSso.display_name" class="control" placeholder="Acme SSO" /></label>
-            <label class="field"><span>Dominio (opcional)</span><input v-model="nuevoSso.domain" class="control" placeholder="acme.com" /></label>
+            <label class="field"><span>Dominio de correo</span><input v-model="nuevoSso.domain" class="control" placeholder="acme.com" /></label>
             <label class="field">
               <span>Rol por defecto</span>
               <select v-model="nuevoSso.default_role" class="control">
@@ -380,11 +387,15 @@ onMounted(load)
           </div>
           <label class="field">
             <span>Configuración del proveedor (JSON, opcional)</span>
-            <textarea v-model="nuevoSso.config" class="control mono" rows="3" placeholder='{ "issuer": "https://…", "client_id": "…", "client_secret": "…" }'></textarea>
+            <textarea v-model="nuevoSso.config" class="control mono" rows="4" placeholder='{ "issuer": "https://…", "client_id": "…", "client_secret": "…", "authorization_endpoint": "https://…", "token_endpoint": "https://…", "jwks_uri": "https://…" }'></textarea>
           </label>
-          <p class="muted small">El propietario nunca se delega a un IdP externo: SSO solo puede asignar Miembro o Administrador.</p>
+          <p class="muted small">
+            La conexión solo inicia sesión a correos de su dominio, y solo después de verificarlo por DNS: tu IdP no
+            puede responder por cuentas de otros dominios. El propietario nunca se delega a un IdP externo: SSO solo
+            puede asignar Miembro o Administrador.
+          </p>
           <div class="actions">
-            <AppButton :disabled="busy || !nuevoSso.display_name.trim()" @click="crearSso">Crear conexión</AppButton>
+            <AppButton :disabled="busy || !nuevoSso.display_name.trim() || !nuevoSso.domain.trim()" @click="crearSso">Crear conexión</AppButton>
           </div>
         </div>
 
@@ -395,15 +406,33 @@ onMounted(load)
               <strong>{{ c.display_name }}</strong>
               <span class="chip chip--primary">{{ proveedorLabel[c.provider] }}</span>
               <span class="chip" :class="c.is_active ? 'chip--live' : ''">{{ c.is_active ? 'Activa' : 'Pausada' }}</span>
+              <span v-if="c.domain_verified" class="chip chip--live">Dominio verificado</span>
+              <span v-else class="chip chip--danger">{{ c.domain ? 'Dominio sin verificar' : 'Sin dominio' }}</span>
             </div>
             <div class="actions">
+              <AppButton v-if="c.domain && !c.domain_verified" variant="ghost" :disabled="busy" @click="verificarDominioSso(c)">Verificar dominio</AppButton>
               <AppButton variant="ghost" :disabled="busy" @click="alternarSso(c)">{{ c.is_active ? 'Pausar' : 'Activar' }}</AppButton>
               <AppButton variant="danger" :disabled="busy" @click="eliminarSso(c)">Eliminar</AppButton>
             </div>
           </div>
           <p class="muted small">
-            Rol por defecto: {{ rolLabel[c.default_role] }}<template v-if="c.domain"> · Dominio: {{ c.domain }}</template>
+            Rol por defecto: {{ rolLabel[c.default_role] }}<template v-if="c.domain"> · Correos @{{ c.domain }}</template>
+            <template v-if="c.domain_verified_at"> · verificado el {{ fecha(c.domain_verified_at) }}</template>
           </p>
+          <div v-if="c.dns_challenge && !c.domain_verified" class="dns">
+            <p class="muted small">Hasta verificar el dominio nadie puede entrar con esta conexión. Crea este registro DNS:</p>
+            <table class="admin-table">
+              <thead><tr><th>Tipo</th><th>Nombre</th><th>Valor</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td class="mono">{{ c.dns_challenge.type }}</td>
+                  <td class="mono">{{ c.dns_challenge.name }}</td>
+                  <td class="mono valor">{{ c.dns_challenge.value }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-else-if="!c.domain" class="warn small">Esta conexión no tiene dominio de correo, así que no puede iniciar sesiones. Elimínala y créala con su dominio.</p>
           <label class="field">
             <span>URL de callback (configúrala en tu IdP)</span>
             <div class="webhook">

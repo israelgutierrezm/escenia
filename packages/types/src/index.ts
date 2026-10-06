@@ -960,7 +960,12 @@ export interface SsoConnection {
   id: string
   provider: SsoProvider
   display_name: string
+  /** Email domain the connection may vouch for — only once verified. */
   domain: string | null
+  domain_verified: boolean
+  domain_verified_at: string | null
+  /** TXT record proving the tenant controls `domain`; null without a domain. */
+  dns_challenge: DnsChallenge | null
   default_role: 'admin' | 'member'
   is_active: boolean
   created_at: string | null

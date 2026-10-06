@@ -573,7 +573,8 @@ export function createApiClient(options: ApiClientOptions = {}) {
     createSsoConnection: (data: {
       provider: SsoProvider
       display_name: string
-      domain?: string
+      /** Email domain; the connection logs no one in until it is verified. */
+      domain: string
       config?: Record<string, unknown>
       default_role?: 'admin' | 'member'
     }) => request<ApiResource<SsoConnection>>('POST', '/enterprise/sso-connections', data),
@@ -581,12 +582,15 @@ export function createApiClient(options: ApiClientOptions = {}) {
       connectionId: string,
       data: Partial<{
         display_name: string
-        domain: string | null
+        /** Changing it resets the domain verification. */
+        domain: string
         config: Record<string, unknown>
         default_role: 'admin' | 'member'
         is_active: boolean
       }>,
     ) => request<ApiResource<SsoConnection>>('PUT', `/enterprise/sso-connections/${connectionId}`, data),
+    verifySsoDomain: (connectionId: string) =>
+      request<ApiResource<SsoConnection>>('POST', `/enterprise/sso-connections/${connectionId}/verify-domain`),
     deleteSsoConnection: (connectionId: string) =>
       request<void>('DELETE', `/enterprise/sso-connections/${connectionId}`),
 
