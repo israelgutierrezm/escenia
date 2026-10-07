@@ -224,8 +224,23 @@ function eliminarSso(c: SsoConnection): void {
     ssos.value = ssos.value.filter((x) => x.id !== c.id)
   })
 }
+// OIDC: la ruta de esta SPA a la que el IdP devuelve el navegador.
 function callbackUrl(c: SsoConnection): string {
-  return `${window.location.origin}/api/v1/sso/${c.id}/callback`
+  return `${window.location.origin}/sso/${c.id}/callback`
+}
+// Lo que el administrador del IdP registra para una conexión SAML.
+function datosSaml(c: SsoConnection): [string, string, string][] {
+  return c.saml === null
+    ? []
+    : [
+        ['entity', 'Entity ID (SP)', c.saml.entity_id],
+        ['acs', 'URL de ACS', c.saml.acs_url],
+        ['metadata', 'Metadata del SP', c.saml.metadata_url],
+      ]
+}
+const configEjemplo: Record<SsoProvider, string> = {
+  oidc: '{ "issuer": "https://…", "client_id": "…", "client_secret": "…" }',
+  saml: '{ "idp_entity_id": "https://…", "idp_sso_url": "https://…", "idp_x509_cert": "-----BEGIN CERTIFICATE-----…" }',
 }
 
 // Residencia
@@ -387,8 +402,13 @@ onMounted(load)
           </div>
           <label class="field">
             <span>Configuración del proveedor (JSON, opcional)</span>
-            <textarea v-model="nuevoSso.config" class="control mono" rows="4" placeholder='{ "issuer": "https://…", "client_id": "…", "client_secret": "…", "authorization_endpoint": "https://…", "token_endpoint": "https://…", "jwks_uri": "https://…" }'></textarea>
+            <textarea v-model="nuevoSso.config" class="control mono" rows="4" :placeholder="configEjemplo[nuevoSso.provider]"></textarea>
           </label>
+          <p v-if="nuevoSso.provider === 'oidc'" class="muted small">
+            Con el issuer basta: los endpoints se descubren de su <code>/.well-known/openid-configuration</code>
+            (puedes fijarlos con <code>authorization_endpoint</code>, <code>token_endpoint</code> y <code>jwks_uri</code>).
+          </p>
+          <p v-else class="muted small">SAML requiere HTTPS: el IdP devuelve la respuesta firmada con un POST al ACS de Escenia.</p>
           <p class="muted small">
             La conexión solo inicia sesión a correos de su dominio, y solo después de verificarlo por DNS: tu IdP no
             puede responder por cuentas de otros dominios. El propietario nunca se delega a un IdP externo: SSO solo
@@ -418,6 +438,11 @@ onMounted(load)
           <p class="muted small">
             Rol por defecto: {{ rolLabel[c.default_role] }}<template v-if="c.domain"> · Correos @{{ c.domain }}</template>
             <template v-if="c.domain_verified_at"> · verificado el {{ fecha(c.domain_verified_at) }}</template>
+            <template v-if="c.domain_checked_at"> · última comprobación DNS {{ fecha(c.domain_checked_at) }}</template>
+          </p>
+          <p v-if="c.domain_verified && c.domain_check_failing_since" class="warn small" role="status">
+            El registro TXT no se encuentra desde el {{ fecha(c.domain_check_failing_since) }}. Si sigue así 72 h, el
+            dominio dejará de estar verificado y nadie podrá entrar con esta conexión.
           </p>
           <div v-if="c.dns_challenge && !c.domain_verified" class="dns">
             <p class="muted small">Hasta verificar el dominio nadie puede entrar con esta conexión. Crea este registro DNS:</p>
@@ -433,13 +458,22 @@ onMounted(load)
             </table>
           </div>
           <p v-else-if="!c.domain" class="warn small">Esta conexión no tiene dominio de correo, así que no puede iniciar sesiones. Elimínala y créala con su dominio.</p>
-          <label class="field">
-            <span>URL de callback (configúrala en tu IdP)</span>
+          <label v-if="c.provider === 'oidc'" class="field">
+            <span>URL de redirección (regístrala en tu IdP)</span>
             <div class="webhook">
               <input :value="callbackUrl(c)" readonly class="control mono" />
               <AppButton variant="ghost" @click="copiar(callbackUrl(c), c.id)">{{ copiado === c.id ? 'Copiado' : 'Copiar' }}</AppButton>
             </div>
           </label>
+          <template v-else>
+            <label v-for="[clave, etiqueta, valor] in datosSaml(c)" :key="clave" class="field">
+              <span>{{ etiqueta }} (regístrala en tu IdP)</span>
+              <div class="webhook">
+                <input :value="valor" readonly class="control mono" />
+                <AppButton variant="ghost" @click="copiar(valor, c.id + clave)">{{ copiado === c.id + clave ? 'Copiado' : 'Copiar' }}</AppButton>
+              </div>
+            </label>
+          </template>
         </div>
       </div>
 

@@ -2,7 +2,9 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '@escenia/api-client'
+import type { SsoDiscovery } from '@escenia/types'
 
+import { api } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import AuthWaves from '@/components/AuthWaves.vue'
 
@@ -26,6 +28,52 @@ async function onSubmit(): Promise<void> {
     error.value = e instanceof ApiError ? e.message : 'No se pudo iniciar sesión.'
   } finally {
     enviando.value = false
+  }
+}
+
+// SSO: el dominio del correo elige la conexión de la organización.
+const conexiones = ref<SsoDiscovery[]>([])
+const buscandoSso = ref(false)
+const ssoError = ref<string | null>(null)
+
+async function continuarConSso(): Promise<void> {
+  ssoError.value = null
+  conexiones.value = []
+
+  if (email.value.trim() === '') {
+    ssoError.value = 'Escribe tu correo de trabajo para encontrar a tu organización.'
+    return
+  }
+
+  buscandoSso.value = true
+
+  try {
+    const encontradas = (await api.ssoDiscover(email.value.trim())).data
+    const unica = encontradas.length === 1 ? encontradas[0] : undefined
+
+    if (unica !== undefined) {
+      await iniciarSso(unica)
+    } else if (encontradas.length === 0) {
+      ssoError.value = 'Tu organización no tiene inicio de sesión con SSO para este dominio.'
+    } else {
+      conexiones.value = encontradas
+    }
+  } catch (e) {
+    ssoError.value = e instanceof ApiError ? e.message : 'No se pudo iniciar sesión con SSO.'
+  } finally {
+    buscandoSso.value = false
+  }
+}
+
+async function iniciarSso(conexion: SsoDiscovery): Promise<void> {
+  ssoError.value = null
+
+  try {
+    const redirectUri = `${window.location.origin}/sso/${conexion.id}/callback`
+    const inicio = (await api.ssoStart(conexion.id, redirectUri)).data
+    window.location.assign(inicio.authorization_url)
+  } catch (e) {
+    ssoError.value = e instanceof ApiError ? e.message : 'No se pudo iniciar sesión con SSO.'
   }
 }
 </script>
@@ -88,6 +136,19 @@ async function onSubmit(): Promise<void> {
         </span>
       </button>
     </form>
+
+    <div class="sso">
+      <p class="separador" aria-hidden="true"><span>o</span></p>
+      <button type="button" class="sso-btn" :disabled="buscandoSso" @click="continuarConSso">
+        {{ buscandoSso ? 'Buscando tu organización…' : 'Continuar con SSO' }}
+      </button>
+      <ul v-if="conexiones.length > 1" class="sso-lista" aria-label="Elige tu organización">
+        <li v-for="c in conexiones" :key="c.id">
+          <button type="button" class="sso-btn" @click="iniciarSso(c)">{{ c.display_name }}</button>
+        </li>
+      </ul>
+      <p v-if="ssoError" class="error-text" role="alert">{{ ssoError }}</p>
+    </div>
   </AuthWaves>
 </template>
 
@@ -240,5 +301,61 @@ async function onSubmit(): Promise<void> {
   .grupo:hover:not(:disabled) .chev {
     animation: none;
   }
+}
+
+.sso {
+  display: flex;
+  flex-direction: column;
+  gap: var(--escenia-space-3);
+  margin-top: var(--escenia-space-4);
+}
+
+.separador {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--escenia-color-text-muted);
+}
+
+.separador::before,
+.separador::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--escenia-color-border);
+}
+
+.sso-btn {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--escenia-color-text);
+  background: transparent;
+  border: 1px solid var(--escenia-color-border-strong);
+  border-radius: var(--escenia-radius-sm);
+  cursor: pointer;
+  transition: border-color 0.16s ease, color 0.16s ease;
+}
+
+.sso-btn:hover:not(:disabled) {
+  border-color: var(--escenia-color-primary);
+  color: var(--escenia-color-primary);
+}
+
+.sso-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sso-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--escenia-space-2);
 }
 </style>

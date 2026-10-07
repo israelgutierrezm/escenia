@@ -93,7 +93,9 @@ import type {
   DataRegion,
   IssuedApiKey,
   SsoConnection,
+  SsoDiscovery,
   SsoProvider,
+  SsoStart,
   TenantSettings,
   RoleModel,
   PermissionGroup,
@@ -224,6 +226,13 @@ export function createApiClient(options: ApiClientOptions = {}) {
   return {
     register: (data: RegisterPayload) => request<ApiResource<User>>('POST', '/auth/register', data),
     login: (data: LoginPayload) => request<ApiResource<User>>('POST', '/auth/login', data),
+    /** SSO login: connections for a work email, start (sets the binding cookie), OIDC completion. */
+    ssoDiscover: (email: string) =>
+      request<ApiCollection<SsoDiscovery>>('GET', `/sso/discover?email=${encodeURIComponent(email)}`),
+    ssoStart: (connectionId: string, redirectUri: string) =>
+      request<ApiResource<SsoStart>>('GET', `/sso/${connectionId}?redirect_uri=${encodeURIComponent(redirectUri)}`),
+    ssoComplete: (connectionId: string, data: { code: string; state: string }) =>
+      request<ApiResource<User>>('POST', `/sso/${connectionId}/callback`, data),
     logout: () => request<void>('POST', '/auth/logout'),
     me: () => request<ApiResource<User>>('GET', '/auth/me'),
     tenants: () => request<ApiCollection<Tenant>>('GET', '/tenants'),

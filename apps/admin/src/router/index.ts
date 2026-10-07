@@ -12,6 +12,12 @@ export const router = createRouter({
       meta: { guest: true },
     },
     {
+      // Where the IdP sends the browser back (OIDC) or the ACS lands it (SAML).
+      path: '/sso/:connection/callback',
+      name: 'sso-callback',
+      component: () => import('@/views/SsoCallbackView.vue'),
+    },
+    {
       path: '/',
       component: () => import('@/layouts/AdminLayout.vue'),
       meta: { auth: true },
@@ -138,6 +144,7 @@ router.beforeEach(async (to) => {
 // distingue las entradas del historial del navegador.
 const TITULOS: Record<string, string> = {
   login: 'Iniciar sesión',
+  'sso-callback': 'Iniciar sesión con SSO',
   dashboard: 'Resumen',
   events: 'Eventos',
   'event-detail': 'Evento',

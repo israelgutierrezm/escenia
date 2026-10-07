@@ -966,9 +966,28 @@ export interface SsoConnection {
   domain_verified_at: string | null
   /** TXT record proving the tenant controls `domain`; null without a domain. */
   dns_challenge: DnsChallenge | null
+  /** Verified domains are re-checked daily; a failing one is revoked after a grace period. */
+  domain_checked_at: string | null
+  domain_check_failing_since: string | null
+  /** What the IdP administrator registers (SAML connections only). */
+  saml: { entity_id: string; acs_url: string; metadata_url: string } | null
   default_role: 'admin' | 'member'
   is_active: boolean
   created_at: string | null
+}
+
+/** A connection that may log in a given work email ("Continuar con SSO"). */
+export interface SsoDiscovery {
+  id: string
+  provider: SsoProvider
+  display_name: string
+}
+
+export interface SsoStart {
+  connection: string
+  provider: SsoProvider
+  authorization_url: string
+  state: string
 }
 
 export type DataRegion = 'us' | 'eu' | 'ap'
