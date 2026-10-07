@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-10-06). Completa ADR-034 (cierra los pendientes de TD-035).
+Accepted (2026-10-06). Completa ADR-034; completado a su vez por ADR-036.
 
 ## Context
 

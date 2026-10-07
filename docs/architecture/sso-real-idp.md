@@ -1,9 +1,11 @@
 # Probar SSO contra un IdP real (Keycloak)
 
 La suite cubre OIDC y SAML con un IdP falso que firma tokens y respuestas **de
-verdad** (claves generadas en cada corrida). Esta guía es para la prueba manual
-contra un IdP real, pendiente en TD-035. En el equipo de desarrollo actual está
-bloqueada porque Docker Desktop no tiene distro WSL.
+verdad** (claves generadas en cada corrida). Hay además una **prueba automatizada
+sin Docker** contra IdPs independientes (`oidc-provider` y `samlify`) en
+`tools/sso-interop` (ver su README): 14/14, incluidos SAML firmado, cifrado y SLO.
+Esta guía es para la prueba manual contra un IdP comercial, pendiente en TD-035 y
+bloqueada en el equipo actual porque Docker Desktop no tiene distro WSL.
 
 ## 1. Levantar Keycloak
 
@@ -61,6 +63,11 @@ en `APP_URL`.
    ```
    Si el correo no viaja en el NameID, añade un mapper de atributo `email` (o
    fija `email_attribute`).
+   Opcional: `"idp_slo_url": "http://localhost:8080/realms/escenia/protocol/saml"`
+   (cierre de sesión único), `"sign_requests": true` (el IdP debe tener el
+   certificado del SP, que publica la metadata) y `"encrypt_assertions": true`.
+   El IdP debe **firmar los mensajes de logout**, cifrar antes de firmar si firma
+   la respuesta completa, e incluir `AuthnStatement`.
 4. **Continuar con SSO** con `dev@acme.com`.
 
 **Esperado**: vuelves a `/sso/{id}/callback?status=ok` y luego al resumen. Una
