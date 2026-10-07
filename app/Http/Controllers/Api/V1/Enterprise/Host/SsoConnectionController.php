@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1\Enterprise\Host;
 
 use App\Application\Enterprise\Actions\CreateSsoConnectionAction;
 use App\Application\Enterprise\Actions\DeleteSsoConnectionAction;
+use App\Application\Enterprise\Actions\RotateSamlCredentialsAction;
 use App\Application\Enterprise\Actions\UpdateSsoConnectionAction;
 use App\Application\Enterprise\Actions\VerifySsoDomainAction;
 use App\Domain\AccessControl\Enums\Permission;
@@ -78,6 +79,15 @@ class SsoConnectionController extends Controller
     }
 
     public function verifyDomain(Request $request, VerifySsoDomainAction $action, string $connection): SsoConnectionResource
+    {
+        $this->authorizePermission($request, Permission::TenantManage);
+
+        $model = SsoConnection::query()->where('ulid', $connection)->firstOrFail();
+
+        return SsoConnectionResource::make($action->execute($request->user(), $model));
+    }
+
+    public function rotateSamlCredentials(Request $request, RotateSamlCredentialsAction $action, string $connection): SsoConnectionResource
     {
         $this->authorizePermission($request, Permission::TenantManage);
 

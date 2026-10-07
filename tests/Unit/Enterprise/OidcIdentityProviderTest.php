@@ -357,3 +357,68 @@ it('refuses an incomplete configuration without calling the IdP', function () {
         Http::assertNothingSent();
     }
 })->throws(SsoAuthenticationException::class);
+
+it('authenticates at the token endpoint with HTTP Basic by default, as OIDC specifies', function () {
+    $key = oidcRsaKey();
+    fakeOidcIdp(JWT::encode(oidcClaims(), $key['private'], 'RS256', 'key-1'), [$key['jwk']]);
+
+    app(OidcIdentityProvider::class)->verifyCallback(oidcConnection(['client_secret' => 's3cret/+=']), oidcCallback());
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://idp.test/token'
+        && $request->header('Authorization') === ['Basic '.base64_encode('escenia-client:'.urlencode('s3cret/+='))]
+        && ! isset($request['client_secret']));
+});
+
+it('sends the credentials in the body when the IdP expects client_secret_post', function () {
+    $key = oidcRsaKey();
+    fakeOidcIdp(JWT::encode(oidcClaims(), $key['private'], 'RS256', 'key-1'), [$key['jwk']]);
+
+    app(OidcIdentityProvider::class)->verifyCallback(oidcConnection(['token_endpoint_auth_method' => 'client_secret_post']), oidcCallback());
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://idp.test/token'
+        && $request['client_id'] === 'escenia-client'
+        && $request['client_secret'] === 's3cret'
+        && ! $request->hasHeader('Authorization'));
+});
+
+/**
+ * An IdP that keeps scope claims out of the ID token (OIDC-conformant) and
+ * serves them from UserInfo.
+ *
+ * @param  array<string, mixed>  $userinfo
+ */
+function fakeOidcIdpWithUserinfo(array $userinfo): void
+{
+    $key = oidcRsaKey();
+    $claims = oidcClaims();
+    unset($claims['email'], $claims['email_verified'], $claims['name']);
+
+    Http::fake([
+        'idp.test/token' => Http::response(['id_token' => JWT::encode($claims, $key['private'], 'RS256', 'key-1'), 'access_token' => 'at-123', 'token_type' => 'Bearer']),
+        'idp.test/jwks' => Http::response(['keys' => [$key['jwk']]]),
+        'idp.test/userinfo' => Http::response($userinfo),
+    ]);
+}
+
+it('reads the email from UserInfo when the ID token omits it', function () {
+    fakeOidcIdpWithUserinfo(['sub' => 'idp-user-42', 'email' => 'Dev@Acme.com', 'email_verified' => true, 'name' => 'Dev From UserInfo']);
+
+    $identity = app(OidcIdentityProvider::class)
+        ->verifyCallback(oidcConnection(['userinfo_endpoint' => 'https://idp.test/userinfo']), oidcCallback());
+
+    expect($identity->subject)->toBe('idp-user-42')
+        ->and($identity->email)->toBe('dev@acme.com')
+        ->and($identity->name)->toBe('Dev From UserInfo');
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://idp.test/userinfo'
+        && $request->header('Authorization') === ['Bearer at-123']);
+});
+
+it('ignores UserInfo for another subject or with an unverified email', function (array $userinfo) {
+    fakeOidcIdpWithUserinfo($userinfo);
+
+    app(OidcIdentityProvider::class)
+        ->verifyCallback(oidcConnection(['userinfo_endpoint' => 'https://idp.test/userinfo']), oidcCallback());
+})->throws(SsoAuthenticationException::class)->with([
+    'another subject' => [['sub' => 'someone-else', 'email' => 'dev@acme.com']],
+    'unverified email' => [['sub' => 'idp-user-42', 'email' => 'dev@acme.com', 'email_verified' => false]],
+]);

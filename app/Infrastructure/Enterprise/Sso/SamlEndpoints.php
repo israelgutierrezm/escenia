@@ -24,6 +24,14 @@ final class SamlEndpoints
         return self::base($connection).'/acs';
     }
 
+    /**
+     * Single logout service: where the IdP sends LogoutRequests and answers ours.
+     */
+    public static function sloUrl(SsoConnection $connection): string
+    {
+        return self::base($connection).'/slo';
+    }
+
     private static function base(SsoConnection $connection): string
     {
         return rtrim((string) config('app.url'), '/').'/api/v1/sso/'.$connection->ulid;

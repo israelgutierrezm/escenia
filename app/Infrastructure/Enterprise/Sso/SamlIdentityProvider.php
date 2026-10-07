@@ -8,7 +8,6 @@ use App\Domain\Enterprise\Contracts\IdentityProvider;
 use App\Domain\Enterprise\DTOs\ExternalIdentity;
 use App\Domain\Enterprise\DTOs\SsoAuthorizationRequest;
 use App\Domain\Enterprise\DTOs\SsoCallback;
-use App\Domain\Enterprise\Enums\SsoProvider;
 use App\Domain\Enterprise\Exceptions\SsoAuthenticationException;
 use App\Domain\Enterprise\Models\SsoConnection;
 use DOMDocument;
@@ -17,19 +16,20 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use OneLogin\Saml2\Constants;
 use OneLogin\Saml2\Response;
-use OneLogin\Saml2\Settings;
 use OneLogin\Saml2\Utils;
 use Throwable;
 
 /**
- * SAML 2.0 Web Browser SSO, SP-initiated: an HTTP-Redirect AuthnRequest out,
- * an HTTP-POST Response back to the ACS. The AuthnRequest ID derives from the
- * login's nonce, so only a Response to *this* attempt is accepted
- * (InResponseTo). onelogin/php-saml validates it in strict mode — signature
- * against the IdP certificate (on the Response or the Assertion), schema,
- * InResponseTo, audience, issuer, destination/recipient and time conditions —
- * and SHA-1 signatures/digests are refused before that. The library stays
- * behind this adapter (ADR-008); no metadata is ever fetched from the IdP.
+ * SAML 2.0 Web Browser SSO, SP-initiated: an HTTP-Redirect AuthnRequest out
+ * (signed when the connection asks), an HTTP-POST Response back to the ACS
+ * (assertions may be — or be required to be — encrypted to Escenia's SP
+ * certificate). The AuthnRequest ID derives from the login's nonce, so only a
+ * Response to *this* attempt is accepted (InResponseTo). onelogin/php-saml
+ * validates it in strict mode — signature against the IdP certificate (on the
+ * Response or the Assertion), schema, InResponseTo, audience, issuer,
+ * destination/recipient and time conditions — and weak algorithms (SHA-1
+ * signatures/digests, RSA-1.5 key transport) are refused before that, also
+ * inside decrypted assertions. The library stays behind this adapter (ADR-008).
  */
 final class SamlIdentityProvider implements IdentityProvider
 {
@@ -49,9 +49,13 @@ final class SamlIdentityProvider implements IdentityProvider
         'urn:oid:2.16.840.1.113730.3.1.241',
     ];
 
+    public function __construct(
+        private readonly SamlSettingsFactory $settings,
+    ) {}
+
     public function authorizationUrl(SsoConnection $connection, SsoAuthorizationRequest $request): string
     {
-        $idp = $this->idp($connection);
+        $idp = $this->settings->idp($connection);
 
         $authnRequest = sprintf(
             '<samlp:AuthnRequest xmlns:samlp="%s" xmlns:saml="%s" ID="%s" Version="2.0" IssueInstant="%s" '
@@ -70,12 +74,13 @@ final class SamlIdentityProvider implements IdentityProvider
             Constants::NAMEID_UNSPECIFIED,
         );
 
-        $query = http_build_query([
-            'SAMLRequest' => base64_encode((string) gzdeflate($authnRequest)),
-            'RelayState' => $request->state,
-        ]);
-
-        return $idp['sso_url'].(str_contains($idp['sso_url'], '?') ? '&' : '?').$query;
+        return SamlRedirectBinding::url(
+            $idp['sso_url'],
+            'SAMLRequest',
+            base64_encode((string) gzdeflate($authnRequest)),
+            $request->state,
+            $this->settings->signingKey($connection),
+        );
     }
 
     /**
@@ -83,28 +88,25 @@ final class SamlIdentityProvider implements IdentityProvider
      */
     public function verifyCallback(SsoConnection $connection, SsoCallback $callback): ExternalIdentity
     {
-        $settings = $this->settings($connection);
+        $settings = $this->settings->forLogin($connection);
+        $original = self::load((string) base64_decode($callback->code, true));
 
-        if (! $this->usesStrongAlgorithms($callback->code)) {
-            throw $this->rejected($connection, 'SHA-1 signature or digest.');
+        if ($original === null || ! self::usesStrongAlgorithms($original)) {
+            throw $this->rejected($connection, 'Unreadable response or weak algorithm.');
         }
 
-        // onelogin compares Destination/Recipient with "the current URL". Pin its
-        // scheme/host/port to the origin of the ACS URL we advertise (not the
-        // Host header); the path is the routed request path. An empty base URL
-        // resets the library's overrides afterwards.
-        $acs = parse_url(SamlEndpoints::acsUrl($connection));
-        $origin = ($acs['scheme'] ?? 'https').'://'.($acs['host'] ?? '').(isset($acs['port']) ? ':'.$acs['port'] : '');
-
-        Utils::setBaseURL($origin.'/');
-
         try {
-            $response = new Response($settings, $callback->code);
-            $valid = $response->isValid(self::requestId($callback->nonce));
+            [$response, $valid] = $this->settings->withPinnedOrigin($connection, function () use ($settings, $callback): array {
+                $response = new Response($settings, $callback->code); // decrypts an EncryptedAssertion
+
+                // The decrypted assertion carries its own signature: same rule.
+                $valid = self::usesStrongAlgorithms($response->getXMLDocument())
+                    && $response->isValid(self::requestId($callback->nonce));
+
+                return [$response, $valid];
+            });
         } catch (Throwable $e) {
             throw $this->rejected($connection, $e->getMessage());
-        } finally {
-            Utils::setBaseURL('');
         }
 
         if (! $valid) {
@@ -114,14 +116,19 @@ final class SamlIdentityProvider implements IdentityProvider
         try {
             $attributes = self::lowercaseKeys($response->getAttributes());
             $nameId = trim($response->getNameId());
+            $session = array_filter([
+                'name_id' => $nameId,
+                'name_id_format' => (string) $response->getNameIdFormat(),
+                'session_index' => (string) $response->getSessionIndex(),
+            ], static fn (string $value): bool => $value !== '');
         } catch (Throwable $e) {
             throw $this->rejected($connection, $e->getMessage());
         }
 
-        $subjectAttribute = $this->read($connection, 'subject_attribute');
+        $subjectAttribute = $this->settings->read($connection, 'subject_attribute');
         $subject = $subjectAttribute !== '' ? self::first($attributes, [$subjectAttribute]) : $nameId;
 
-        $emailAttribute = $this->read($connection, 'email_attribute');
+        $emailAttribute = $this->settings->read($connection, 'email_attribute');
         $email = Str::lower(self::first($attributes, $emailAttribute !== '' ? [$emailAttribute] : self::EMAIL_ATTRIBUTES));
 
         if ($email === '' && filter_var($nameId, FILTER_VALIDATE_EMAIL) !== false) {
@@ -132,24 +139,24 @@ final class SamlIdentityProvider implements IdentityProvider
             throw $this->rejected($connection, 'No subject or email in the assertion.');
         }
 
-        $nameAttribute = $this->read($connection, 'name_attribute');
+        $nameAttribute = $this->settings->read($connection, 'name_attribute');
         $name = self::first($attributes, $nameAttribute !== '' ? [$nameAttribute] : self::NAME_ATTRIBUTES);
 
         return new ExternalIdentity(
             subject: $subject,
             email: $email,
             name: $name !== '' ? Str::limit($name, 255, '') : $email,
+            session: $session,
         );
     }
 
     /**
-     * Escenia's SP metadata for this connection (for the IdP administrator).
+     * Escenia's SP metadata for this connection (for the IdP administrator),
+     * with its signing and encryption certificate.
      */
     public function serviceProviderMetadata(SsoConnection $connection): string
     {
-        $settings = new Settings(['strict' => true, 'sp' => $this->serviceProvider($connection)], true);
-
-        return $settings->getSPMetadata();
+        return $this->settings->forMetadata($connection)->getSPMetadata(true);
     }
 
     /**
@@ -160,106 +167,41 @@ final class SamlIdentityProvider implements IdentityProvider
         return '_'.$nonce;
     }
 
-    private function settings(SsoConnection $connection): Settings
-    {
-        $idp = $this->idp($connection);
-
-        try {
-            return new Settings([
-                'strict' => true,
-                'debug' => false,
-                'sp' => $this->serviceProvider($connection),
-                'idp' => [
-                    'entityId' => $idp['entity_id'],
-                    'singleSignOnService' => ['url' => $idp['sso_url'], 'binding' => Constants::BINDING_HTTP_REDIRECT],
-                    'x509cert' => $idp['x509_cert'],
-                ],
-                'security' => [
-                    // IdPs differ on what they sign; the library rejects a Response
-                    // where neither the message nor the assertion is signed.
-                    'wantMessagesSigned' => false,
-                    'wantAssertionsSigned' => false,
-                    'wantNameId' => true,
-                    'wantXMLValidation' => true,
-                    'rejectUnsolicitedResponsesWithInResponseTo' => true,
-                    'destinationStrictlyMatches' => true,
-                    'relaxDestinationValidation' => false,
-                ],
-            ]);
-        } catch (Throwable $e) {
-            throw $this->rejected($connection, 'Invalid SAML settings: '.$e->getMessage());
-        }
-    }
-
     /**
-     * @return array<string, mixed>
+     * Parsed with the library's loader, which refuses DOCTYPEs (no XXE).
      */
-    private function serviceProvider(SsoConnection $connection): array
+    private static function load(string $xml): ?DOMDocument
     {
-        return [
-            'entityId' => SamlEndpoints::entityId($connection),
-            'assertionConsumerService' => [
-                'url' => SamlEndpoints::acsUrl($connection),
-                'binding' => Constants::BINDING_HTTP_POST,
-            ],
-            'NameIDFormat' => Constants::NAMEID_UNSPECIFIED,
-        ];
-    }
-
-    /**
-     * @return array{entity_id: string, sso_url: string, x509_cert: string}
-     */
-    private function idp(SsoConnection $connection): array
-    {
-        if ($connection->provider !== SsoProvider::Saml) {
-            throw new SsoAuthenticationException;
-        }
-
-        $idp = [
-            'entity_id' => $this->read($connection, 'idp_entity_id'),
-            'sso_url' => $this->read($connection, 'idp_sso_url'),
-            'x509_cert' => $this->read($connection, 'idp_x509_cert'),
-        ];
-
-        $scheme = strtolower((string) parse_url($idp['sso_url'], PHP_URL_SCHEME));
-
-        if ($idp['entity_id'] === '' || $idp['x509_cert'] === '' || ! in_array($scheme, ['http', 'https'], true)) {
-            throw new SsoAuthenticationException;
-        }
-
-        return $idp;
-    }
-
-    private function read(SsoConnection $connection, string $key): string
-    {
-        $value = $connection->config[$key] ?? null;
-
-        return is_string($value) ? trim($value) : '';
-    }
-
-    /**
-     * Refuses SHA-1 signature and digest algorithms, which the library would
-     * otherwise accept. Parsed with the library's loader (no DOCTYPE → no XXE).
-     */
-    private function usesStrongAlgorithms(string $samlResponse): bool
-    {
-        $xml = base64_decode($samlResponse, true);
         $document = new DOMDocument;
 
         try {
-            if ($xml === false || Utils::loadXML($document, $xml) === false) {
-                return false;
-            }
+            return $xml !== '' && Utils::loadXML($document, $xml) !== false ? $document : null;
         } catch (Throwable) {
-            return false;
+            return null;
         }
+    }
 
+    /**
+     * Refuses SHA-1 signatures and digests and RSA-1.5 key transport, which the
+     * library would otherwise accept. (RSA-OAEP's own SHA-1 digest is fine and
+     * not inspected: it sits outside the signatures.)
+     */
+    private static function usesStrongAlgorithms(DOMDocument $document): bool
+    {
         $xpath = new DOMXPath($document);
         $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
-        $algorithms = $xpath->query('//ds:SignatureMethod/@Algorithm | //ds:DigestMethod/@Algorithm');
+        $xpath->registerNamespace('xenc', 'http://www.w3.org/2001/04/xmlenc#');
+
+        $algorithms = $xpath->query(
+            '//ds:SignedInfo/ds:SignatureMethod/@Algorithm'
+            .' | //ds:SignedInfo/ds:Reference/ds:DigestMethod/@Algorithm'
+            .' | //xenc:EncryptedKey/xenc:EncryptionMethod/@Algorithm',
+        );
 
         foreach ($algorithms !== false ? $algorithms : [] as $algorithm) {
-            if (str_ends_with(strtolower((string) $algorithm->nodeValue), 'sha1')) {
+            $uri = strtolower((string) $algorithm->nodeValue);
+
+            if (str_ends_with($uri, 'sha1') || str_ends_with($uri, 'rsa-1_5')) {
                 return false;
             }
         }

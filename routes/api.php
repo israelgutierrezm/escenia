@@ -60,6 +60,7 @@ use App\Http\Controllers\Api\V1\Enterprise\Host\LeaderboardController;
 use App\Http\Controllers\Api\V1\Enterprise\Host\SessionAgendaController;
 use App\Http\Controllers\Api\V1\Enterprise\Host\SponsorController as HostSponsorController;
 use App\Http\Controllers\Api\V1\Enterprise\Host\SsoConnectionController;
+use App\Http\Controllers\Api\V1\Enterprise\Host\SsoIdentityController;
 use App\Http\Controllers\Api\V1\Enterprise\Host\TenantSettingsController;
 use App\Http\Controllers\Api\V1\Enterprise\Host\TrackController as HostTrackController;
 use App\Http\Controllers\Api\V1\Enterprise\Programmatic\EventController as ProgrammaticEventController;
@@ -126,6 +127,8 @@ Route::prefix('v1')->group(function (): void {
     // group, CSRF-exempt in bootstrap/app.php.
     Route::post('sso/{connection}/acs', [SamlController::class, 'acs'])->middleware(['web', 'throttle:20,1'])->name('sso.saml.acs');
     Route::get('sso/{connection}/saml/metadata', [SamlController::class, 'metadata'])->middleware('throttle:60,1')->name('sso.saml.metadata');
+    // SAML single logout service (ADR-036): session route, the IdP redirects the browser here.
+    Route::get('sso/{connection}/slo', [SamlController::class, 'slo'])->middleware(['web', 'throttle:30,1'])->name('sso.saml.slo');
 
     // ---- Developer Platform: programmatic API (API-key auth, Fase 13) ----
     Route::middleware(['api.key', 'throttle:120,1'])->prefix('programmatic')->group(function (): void {
@@ -393,6 +396,9 @@ Route::prefix('v1')->group(function (): void {
             Route::post('enterprise/sso-connections', [SsoConnectionController::class, 'store']);
             Route::match(['put', 'patch'], 'enterprise/sso-connections/{connection}', [SsoConnectionController::class, 'update']);
             Route::post('enterprise/sso-connections/{connection}/verify-domain', [SsoConnectionController::class, 'verifyDomain']);
+            Route::post('enterprise/sso-connections/{connection}/saml/credentials', [SsoConnectionController::class, 'rotateSamlCredentials']);
+            Route::get('enterprise/sso-connections/{connection}/identities', [SsoIdentityController::class, 'index']);
+            Route::delete('enterprise/sso-connections/{connection}/identities/{identity}', [SsoIdentityController::class, 'destroy']);
             Route::delete('enterprise/sso-connections/{connection}', [SsoConnectionController::class, 'destroy']);
 
             Route::get('enterprise/settings', [TenantSettingsController::class, 'show']);

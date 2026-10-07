@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Enterprise\Actions;
 
+use App\Application\Enterprise\DTOs\SsoLoginResult;
 use App\Application\Enterprise\SsoLoginAttempts;
 use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Enterprise\Contracts\IdentityProvider;
@@ -47,7 +48,7 @@ final class CompleteSsoLoginAction
     /**
      * @param  array<string, string>  $hints  untrusted extras only the dev/test fake reads
      */
-    public function execute(SsoConnection $connection, string $state, ?string $binding, string $code, array $hints = []): User
+    public function execute(SsoConnection $connection, string $state, ?string $binding, string $code, array $hints = []): SsoLoginResult
     {
         if (! $connection->is_active) {
             throw new SsoAuthenticationException;
@@ -80,7 +81,7 @@ final class CompleteSsoLoginAction
 
         $tenant = $connection->tenant;
 
-        return DB::transaction(fn (): User => $this->tenantContext->runFor($tenant, function () use ($connection, $tenant, $identity, $link): User {
+        $user = DB::transaction(fn (): User => $this->tenantContext->runFor($tenant, function () use ($connection, $tenant, $identity, $link): User {
             $user = $link !== null ? $link->user : User::query()->where('email', $identity->email)->first();
 
             if ($user === null) {
@@ -128,6 +129,8 @@ final class CompleteSsoLoginAction
 
             return $user;
         }));
+
+        return new SsoLoginResult($user, $identity);
     }
 
     /**

@@ -59,18 +59,25 @@ final class OidcIdentityProvider implements IdentityProvider
     {
         $client = $this->clients->resolve($connection);
 
+        $form = [
+            'grant_type' => 'authorization_code',
+            'code' => $callback->code,
+            'redirect_uri' => $callback->redirectUri,
+            'code_verifier' => $callback->codeVerifier,
+        ];
+
         try {
-            $response = Http::withOptions($this->guard->pinnedOptions($client->tokenEndpoint))
-                ->asForm()->acceptJson()->timeout(10)
-                ->post($client->tokenEndpoint, [
-                    'grant_type' => 'authorization_code',
-                    'code' => $callback->code,
-                    'redirect_uri' => $callback->redirectUri,
-                    'client_id' => $client->clientId,
-                    'client_secret' => $client->clientSecret,
-                    'code_verifier' => $callback->codeVerifier,
-                ])
-                ->throw();
+            $request = Http::withOptions($this->guard->pinnedOptions($client->tokenEndpoint))
+                ->asForm()->acceptJson()->timeout(10);
+
+            if ($client->tokenEndpointAuthMethod === OidcClientConfig::AUTH_POST) {
+                $form += ['client_id' => $client->clientId, 'client_secret' => $client->clientSecret];
+            } else {
+                // RFC 6749 §2.3.1: form-urlencode the credentials before Basic encoding.
+                $request = $request->withBasicAuth(urlencode($client->clientId), urlencode($client->clientSecret));
+            }
+
+            $response = $request->post($client->tokenEndpoint, $form)->throw();
         } catch (Throwable $e) {
             Log::notice('OIDC code exchange failed.', ['connection' => $connection->ulid, 'error' => $e->getMessage()]);
 
@@ -84,11 +91,18 @@ final class OidcIdentityProvider implements IdentityProvider
         }
 
         $claims = $this->validator->validate($idToken, $client, $callback->nonce);
-
         $subject = is_string($claims['sub'] ?? null) ? $claims['sub'] : '';
+
+        // Conformant IdPs may return scope claims (email, name) only from UserInfo.
+        if ($subject !== '' && ! is_string($claims['email'] ?? null)) {
+            $claims = array_merge($claims, $this->userinfo($connection, $client, $response->json('access_token'), $subject));
+        }
+
         $email = is_string($claims['email'] ?? null) ? Str::lower(trim($claims['email'])) : '';
 
         if ($subject === '' || $email === '') {
+            Log::notice('OIDC login without a subject or an email.', ['connection' => $connection->ulid]);
+
             throw new SsoAuthenticationException;
         }
 
@@ -100,5 +114,50 @@ final class OidcIdentityProvider implements IdentityProvider
             // IdP-controlled free text: bounded to the column it lands in.
             name: is_string($name) && $name !== '' ? Str::limit($name, 255, '') : $email,
         );
+    }
+
+    /**
+     * Email/name from UserInfo (OIDC Core §5.3) for the subject the ID token
+     * proved: a response for another `sub` is ignored (§5.3.2), and an email the
+     * IdP marks unverified is too — nothing is taken but these three claims.
+     *
+     * @return array<string, mixed>
+     */
+    private function userinfo(SsoConnection $connection, OidcClientConfig $client, mixed $accessToken, string $subject): array
+    {
+        if ($client->userinfoEndpoint === null || ! is_string($accessToken) || $accessToken === '') {
+            return [];
+        }
+
+        try {
+            $claims = Http::withOptions($this->guard->pinnedOptions($client->userinfoEndpoint))
+                ->withToken($accessToken)->acceptJson()->timeout(10)
+                ->get($client->userinfoEndpoint)->throw()->json();
+        } catch (Throwable $e) {
+            Log::notice('OIDC UserInfo request failed.', ['connection' => $connection->ulid, 'error' => $e->getMessage()]);
+
+            return [];
+        }
+
+        if (! is_array($claims) || ($claims['sub'] ?? null) !== $subject) {
+            Log::notice('OIDC UserInfo answered for another subject.', ['connection' => $connection->ulid]);
+
+            return [];
+        }
+
+        if (array_key_exists('email_verified', $claims)
+            && filter_var($claims['email_verified'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) !== true) {
+            return [];
+        }
+
+        $taken = [];
+
+        foreach (['email', 'email_verified', 'name'] as $claim) {
+            if (array_key_exists($claim, $claims)) {
+                $taken[$claim] = $claims[$claim];
+            }
+        }
+
+        return $taken;
     }
 }

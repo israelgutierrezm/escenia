@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Enterprise\Models;
 
 use App\Domain\Enterprise\DTOs\DnsChallenge;
+use App\Domain\Enterprise\DTOs\ServiceProviderCredentials;
 use App\Domain\Enterprise\Enums\SsoProvider;
 use App\Domain\Shared\Concerns\BelongsToTenant;
 use App\Domain\Shared\Concerns\HasPublicId;
@@ -34,6 +35,8 @@ use Illuminate\Support\Str;
  * @property Carbon|null $domain_checked_at
  * @property Carbon|null $domain_check_failed_at
  * @property array<string, mixed> $config
+ * @property string|null $sp_certificate
+ * @property string|null $sp_private_key
  * @property TenantRole $default_role
  * @property bool $is_active
  * @property Carbon|null $created_at
@@ -63,6 +66,7 @@ class SsoConnection extends Model
     protected $hidden = [
         'config',
         'domain_verification_token',
+        'sp_private_key',
     ];
 
     /**
@@ -73,6 +77,7 @@ class SsoConnection extends Model
         return [
             'provider' => SsoProvider::class,
             'config' => 'encrypted:array',
+            'sp_private_key' => 'encrypted',
             'default_role' => TenantRole::class,
             'is_active' => 'boolean',
             'domain_verified_at' => 'datetime',
@@ -124,6 +129,26 @@ class SsoConnection extends Model
             ->where('is_active', true)
             ->orderBy('id')
             ->get();
+    }
+
+    /**
+     * The connection's own SAML service-provider credentials (ADR-036), once issued.
+     */
+    public function serviceProviderCredentials(): ?ServiceProviderCredentials
+    {
+        if ($this->sp_certificate === null || $this->sp_private_key === null) {
+            return null;
+        }
+
+        return new ServiceProviderCredentials($this->sp_certificate, $this->sp_private_key);
+    }
+
+    public function assignServiceProviderCredentials(ServiceProviderCredentials $credentials): void
+    {
+        $this->forceFill([
+            'sp_certificate' => $credentials->certificate,
+            'sp_private_key' => $credentials->privateKey,
+        ]);
     }
 
     /**

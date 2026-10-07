@@ -57,9 +57,9 @@ final class OidcClientConfigResolver
         }
 
         // Explicit endpoints win; discovery fills only what is missing.
-        $endpoints = in_array('', $configured, true)
-            ? array_merge($this->discover($issuer), array_filter($configured))
-            : $configured;
+        $discovered = in_array('', $configured, true) ? $this->discover($issuer) : [];
+        $endpoints = array_merge($discovered, array_filter($configured));
+        $userinfo = $read('userinfo_endpoint') !== '' ? $read('userinfo_endpoint') : ($discovered['userinfo_endpoint'] ?? null);
 
         return new OidcClientConfig(
             issuer: $issuer,
@@ -69,6 +69,11 @@ final class OidcClientConfigResolver
             tokenEndpoint: $endpoints['token_endpoint'],
             jwksUri: $endpoints['jwks_uri'],
             scope: self::withOpenId($read('scope')),
+            // How the IdP expects the client to authenticate at its token endpoint.
+            tokenEndpointAuthMethod: $read('token_endpoint_auth_method') === OidcClientConfig::AUTH_POST
+                ? OidcClientConfig::AUTH_POST
+                : OidcClientConfig::AUTH_BASIC,
+            userinfoEndpoint: $userinfo,
         );
     }
 
@@ -124,6 +129,13 @@ final class OidcClientConfigResolver
             }
 
             $endpoints[$field] = $url;
+        }
+
+        // Optional: conformant IdPs may return scope claims only from UserInfo.
+        $userinfo = $document['userinfo_endpoint'] ?? null;
+
+        if (is_string($userinfo) && in_array(strtolower((string) parse_url($userinfo, PHP_URL_SCHEME)), $schemes, true)) {
+            $endpoints['userinfo_endpoint'] = $userinfo;
         }
 
         return $endpoints;

@@ -1,0 +1,8 @@
+# Minimal OpenSSL configuration for keys and self-signed certificates Escenia
+# issues itself (SAML service-provider credentials). Self-contained so it works
+# where PHP ships without an openssl.cnf (Windows) and ignores the host's one.
+[ req ]
+default_bits = 2048
+distinguished_name = dn
+
+[ dn ]

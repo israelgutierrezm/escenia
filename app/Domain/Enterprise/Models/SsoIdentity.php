@@ -60,4 +60,12 @@ class SsoIdentity extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * @return BelongsTo<SsoConnection, $this>
+     */
+    public function connection(): BelongsTo
+    {
+        return $this->belongsTo(SsoConnection::class, 'sso_connection_id');
+    }
 }

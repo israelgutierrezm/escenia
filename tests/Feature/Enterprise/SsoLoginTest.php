@@ -299,3 +299,45 @@ it('lets only one organization verify an email domain', function () {
         ->assertStatus(422)
         ->assertJsonPath('error_code', 'domain_verification_failed');
 });
+
+it('lists the identities linked to a connection and unlinks one so a recreated IdP account can log in', function () {
+    [, , $headers] = ssoTenantOwner();
+    $conn = makeVerifiedSsoConnection($headers);
+
+    stubSsoIdentity('idp|alice-1', 'alice@acme.com');
+    completeSsoLogin($conn)->assertOk();
+
+    $identity = $this->withHeaders($headers)
+        ->getJson("/api/v1/enterprise/sso-connections/{$conn}/identities")
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.subject', 'idp|alice-1')
+        ->assertJsonPath('data.0.user.email', 'alice@acme.com')
+        ->json('data.0.id');
+
+    // Alice's IdP account was recreated (new subject): refused until unlinked.
+    stubSsoIdentity('idp|alice-2', 'alice@acme.com');
+    completeSsoLogin($conn)->assertStatus(401);
+
+    $this->withHeaders($headers)
+        ->deleteJson("/api/v1/enterprise/sso-connections/{$conn}/identities/{$identity}")
+        ->assertNoContent();
+    $this->assertDatabaseHas('audit_logs', ['action' => 'enterprise.sso.identity_unlinked']);
+
+    completeSsoLogin($conn)->assertOk()->assertJsonPath('data.email', 'alice@acme.com');
+    expect(SsoIdentity::withoutGlobalScopes()->where('subject', 'idp|alice-2')->exists())->toBeTrue();
+});
+
+it('keeps another tenant away from a connection identities', function () {
+    [, , $acme] = ssoTenantOwner('owner@acme.com', 'Acme');
+    $conn = makeVerifiedSsoConnection($acme);
+    stubSsoIdentity('idp|alice-1', 'alice@acme.com');
+    completeSsoLogin($conn)->assertOk();
+    $linkId = SsoIdentity::withoutGlobalScopes()->where('subject', 'idp|alice-1')->value('ulid');
+
+    [, , $rival] = ssoTenantOwner('owner@rival.test', 'Rival');
+
+    $this->withHeaders($rival)->getJson("/api/v1/enterprise/sso-connections/{$conn}/identities")->assertNotFound();
+    $this->withHeaders($rival)->deleteJson("/api/v1/enterprise/sso-connections/{$conn}/identities/{$linkId}")->assertNotFound();
+    expect(SsoIdentity::withoutGlobalScopes()->where('ulid', $linkId)->exists())->toBeTrue();
+});

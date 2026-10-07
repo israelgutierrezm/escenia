@@ -42,9 +42,11 @@ class SsoConnectionResource extends JsonResource
     }
 
     /**
-     * What the IdP administrator registers for a SAML connection.
+     * What the IdP administrator registers for a SAML connection: our endpoints
+     * and the SP certificate (public; it verifies our signed requests and is
+     * what the IdP encrypts assertions to).
      *
-     * @return array{entity_id: string, acs_url: string, metadata_url: string}|null
+     * @return array{entity_id: string, acs_url: string, slo_url: string, metadata_url: string, sp_certificate: string|null}|null
      */
     private function samlServiceProvider(): ?array
     {
@@ -57,7 +59,9 @@ class SsoConnectionResource extends JsonResource
         return [
             'entity_id' => SamlEndpoints::entityId($connection),
             'acs_url' => SamlEndpoints::acsUrl($connection),
+            'slo_url' => SamlEndpoints::sloUrl($connection),
             'metadata_url' => SamlEndpoints::entityId($connection),
+            'sp_certificate' => $connection->sp_certificate,
         ];
     }
 }

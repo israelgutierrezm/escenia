@@ -88,7 +88,7 @@ class SsoController extends Controller
         $validated = $request->validated();
         $binding = $request->cookie(self::BINDING_COOKIE);
 
-        $user = $action->execute(
+        $result = $action->execute(
             $model,
             (string) $validated['state'],
             is_string($binding) ? $binding : null,
@@ -98,6 +98,8 @@ class SsoController extends Controller
                 'name' => is_string($validated['name'] ?? null) ? $validated['name'] : '',
             ], static fn (string $hint): bool => $hint !== ''),
         );
+
+        $user = $result->user;
 
         // Establish the first-party session (same contract as password login).
         Auth::guard('web')->login($user);

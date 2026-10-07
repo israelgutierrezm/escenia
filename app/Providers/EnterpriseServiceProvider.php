@@ -6,13 +6,17 @@ namespace App\Providers;
 
 use App\Domain\Enterprise\Contracts\DomainVerifier;
 use App\Domain\Enterprise\Contracts\IdentityProvider;
+use App\Domain\Enterprise\Contracts\ServiceProviderCredentialIssuer;
+use App\Domain\Enterprise\Contracts\SingleLogoutProvider;
 use App\Domain\Settings\Services\Settings;
 use App\Infrastructure\Enterprise\Domains\DisabledDomainVerifier;
 use App\Infrastructure\Enterprise\Domains\DnsDomainVerifier;
 use App\Infrastructure\Enterprise\Domains\FakeDomainVerifier;
 use App\Infrastructure\Enterprise\Sso\DisabledIdentityProvider;
 use App\Infrastructure\Enterprise\Sso\FakeIdentityProvider;
+use App\Infrastructure\Enterprise\Sso\OpensslCredentialIssuer;
 use App\Infrastructure\Enterprise\Sso\RoutingIdentityProvider;
+use App\Infrastructure\Enterprise\Sso\SamlSingleLogout;
 use App\Infrastructure\Http\DnsHostResolver;
 use App\Infrastructure\Http\HostResolver;
 use App\Infrastructure\Http\OutboundUrlGuard;
@@ -33,6 +37,8 @@ class EnterpriseServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(HostResolver::class, DnsHostResolver::class);
+        $this->app->singleton(ServiceProviderCredentialIssuer::class, OpensslCredentialIssuer::class);
+        $this->app->singleton(SingleLogoutProvider::class, SamlSingleLogout::class);
         $this->app->bind(OutboundUrlGuard::class, fn (): OutboundUrlGuard => new OutboundUrlGuard(
             $this->app->make(HostResolver::class),
             (bool) config('enterprise.egress_allow_private_networks'),
