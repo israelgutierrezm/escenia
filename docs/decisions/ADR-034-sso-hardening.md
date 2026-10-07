@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-10-05). Enmienda la sección SSO de ADR-030.
+Accepted (2026-10-05). Enmienda la sección SSO de ADR-030; completado por ADR-035.
 
 ## Context
 
