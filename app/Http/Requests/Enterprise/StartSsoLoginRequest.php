@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Enterprise;
 
+use App\Rules\FirstPartyUrl;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Starting an SSO login. `redirect_uri` is where the IdP returns the browser
- * (normally the SPA's callback route); the IdP enforces its registered list.
+ * Starting an SSO login. `redirect_uri` is the SPA route the browser comes back
+ * to — the IdP's redirect target for OIDC, the post-login landing for SAML —
+ * and must belong to a first-party app.
  */
 class StartSsoLoginRequest extends FormRequest
 {
@@ -23,7 +25,7 @@ class StartSsoLoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'redirect_uri' => ['nullable', 'string', 'max:2048', 'url:http,https'],
+            'redirect_uri' => ['nullable', 'string', 'max:2048', 'url:http,https', new FirstPartyUrl],
         ];
     }
 }

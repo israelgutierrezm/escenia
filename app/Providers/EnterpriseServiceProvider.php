@@ -12,7 +12,10 @@ use App\Infrastructure\Enterprise\Domains\DnsDomainVerifier;
 use App\Infrastructure\Enterprise\Domains\FakeDomainVerifier;
 use App\Infrastructure\Enterprise\Sso\DisabledIdentityProvider;
 use App\Infrastructure\Enterprise\Sso\FakeIdentityProvider;
-use App\Infrastructure\Enterprise\Sso\OidcIdentityProvider;
+use App\Infrastructure\Enterprise\Sso\RoutingIdentityProvider;
+use App\Infrastructure\Http\DnsHostResolver;
+use App\Infrastructure\Http\HostResolver;
+use App\Infrastructure\Http\OutboundUrlGuard;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 
@@ -29,6 +32,12 @@ class EnterpriseServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(HostResolver::class, DnsHostResolver::class);
+        $this->app->bind(OutboundUrlGuard::class, fn (): OutboundUrlGuard => new OutboundUrlGuard(
+            $this->app->make(HostResolver::class),
+            (bool) config('enterprise.egress_allow_private_networks'),
+        ));
+
         $this->app->singleton(DomainVerifier::class, fn (): DomainVerifier => match ($this->driver('enterprise.domain_verifier')) {
             'dns' => new DnsDomainVerifier,
             'fake' => $this->fakeAllowed('enterprise.domain_verifier') ? new FakeDomainVerifier : new DisabledDomainVerifier,
@@ -36,7 +45,7 @@ class EnterpriseServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(IdentityProvider::class, fn (): IdentityProvider => match ($this->driver('enterprise.identity_provider')) {
-            'oidc' => $this->app->make(OidcIdentityProvider::class),
+            'real', 'oidc' => $this->app->make(RoutingIdentityProvider::class),
             'fake' => $this->fakeAllowed('enterprise.identity_provider') ? new FakeIdentityProvider : new DisabledIdentityProvider,
             default => new DisabledIdentityProvider,
         });

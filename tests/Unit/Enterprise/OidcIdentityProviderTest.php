@@ -9,27 +9,28 @@ use App\Domain\Enterprise\Exceptions\SsoAuthenticationException;
 use App\Domain\Enterprise\Models\SsoConnection;
 use App\Domain\Tenancy\Enums\TenantRole;
 use App\Infrastructure\Enterprise\Sso\OidcIdentityProvider;
+use App\Infrastructure\Http\HostResolver;
 use Firebase\JWT\JWT;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
 /**
- * A minimal OpenSSL config so key generation also works where PHP ships
- * without one (Windows builds). Keys are generated per run: no key material
- * lives in the repo.
+ * Points every host at a fixed address for the egress guard (no live DNS).
  */
-function oidcOpensslConfig(): string
+function resolveOidcHostsTo(string $address): void
 {
-    $path = sys_get_temp_dir().DIRECTORY_SEPARATOR.'escenia-test-openssl.cnf';
-    // PHP checks the key length even for EC keys, reading it from the config.
-    $contents = "[ req ]\ndefault_bits = 2048\ndistinguished_name = dn\n[ dn ]\n";
+    app()->instance(HostResolver::class, new class($address) implements HostResolver
+    {
+        public function __construct(private readonly string $address) {}
 
-    if (! is_file($path) || file_get_contents($path) !== $contents) {
-        file_put_contents($path, $contents);
-    }
-
-    return $path;
+        public function resolve(string $host): array
+        {
+            return [$this->address];
+        }
+    });
 }
+
+beforeEach(fn () => resolveOidcHostsTo('93.184.216.34'));
 
 function oidcBase64Url(string $bytes): string
 {
@@ -44,7 +45,7 @@ function oidcBase64Url(string $bytes): string
  */
 function oidcRsaKey(string $kid = 'key-1'): array
 {
-    $config = oidcOpensslConfig();
+    $config = opensslTestConfig();
     $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA, 'config' => $config]);
     openssl_pkey_export($key, $private, null, ['config' => $config]);
     $details = openssl_pkey_get_details($key);
@@ -64,7 +65,7 @@ function oidcRsaKey(string $kid = 'key-1'): array
  */
 function oidcEcKey(string $kid = 'ec-1'): array
 {
-    $config = oidcOpensslConfig();
+    $config = opensslTestConfig();
     $key = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1', 'config' => $config]);
     openssl_pkey_export($key, $private, null, ['config' => $config]);
     $ec = openssl_pkey_get_details($key)['ec'];
@@ -298,11 +299,60 @@ it('refuses a connection that is not OIDC', function () {
     }
 })->throws(SsoAuthenticationException::class);
 
+it('fills missing endpoints from the issuer discovery document, once', function () {
+    $key = oidcRsaKey();
+    Http::fake([
+        'idp.test/.well-known/openid-configuration' => Http::response([
+            'issuer' => 'https://idp.test',
+            'authorization_endpoint' => 'https://idp.test/oauth/authorize',
+            'token_endpoint' => 'https://idp.test/token',
+            'jwks_uri' => 'https://idp.test/jwks',
+        ]),
+        'idp.test/token' => Http::response(['id_token' => JWT::encode(oidcClaims(), $key['private'], 'RS256', 'key-1')]),
+        'idp.test/jwks' => Http::response(['keys' => [$key['jwk']]]),
+    ]);
+    $connection = oidcConnection(['authorization_endpoint' => '', 'token_endpoint' => '', 'jwks_uri' => '']);
+    $provider = app(OidcIdentityProvider::class);
+
+    $url = $provider->authorizationUrl($connection, new SsoAuthorizationRequest('https://app.test/cb', 's', 'n', 'c'));
+    $identity = $provider->verifyCallback($connection, oidcCallback());
+
+    expect($url)->toStartWith('https://idp.test/oauth/authorize?')
+        ->and($identity->subject)->toBe('idp-user-42');
+    Http::assertSentCount(3); // discovery (cached afterwards) + token + JWKS
+});
+
+it('ignores a discovery document that names another issuer', function () {
+    Http::fake(['idp.test/.well-known/openid-configuration' => Http::response([
+        'issuer' => 'https://evil.test',
+        'authorization_endpoint' => 'https://evil.test/authorize',
+        'token_endpoint' => 'https://evil.test/token',
+        'jwks_uri' => 'https://evil.test/jwks',
+    ])]);
+
+    app(OidcIdentityProvider::class)->authorizationUrl(
+        oidcConnection(['authorization_endpoint' => '', 'token_endpoint' => '', 'jwks_uri' => '']),
+        new SsoAuthorizationRequest('https://app.test/cb', 's', 'n', 'c'),
+    );
+})->throws(SsoAuthenticationException::class);
+
+it('never calls an IdP endpoint that resolves to a private address', function (string $address) {
+    resolveOidcHostsTo($address);
+    Http::fake();
+
+    try {
+        app(OidcIdentityProvider::class)->verifyCallback(oidcConnection(), oidcCallback());
+    } finally {
+        Http::assertNothingSent();
+    }
+})->throws(SsoAuthenticationException::class)->with(['169.254.169.254', '10.0.0.5', '127.0.0.1', '::1']);
+
 it('refuses an incomplete configuration without calling the IdP', function () {
     Http::fake();
 
     try {
-        app(OidcIdentityProvider::class)->verifyCallback(oidcConnection(['jwks_uri' => '']), oidcCallback());
+        // Endpoints can be discovered; client credentials cannot.
+        app(OidcIdentityProvider::class)->verifyCallback(oidcConnection(['client_secret' => '']), oidcCallback());
     } finally {
         Http::assertNothingSent();
     }

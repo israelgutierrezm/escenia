@@ -4,26 +4,15 @@ declare(strict_types=1);
 
 use App\Domain\Enterprise\Contracts\DomainVerifier;
 use App\Domain\Enterprise\Contracts\IdentityProvider;
+use App\Domain\Enterprise\DTOs\ExternalIdentity;
+use App\Domain\Enterprise\DTOs\SsoAuthorizationRequest;
+use App\Domain\Enterprise\DTOs\SsoCallback;
+use App\Domain\Enterprise\Models\SsoConnection;
+use App\Domain\Enterprise\Models\SsoIdentity;
 use App\Domain\Identity\Models\User;
 use App\Domain\Tenancy\Context\TenantContext;
-use App\Domain\Tenancy\Models\Tenant;
 use App\Infrastructure\Enterprise\Domains\DisabledDomainVerifier;
 use App\Infrastructure\Enterprise\Sso\DisabledIdentityProvider;
-use Laravel\Sanctum\Sanctum;
-
-/**
- * A tenant owner acting via Sanctum with the host tenant header.
- *
- * @return array{0: User, 1: Tenant, 2: array<string, string>}
- */
-function ssoTenantOwner(?string $email = null, string $tenantName = 'Acme'): array
-{
-    app(TenantContext::class)->forget();
-    [$user, $tenant] = registerTenantOwner($email, $tenantName);
-    Sanctum::actingAs($user);
-
-    return [$user, $tenant, ['X-Tenant-Id' => $tenant->ulid]];
-}
 
 it('provisions a member from the verified domain and starts a session', function () {
     [, $tenant, $headers] = ssoTenantOwner();
@@ -217,4 +206,96 @@ it('fails closed when the fake providers are configured in production', function
 
     app(TenantContext::class)->forget();
     $this->getJson("/api/v1/sso/{$conn}")->assertStatus(401);
+});
+
+/**
+ * Make the IdP assert this subject + email (the fake derives the subject from
+ * the email, so it cannot model an address reassigned to someone else).
+ */
+function stubSsoIdentity(string $subject, string $email): void
+{
+    app()->instance(IdentityProvider::class, new class($subject, $email) implements IdentityProvider
+    {
+        public function __construct(private readonly string $subject, private readonly string $email) {}
+
+        public function authorizationUrl(SsoConnection $connection, SsoAuthorizationRequest $request): string
+        {
+            return 'https://idp.test/authorize';
+        }
+
+        public function verifyCallback(SsoConnection $connection, SsoCallback $callback): ExternalIdentity
+        {
+            return new ExternalIdentity($this->subject, $this->email, 'Someone');
+        }
+    });
+}
+
+it('discovers the connections that may log in a work email', function () {
+    [, , $headers] = ssoTenantOwner();
+    $conn = makeVerifiedSsoConnection($headers);
+    // Unverified connections are never offered.
+    $this->withHeaders($headers)->postJson('/api/v1/enterprise/sso-connections', [
+        'provider' => 'oidc', 'display_name' => 'Pending', 'domain' => 'acme.com', 'default_role' => 'member',
+    ])->assertCreated();
+    app(TenantContext::class)->forget();
+
+    $this->getJson('/api/v1/sso/discover?email=Dev@ACME.com')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $conn)
+        ->assertJsonPath('data.0.provider', 'oidc')
+        ->assertJsonPath('data.0.display_name', 'Acme IdP');
+
+    $this->getJson('/api/v1/sso/discover?email=dev@other.org')->assertOk()->assertJsonCount(0, 'data');
+    $this->getJson('/api/v1/sso/discover?email=not-an-email')->assertStatus(422);
+});
+
+it('only sends the browser back to a first-party app', function (string $redirect, int $status) {
+    config(['sanctum.stateful' => ['localhost:5180']]);
+    [, , $headers] = ssoTenantOwner();
+    $conn = makeVerifiedSsoConnection($headers);
+    app(TenantContext::class)->forget();
+
+    $this->getJson("/api/v1/sso/{$conn}?redirect_uri=".urlencode($redirect))->assertStatus($status);
+})->with([
+    'the admin SPA' => ['http://localhost:5180/sso/cb', 200],
+    'a foreign site' => ['https://evil.test/steal', 422],
+    'userinfo trick' => ['http://localhost:5180@evil.test/', 422],
+    'another port' => ['http://localhost:9999/sso/cb', 422],
+]);
+
+it('resolves logins by IdP subject and refuses a reassigned email', function () {
+    [, , $headers] = ssoTenantOwner();
+    $conn = makeVerifiedSsoConnection($headers);
+
+    stubSsoIdentity('idp|alice-1', 'alice@acme.com');
+    completeSsoLogin($conn)->assertOk()->assertJsonPath('data.email', 'alice@acme.com');
+
+    // Same subject, renamed address: still Alice's account.
+    stubSsoIdentity('idp|alice-1', 'alice.smith@acme.com');
+    completeSsoLogin($conn)->assertOk()->assertJsonPath('data.email', 'alice@acme.com');
+
+    // Alice's old address now belongs to someone else at the IdP (new subject).
+    stubSsoIdentity('idp|bob-2', 'alice@acme.com');
+    completeSsoLogin($conn)->assertStatus(401);
+
+    $this->assertDatabaseHas('audit_logs', [
+        'action' => 'enterprise.sso.login_rejected', 'context->reason' => 'subject_mismatch',
+    ]);
+    expect(SsoIdentity::withoutGlobalScopes()->where('subject', 'idp|bob-2')->exists())->toBeFalse();
+});
+
+it('lets only one organization verify an email domain', function () {
+    [, , $acme] = ssoTenantOwner('owner@acme.com', 'Acme');
+    makeVerifiedSsoConnection($acme);
+
+    [, , $rival] = ssoTenantOwner('owner@rival.test', 'Rival');
+    $conn = $this->withHeaders($rival)->postJson('/api/v1/enterprise/sso-connections', [
+        'provider' => 'oidc', 'display_name' => 'Rival', 'domain' => 'acme.com', 'default_role' => 'member',
+    ])->assertCreated()->json('data.id');
+
+    $this->withHeaders($rival)
+        ->postJson("/api/v1/enterprise/sso-connections/{$conn}/verify-domain")
+        ->assertStatus(422)
+        ->assertJsonPath('error_code', 'domain_verification_failed');
 });

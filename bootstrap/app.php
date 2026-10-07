@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\ApiExceptionMapper;
+use App\Http\Controllers\Api\V1\Enterprise\SsoController;
 use App\Http\Middleware\AssignRequestContext;
 use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Middleware\RequireSuperAdmin;
@@ -28,6 +29,15 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // First-party SPA auth (Sanctum stateful cookie mode).
         $middleware->statefulApi();
+
+        // The SAML ACS receives the IdP's cross-site browser POST: it cannot carry
+        // a CSRF token. It is protected instead by the signed SAMLResponse, the
+        // single-use RelayState attempt and the browser-binding cookie (ADR-035).
+        $middleware->validateCsrfTokens(except: ['api/v1/sso/*/acs']);
+
+        // The SSO binding cookie is a random secret (only its hash is stored);
+        // left unencrypted so the API start and the session ACS read it alike.
+        $middleware->encryptCookies(except: [SsoController::BINDING_COOKIE]);
 
         $middleware->api(prepend: [
             AssignRequestContext::class,

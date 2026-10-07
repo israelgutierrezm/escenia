@@ -68,6 +68,19 @@ final class SsoLoginAttempts
         );
     }
 
+    /**
+     * The URL the login asked to return to, without consuming the attempt — so
+     * a SAML ACS can send the browser back even when the login fails. Null for
+     * an unknown or expired state.
+     */
+    public function returnUrl(string $state): ?string
+    {
+        $stored = $this->cache->get($this->key($state));
+        $url = is_array($stored) ? ($stored['redirect_uri'] ?? null) : null;
+
+        return is_string($url) && $url !== '' ? $url : null;
+    }
+
     private function key(string $state): string
     {
         return 'sso:attempt:'.hash('sha256', $state);

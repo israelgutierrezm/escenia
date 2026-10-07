@@ -9,6 +9,7 @@ use App\Domain\Enterprise\Enums\SsoProvider;
 use App\Domain\Shared\Concerns\BelongsToTenant;
 use App\Domain\Shared\Concerns\HasPublicId;
 use App\Domain\Tenancy\Enums\TenantRole;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -30,6 +31,8 @@ use Illuminate\Support\Str;
  * @property string|null $domain
  * @property string|null $domain_verification_token
  * @property Carbon|null $domain_verified_at
+ * @property Carbon|null $domain_checked_at
+ * @property Carbon|null $domain_check_failed_at
  * @property array<string, mixed> $config
  * @property TenantRole $default_role
  * @property bool $is_active
@@ -73,6 +76,8 @@ class SsoConnection extends Model
             'default_role' => TenantRole::class,
             'is_active' => 'boolean',
             'domain_verified_at' => 'datetime',
+            'domain_checked_at' => 'datetime',
+            'domain_check_failed_at' => 'datetime',
         ];
     }
 
@@ -105,6 +110,23 @@ class SsoConnection extends Model
     }
 
     /**
+     * Active connections that may log in this email (verified domain), across
+     * tenants — the "Continue with SSO" lookup.
+     *
+     * @return Collection<int, self>
+     */
+    public static function vouchingFor(string $email): Collection
+    {
+        return self::query()
+            ->withoutGlobalScopes()
+            ->where('domain', Str::lower(Str::afterLast($email, '@')))
+            ->whereNotNull('domain_verified_at')
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
      * Point the connection at a (new) email domain: it starts unverified with a
      * fresh challenge token. No domain means no challenge.
      */
@@ -116,6 +138,8 @@ class SsoConnection extends Model
             'domain' => $domain,
             'domain_verification_token' => $domain !== null ? Str::lower(Str::random(40)) : null,
             'domain_verified_at' => null,
+            'domain_checked_at' => null,
+            'domain_check_failed_at' => null,
         ]);
     }
 }

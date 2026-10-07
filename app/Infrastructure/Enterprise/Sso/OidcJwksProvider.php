@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace App\Infrastructure\Enterprise\Sso;
 
 use App\Domain\Enterprise\Exceptions\SsoAuthenticationException;
+use App\Infrastructure\Http\OutboundUrlGuard;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Fetches and caches an IdP's published JSON Web Key Set. Keys rotate, so a
- * token signed with an unknown `kid` may force one refetch — at most once per
- * cooldown, so forged `kid`s cannot make us hammer the IdP.
+ * Fetches and caches an IdP's published JSON Web Key Set, through the egress
+ * guard (the URL is tenant-configured). Keys rotate, so a token signed with an
+ * unknown `kid` may force one refetch — at most once per cooldown, so forged
+ * `kid`s cannot make us hammer the IdP.
  */
 final class OidcJwksProvider
 {
@@ -22,6 +25,7 @@ final class OidcJwksProvider
 
     public function __construct(
         private readonly Cache $cache,
+        private readonly OutboundUrlGuard $guard,
     ) {}
 
     /**
@@ -54,8 +58,11 @@ final class OidcJwksProvider
     private function fetch(string $jwksUri): array
     {
         try {
-            $keys = Http::acceptJson()->timeout(10)->withoutRedirecting()->get($jwksUri)->throw()->json('keys');
-        } catch (Throwable) {
+            $keys = Http::withOptions($this->guard->pinnedOptions($jwksUri))
+                ->acceptJson()->timeout(10)->get($jwksUri)->throw()->json('keys');
+        } catch (Throwable $e) {
+            Log::notice('OIDC key set fetch failed.', ['jwks_uri' => $jwksUri, 'error' => $e->getMessage()]);
+
             throw new SsoAuthenticationException;
         }
 

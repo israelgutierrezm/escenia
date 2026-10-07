@@ -41,7 +41,7 @@ final class SettingCatalog
 
             // ---- Enterprise providers ----
             new SettingDefinition('enterprise.domain_verifier', 'enterprise', SettingScope::System, SettingType::Select, 'enterprise.domain_verifier', 'Domain verifier', 'Proves domain ownership for custom domains and SSO. `fake` approves everything and is refused in production.', ['fake', 'dns']),
-            new SettingDefinition('enterprise.identity_provider', 'enterprise', SettingScope::System, SettingType::Select, 'enterprise.identity_provider', 'SSO identity provider', '`fake` trusts the callback and is refused in production (SSO stays disabled until `oidc` is set).', ['fake', 'oidc']),
+            new SettingDefinition('enterprise.identity_provider', 'enterprise', SettingScope::System, SettingType::Select, 'enterprise.identity_provider', 'SSO identity provider', '`real` routes each connection to its OIDC or SAML adapter. `fake` trusts the callback and is refused in production (SSO stays disabled until `real` is set).', ['fake', 'real']),
             new SettingDefinition('enterprise.domain_target', 'enterprise', SettingScope::System, SettingType::String, 'enterprise.domain_target', 'Custom-domain CNAME target'),
         ];
     }

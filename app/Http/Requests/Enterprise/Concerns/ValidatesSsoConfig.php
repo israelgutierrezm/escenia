@@ -27,6 +27,13 @@ trait ValidatesSsoConfig
             'config.client_id' => ['sometimes', 'string', 'max:255'],
             'config.client_secret' => ['sometimes', 'string', 'max:2048'],
             'config.scope' => ['sometimes', 'string', 'max:255'],
+            // SAML: the IdP's identity, its SSO endpoint and its signing certificate.
+            'config.idp_entity_id' => ['sometimes', 'string', 'max:2048'],
+            'config.idp_sso_url' => ['sometimes', 'string', 'max:2048', $url],
+            'config.idp_x509_cert' => ['sometimes', 'string', 'max:20000'],
+            'config.email_attribute' => ['sometimes', 'string', 'max:255'],
+            'config.name_attribute' => ['sometimes', 'string', 'max:255'],
+            'config.subject_attribute' => ['sometimes', 'string', 'max:255'],
         ];
     }
 }

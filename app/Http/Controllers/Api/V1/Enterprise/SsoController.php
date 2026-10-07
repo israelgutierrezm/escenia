@@ -7,8 +7,10 @@ namespace App\Http\Controllers\Api\V1\Enterprise;
 use App\Application\Enterprise\Actions\CompleteSsoLoginAction;
 use App\Application\Enterprise\Actions\StartSsoLoginAction;
 use App\Application\Enterprise\SsoLoginAttempts;
+use App\Domain\Enterprise\Enums\SsoProvider;
 use App\Domain\Enterprise\Models\SsoConnection;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Enterprise\DiscoverSsoRequest;
 use App\Http\Requests\Enterprise\SsoCallbackRequest;
 use App\Http\Requests\Enterprise\StartSsoLoginRequest;
 use App\Http\Resources\UserResource;
@@ -17,17 +19,32 @@ use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Public SSO entry points. `metadata` starts authentication — it returns the IdP
+ * Public SSO entry points. `discover` finds the connections that may log in a
+ * work email; `metadata` starts authentication — it returns the IdP
  * authorization URL and the `state`, and sets the HttpOnly binding cookie that
- * ties the login to this browser; `callback` completes it — provisioning the
- * user via {@see CompleteSsoLoginAction} and establishing the first-party
- * Sanctum session. The connection is resolved unscoped by its public id.
+ * ties the login to this browser; `callback` completes an OIDC login —
+ * provisioning the user via {@see CompleteSsoLoginAction} and establishing the
+ * first-party Sanctum session (SAML completes at {@see SamlController::acs}).
+ * Connections are resolved unscoped by their public id.
  */
 class SsoController extends Controller
 {
-    private const BINDING_COOKIE = 'escenia_sso';
+    public const BINDING_COOKIE = 'escenia_sso';
 
-    private const COOKIE_PATH = '/api/v1/sso';
+    public const COOKIE_PATH = '/api/v1/sso';
+
+    public function discover(DiscoverSsoRequest $request): JsonResponse
+    {
+        $connections = SsoConnection::vouchingFor((string) $request->validated('email'));
+
+        return response()->json([
+            'data' => $connections->map(static fn (SsoConnection $connection): array => [
+                'id' => $connection->ulid,
+                'provider' => $connection->provider->value,
+                'display_name' => $connection->display_name,
+            ])->values(),
+        ]);
+    }
 
     public function metadata(StartSsoLoginRequest $request, StartSsoLoginAction $action, string $connection): JsonResponse
     {
@@ -39,6 +56,11 @@ class SsoController extends Controller
             : url("/api/v1/sso/{$model->ulid}/callback");
 
         $start = $action->execute($model, $redirectUri);
+
+        // SAML returns through the IdP's cross-site POST to the ACS, which only
+        // carries SameSite=None (hence Secure) cookies; OIDC keeps the session's
+        // policy.
+        $saml = $model->provider === SsoProvider::Saml;
 
         return response()
             ->json([
@@ -54,7 +76,9 @@ class SsoController extends Controller
                 $start->binding,
                 minutes: intdiv(SsoLoginAttempts::TTL_SECONDS, 60),
                 path: self::COOKIE_PATH,
+                secure: $saml ? true : null,
                 httpOnly: true,
+                sameSite: $saml ? 'none' : null,
             ));
     }
 

@@ -118,6 +118,38 @@ function registerAttendee(string $eventUlid, string $name = 'Ava Attendee', ?str
 }
 
 /**
+ * A tenant owner acting via Sanctum with the host tenant header.
+ *
+ * @return array{0: User, 1: Tenant, 2: array<string, string>}
+ */
+function ssoTenantOwner(?string $email = null, string $tenantName = 'Acme'): array
+{
+    app(TenantContext::class)->forget();
+    [$user, $tenant] = registerTenantOwner($email, $tenantName);
+    Sanctum::actingAs($user);
+
+    return [$user, $tenant, ['X-Tenant-Id' => $tenant->ulid]];
+}
+
+/**
+ * A minimal OpenSSL config, so test keys and certificates can be generated at
+ * runtime even where PHP ships without one (Windows builds). No key material
+ * lives in the repo.
+ */
+function opensslTestConfig(): string
+{
+    $path = sys_get_temp_dir().DIRECTORY_SEPARATOR.'escenia-test-openssl.cnf';
+    // PHP checks the key length even for EC keys, reading it from the config.
+    $contents = "[ req ]\ndefault_bits = 2048\ndistinguished_name = dn\n[ dn ]\n";
+
+    if (! is_file($path) || file_get_contents($path) !== $contents) {
+        file_put_contents($path, $contents);
+    }
+
+    return $path;
+}
+
+/**
  * Create an SSO connection as the acting tenant owner and verify its email
  * domain (the fake DNS verifier passes). Returns the connection's public id.
  *

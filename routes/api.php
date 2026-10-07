@@ -63,6 +63,7 @@ use App\Http\Controllers\Api\V1\Enterprise\Host\SsoConnectionController;
 use App\Http\Controllers\Api\V1\Enterprise\Host\TenantSettingsController;
 use App\Http\Controllers\Api\V1\Enterprise\Host\TrackController as HostTrackController;
 use App\Http\Controllers\Api\V1\Enterprise\Programmatic\EventController as ProgrammaticEventController;
+use App\Http\Controllers\Api\V1\Enterprise\SamlController;
 use App\Http\Controllers\Api\V1\Enterprise\SsoController;
 use App\Http\Controllers\Api\V1\Events\EventCapabilityController;
 use App\Http\Controllers\Api\V1\Events\EventController;
@@ -117,8 +118,14 @@ Route::prefix('v1')->group(function (): void {
 
     // ---- Enterprise: custom-domain routing resolution + SSO (public, Fase 13) ----
     Route::get('domains/resolve', [DomainResolveController::class, 'resolve'])->middleware('throttle:120,1');
+    // `discover` before `{connection}`, or the parameter would capture it.
+    Route::get('sso/discover', [SsoController::class, 'discover'])->middleware('throttle:30,1');
     Route::get('sso/{connection}', [SsoController::class, 'metadata'])->middleware('throttle:60,1');
     Route::post('sso/{connection}/callback', [SsoController::class, 'callback'])->middleware('throttle:20,1');
+    // SAML (ADR-035): the IdP's browser POST needs a session to log in — `web`
+    // group, CSRF-exempt in bootstrap/app.php.
+    Route::post('sso/{connection}/acs', [SamlController::class, 'acs'])->middleware(['web', 'throttle:20,1'])->name('sso.saml.acs');
+    Route::get('sso/{connection}/saml/metadata', [SamlController::class, 'metadata'])->middleware('throttle:60,1')->name('sso.saml.metadata');
 
     // ---- Developer Platform: programmatic API (API-key auth, Fase 13) ----
     Route::middleware(['api.key', 'throttle:120,1'])->prefix('programmatic')->group(function (): void {

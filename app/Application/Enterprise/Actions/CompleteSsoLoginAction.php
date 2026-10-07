@@ -7,9 +7,11 @@ namespace App\Application\Enterprise\Actions;
 use App\Application\Enterprise\SsoLoginAttempts;
 use App\Domain\Audit\Contracts\AuditLogger;
 use App\Domain\Enterprise\Contracts\IdentityProvider;
+use App\Domain\Enterprise\DTOs\ExternalIdentity;
 use App\Domain\Enterprise\DTOs\SsoCallback;
 use App\Domain\Enterprise\Exceptions\SsoAuthenticationException;
 use App\Domain\Enterprise\Models\SsoConnection;
+use App\Domain\Enterprise\Models\SsoIdentity;
 use App\Domain\Identity\Models\User;
 use App\Domain\Tenancy\Context\TenantContext;
 use App\Domain\Tenancy\Enums\MembershipStatus;
@@ -24,11 +26,14 @@ use Spatie\Permission\PermissionRegistrar;
  * (just-in-time). The callback must redeem an attempt this server issued — same
  * connection, same browser, once (ADR-034). The identity must belong to the
  * connection's verified email domain: the IdP is tenant-configured, so it never
- * vouches for anyone else. A local {@see User} is then linked by email (global
- * identity); a tenant membership with the connection's default role is created
- * on first login. An existing member keeps their current role — SSO never
- * downgrades a standing role. Establishing the HTTP session is the controller's
- * job.
+ * vouches for anyone else.
+ *
+ * The user is resolved by the IdP subject first (ADR-035): a known subject logs
+ * into the account it is linked to; a new subject links by email — unless that
+ * account is already linked to a *different* subject on this connection, i.e.
+ * the address was reassigned at the IdP, which is refused. A tenant membership
+ * with the connection's default role is created on first login; an existing
+ * member keeps their role. Establishing the HTTP session is the controller's job.
  */
 final class CompleteSsoLoginAction
 {
@@ -59,19 +64,24 @@ final class CompleteSsoLoginAction
             hints: $hints,
         ));
 
-        $tenant = $connection->tenant;
-
         if (filter_var($identity->email, FILTER_VALIDATE_EMAIL) === false || ! $connection->vouchesFor($identity->email)) {
-            $this->audit->log('enterprise.sso.login_rejected', tenant: $tenant, auditable: $connection, context: [
-                'reason' => $connection->hasVerifiedDomain() ? 'email_outside_domain' : 'domain_not_verified',
-                'email_domain' => Str::lower(Str::afterLast($identity->email, '@')),
-            ]);
-
-            throw $this->rejected($connection, 'email_not_vouched');
+            $this->refuse($connection, $identity, $connection->hasVerifiedDomain() ? 'email_outside_domain' : 'domain_not_verified');
         }
 
-        return DB::transaction(fn (): User => $this->tenantContext->runFor($tenant, function () use ($connection, $tenant, $identity): User {
-            $user = User::query()->where('email', $identity->email)->first();
+        $link = SsoIdentity::query()
+            ->withoutGlobalScopes()
+            ->where('sso_connection_id', $connection->id)
+            ->where('subject', $identity->subject)
+            ->first();
+
+        if ($link === null && $this->linkedToAnotherSubject($connection, $identity->email)) {
+            $this->refuse($connection, $identity, 'subject_mismatch');
+        }
+
+        $tenant = $connection->tenant;
+
+        return DB::transaction(fn (): User => $this->tenantContext->runFor($tenant, function () use ($connection, $tenant, $identity, $link): User {
+            $user = $link !== null ? $link->user : User::query()->where('email', $identity->email)->first();
 
             if ($user === null) {
                 $user = User::create([
@@ -81,6 +91,14 @@ final class CompleteSsoLoginAction
                 ]);
                 $user->forceFill(['email_verified_at' => now()])->save();
             }
+
+            $link ??= SsoIdentity::create([
+                'tenant_id' => $tenant->getKey(),
+                'sso_connection_id' => $connection->getKey(),
+                'user_id' => $user->getKey(),
+                'subject' => $identity->subject,
+            ]);
+            $link->forceFill(['last_login_at' => now()])->save();
 
             $isNewMember = $user->tenantMembershipFor($tenant) === null;
 
@@ -110,6 +128,35 @@ final class CompleteSsoLoginAction
 
             return $user;
         }));
+    }
+
+    /**
+     * Whether the account behind this email already answers to a different IdP
+     * subject on this connection.
+     */
+    private function linkedToAnotherSubject(SsoConnection $connection, string $email): bool
+    {
+        $user = User::query()->where('email', $email)->first();
+
+        return $user !== null && SsoIdentity::query()
+            ->withoutGlobalScopes()
+            ->where('sso_connection_id', $connection->id)
+            ->where('user_id', $user->getKey())
+            ->exists();
+    }
+
+    /**
+     * Audits a refused identity on the connection's tenant (outside any
+     * transaction, so the record survives), then fails generically.
+     */
+    private function refuse(SsoConnection $connection, ExternalIdentity $identity, string $reason): never
+    {
+        $this->audit->log('enterprise.sso.login_rejected', tenant: $connection->tenant, auditable: $connection, context: [
+            'reason' => $reason,
+            'email_domain' => Str::lower(Str::afterLast($identity->email, '@')),
+        ]);
+
+        throw $this->rejected($connection, $reason);
     }
 
     /**

@@ -13,7 +13,22 @@ return [
     | not integration-tested in this repo.
     */
     'domain_verifier' => env('ENTERPRISE_DOMAIN_VERIFIER', 'fake'),   // fake|dns
-    'identity_provider' => env('ENTERPRISE_IDENTITY_PROVIDER', 'fake'), // fake|oidc
+    // fake|real — `real` routes each connection to its OIDC or SAML adapter
+    // (`oidc` is accepted as an alias). Fakes are refused in production (ADR-034).
+    'identity_provider' => env('ENTERPRISE_IDENTITY_PROVIDER', 'fake'),
+
+    /*
+    | Server-side calls to tenant-configured URLs (IdP endpoints) are pinned to
+    | public addresses (SSRF guard). Allowing private networks is only for local
+    | development against an IdP on localhost — never in production.
+    */
+    'egress_allow_private_networks' => (bool) env('ENTERPRISE_EGRESS_ALLOW_PRIVATE', false),
+
+    /*
+    | Verified SSO domains are re-checked daily; one that keeps failing its DNS
+    | challenge for this long loses its verification (and its logins).
+    */
+    'sso_domain_grace_hours' => (int) env('ENTERPRISE_SSO_DOMAIN_GRACE_HOURS', 72),
 
     /*
     | CNAME target tenants point their custom domain at. Surfaced to the tenant

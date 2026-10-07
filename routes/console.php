@@ -18,3 +18,6 @@ Schedule::command('automations:resume')->everyMinute()->withoutOverlapping();
 
 // Extract analytics rows to the warehouse sink (ADR-031), every five minutes.
 Schedule::command('analytics:extract')->everyFiveMinutes()->withoutOverlapping();
+
+// Re-check verified SSO domains (ADR-035): hourly sweep, each domain about daily.
+Schedule::command('enterprise:reverify-sso-domains')->hourly()->withoutOverlapping();
