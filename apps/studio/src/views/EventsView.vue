@@ -36,8 +36,13 @@ async function load(): Promise<void> {
 }
 
 async function salir(): Promise<void> {
-  await auth.logout()
-  await router.push({ name: 'login' })
+  const idpLogout = await auth.logout()
+
+  if (idpLogout !== null) {
+    window.location.assign(idpLogout) // the IdP ends its session too, then returns to /login
+  } else {
+    await router.push({ name: 'login' })
+  }
 }
 
 onMounted(load)

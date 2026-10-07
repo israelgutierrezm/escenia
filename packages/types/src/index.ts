@@ -970,10 +970,31 @@ export interface SsoConnection {
   domain_checked_at: string | null
   domain_check_failing_since: string | null
   /** What the IdP administrator registers (SAML connections only). */
-  saml: { entity_id: string; acs_url: string; metadata_url: string } | null
+  saml: {
+    entity_id: string
+    acs_url: string
+    slo_url: string
+    metadata_url: string
+    /** Escenia's SP certificate: verifies signed requests, receives encrypted assertions. */
+    sp_certificate: string | null
+  } | null
   default_role: 'admin' | 'member'
   is_active: boolean
   created_at: string | null
+}
+
+/** Which account an IdP subject logs into, on one connection. */
+export interface SsoIdentity {
+  id: string
+  subject: string
+  user: { id: string; name: string; email: string }
+  last_login_at: string | null
+  created_at: string | null
+}
+
+/** Ending a session SSO opened: where to send the browser so the IdP session ends too. */
+export interface LogoutResult {
+  sso_logout_url: string
 }
 
 /** A connection that may log in a given work email ("Continuar con SSO"). */

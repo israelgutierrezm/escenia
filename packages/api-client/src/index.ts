@@ -92,8 +92,10 @@ import type {
   CustomDomain,
   DataRegion,
   IssuedApiKey,
+  LogoutResult,
   SsoConnection,
   SsoDiscovery,
+  SsoIdentity,
   SsoProvider,
   SsoStart,
   TenantSettings,
@@ -233,7 +235,9 @@ export function createApiClient(options: ApiClientOptions = {}) {
       request<ApiResource<SsoStart>>('GET', `/sso/${connectionId}?redirect_uri=${encodeURIComponent(redirectUri)}`),
     ssoComplete: (connectionId: string, data: { code: string; state: string }) =>
       request<ApiResource<User>>('POST', `/sso/${connectionId}/callback`, data),
-    logout: () => request<void>('POST', '/auth/logout'),
+    /** `returnTo`: where to land once the IdP session also ended (SAML single logout). */
+    logout: (returnTo?: string) =>
+      request<ApiResource<LogoutResult> | undefined>('POST', '/auth/logout', returnTo ? { return_to: returnTo } : undefined),
     me: () => request<ApiResource<User>>('GET', '/auth/me'),
     tenants: () => request<ApiCollection<Tenant>>('GET', '/tenants'),
     workspaces: () => request<ApiCollection<Workspace>>('GET', '/workspaces'),
@@ -598,6 +602,12 @@ export function createApiClient(options: ApiClientOptions = {}) {
         is_active: boolean
       }>,
     ) => request<ApiResource<SsoConnection>>('PUT', `/enterprise/sso-connections/${connectionId}`, data),
+    rotateSamlCredentials: (connectionId: string) =>
+      request<ApiResource<SsoConnection>>('POST', `/enterprise/sso-connections/${connectionId}/saml/credentials`),
+    ssoIdentities: (connectionId: string) =>
+      request<ApiCollection<SsoIdentity>>('GET', `/enterprise/sso-connections/${connectionId}/identities`),
+    unlinkSsoIdentity: (connectionId: string, identityId: string) =>
+      request<void>('DELETE', `/enterprise/sso-connections/${connectionId}/identities/${identityId}`),
     verifySsoDomain: (connectionId: string) =>
       request<ApiResource<SsoConnection>>('POST', `/enterprise/sso-connections/${connectionId}/verify-domain`),
     deleteSsoConnection: (connectionId: string) =>
@@ -813,3 +823,6 @@ export function createAttendeeClient(options: AttendeeClientOptions = {}) {
 }
 
 export type AttendeeClient = ReturnType<typeof createAttendeeClient>
+
+export { finishSsoLogin, redirectToSso, ssoCallbackUrl, SsoLoginError } from './sso'
+export type { SsoApi } from './sso'

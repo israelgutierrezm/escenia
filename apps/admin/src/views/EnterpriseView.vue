@@ -11,6 +11,7 @@ import type {
   DomainStatus,
   IssuedApiKey,
   SsoConnection,
+  SsoIdentity,
   SsoProvider,
   TenantSettings,
 } from '@escenia/types'
@@ -235,12 +236,40 @@ function datosSaml(c: SsoConnection): [string, string, string][] {
     : [
         ['entity', 'Entity ID (SP)', c.saml.entity_id],
         ['acs', 'URL de ACS', c.saml.acs_url],
+        ['slo', 'URL de cierre de sesión (SLO)', c.saml.slo_url],
         ['metadata', 'Metadata del SP', c.saml.metadata_url],
       ]
 }
 const configEjemplo: Record<SsoProvider, string> = {
   oidc: '{ "issuer": "https://…", "client_id": "…", "client_secret": "…" }',
-  saml: '{ "idp_entity_id": "https://…", "idp_sso_url": "https://…", "idp_x509_cert": "-----BEGIN CERTIFICATE-----…" }',
+  saml: '{ "idp_entity_id": "https://…", "idp_sso_url": "https://…", "idp_x509_cert": "-----BEGIN CERTIFICATE-----…", "idp_slo_url": "https://… (opcional)", "sign_requests": false, "encrypt_assertions": false }',
+}
+function rotarCredenciales(c: SsoConnection): void {
+  if (!confirm('Se generará un certificado nuevo del SP. Tu IdP debe importar otra vez la metadata o fallarán las firmas y el cifrado. ¿Continuar?')) return
+  run(async () => {
+    const updated = (await api.rotateSamlCredentials(c.id)).data
+    const i = ssos.value.findIndex((x) => x.id === c.id)
+    if (i !== -1) ssos.value[i] = updated
+  })
+}
+
+// Identidades vinculadas: qué cuenta abre cada usuario del IdP.
+const identidades = ref<Record<string, SsoIdentity[]>>({})
+const identidadesAbiertas = ref<Record<string, boolean>>({})
+function alternarIdentidades(c: SsoConnection): void {
+  identidadesAbiertas.value[c.id] = !identidadesAbiertas.value[c.id]
+  if (identidadesAbiertas.value[c.id] && identidades.value[c.id] === undefined) {
+    run(async () => {
+      identidades.value[c.id] = (await api.ssoIdentities(c.id)).data
+    })
+  }
+}
+function desvincular(c: SsoConnection, identidad: SsoIdentity): void {
+  if (!confirm(`¿Desvincular a ${identidad.user.email}? Su próximo inicio con SSO se vinculará de nuevo por correo.`)) return
+  run(async () => {
+    await api.unlinkSsoIdentity(c.id, identidad.id)
+    identidades.value[c.id] = (identidades.value[c.id] ?? []).filter((x) => x.id !== identidad.id)
+  })
 }
 
 // Residencia
@@ -464,6 +493,7 @@ onMounted(load)
               <input :value="callbackUrl(c)" readonly class="control mono" />
               <AppButton variant="ghost" @click="copiar(callbackUrl(c), c.id)">{{ copiado === c.id ? 'Copiado' : 'Copiar' }}</AppButton>
             </div>
+            <span class="muted small">Si tu equipo entra también a la consola de Studio, registra además su origen con la misma ruta: <code>/sso/{{ c.id }}/callback</code>.</span>
           </label>
           <template v-else>
             <label v-for="[clave, etiqueta, valor] in datosSaml(c)" :key="clave" class="field">
@@ -473,7 +503,41 @@ onMounted(load)
                 <AppButton variant="ghost" @click="copiar(valor, c.id + clave)">{{ copiado === c.id + clave ? 'Copiado' : 'Copiar' }}</AppButton>
               </div>
             </label>
+            <div v-if="c.saml" class="field">
+              <span>Certificado del SP (verifica nuestras firmas; el IdP cifra las aserciones con él)</span>
+              <div class="webhook">
+                <textarea :value="c.saml.sp_certificate ?? 'Sin certificado: genéralo para poder firmar y cifrar.'" readonly rows="3" class="control mono"></textarea>
+                <div class="stack-sm">
+                  <AppButton v-if="c.saml.sp_certificate" variant="ghost" @click="copiar(c.saml.sp_certificate, c.id + 'cert')">{{ copiado === c.id + 'cert' ? 'Copiado' : 'Copiar' }}</AppButton>
+                  <AppButton variant="ghost" :disabled="busy" @click="rotarCredenciales(c)">{{ c.saml.sp_certificate ? 'Rotar' : 'Generar' }}</AppButton>
+                </div>
+              </div>
+            </div>
           </template>
+
+          <div class="identidades">
+            <button type="button" class="link" :aria-expanded="identidadesAbiertas[c.id] === true" @click="alternarIdentidades(c)">
+              {{ identidadesAbiertas[c.id] ? 'Ocultar identidades vinculadas' : 'Ver identidades vinculadas' }}
+            </button>
+            <template v-if="identidadesAbiertas[c.id]">
+              <p v-if="(identidades[c.id] ?? []).length === 0" class="muted small">No hay identidades vinculadas: cada persona se vincula en su primer inicio con SSO.</p>
+              <table v-else class="admin-table">
+                <thead><tr><th>Usuario</th><th>Sujeto del IdP</th><th>Último acceso</th><th></th></tr></thead>
+                <tbody>
+                  <tr v-for="i in identidades[c.id]" :key="i.id">
+                    <td><strong>{{ i.user.name }}</strong><br /><span class="muted small">{{ i.user.email }}</span></td>
+                    <td class="mono valor">{{ i.subject }}</td>
+                    <td>{{ i.last_login_at ? fecha(i.last_login_at) : '—' }}</td>
+                    <td><AppButton variant="danger" :disabled="busy" @click="desvincular(c, i)">Desvincular</AppButton></td>
+                  </tr>
+                </tbody>
+              </table>
+              <p class="muted small">
+                Desvincula a alguien cuando su cuenta del IdP se recreó: hasta entonces su inicio se rechaza, por si el correo
+                se reasignó a otra persona.
+              </p>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -556,6 +620,11 @@ onMounted(load)
 .warn { color: var(--escenia-color-text); }
 
 .webhook { display: flex; gap: var(--escenia-space-2); }
+.webhook textarea.control { flex: 1; resize: vertical; font-size: 0.78rem; }
+.stack-sm { display: flex; flex-direction: column; gap: var(--escenia-space-2); }
+.identidades { display: flex; flex-direction: column; gap: var(--escenia-space-2); border-top: 1px solid var(--escenia-color-border); padding-top: var(--escenia-space-3); }
+.link { align-self: flex-start; padding: 0; font: inherit; font-size: 0.85rem; font-weight: 600; color: var(--escenia-color-primary); background: transparent; border: 0; cursor: pointer; }
+.link:hover { text-decoration: underline; }
 .webhook .control { flex: 1; font-size: 0.82rem; }
 textarea.control { resize: vertical; }
 </style>

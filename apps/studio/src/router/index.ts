@@ -12,6 +12,12 @@ export const router = createRouter({
       meta: { guest: true },
     },
     {
+      // Where the IdP sends the browser back (OIDC) or the ACS lands it (SAML).
+      path: '/sso/:connection/callback',
+      name: 'sso-callback',
+      component: () => import('@/views/SsoCallbackView.vue'),
+    },
+    {
       path: '/',
       name: 'events',
       component: () => import('@/views/EventsView.vue'),

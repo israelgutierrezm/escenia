@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ApiError } from '@escenia/api-client'
+import { ApiError, finishSsoLogin } from '@escenia/api-client'
 
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
@@ -20,21 +20,8 @@ function texto(valor: unknown): string {
 }
 
 onMounted(async () => {
-  const conexion = texto(route.params.connection)
-  const code = texto(route.query.code)
-  const state = texto(route.query.state)
-
   try {
-    if (texto(route.query.error) !== '') {
-      throw new Error('idp')
-    }
-
-    if (code !== '' && state !== '') {
-      await api.ssoComplete(conexion, { code, state })
-    } else if (texto(route.query.status) !== 'ok') {
-      throw new Error('incompleto')
-    }
-
+    await finishSsoLogin(api, texto(route.params.connection), route.query)
     await auth.fetchUser()
 
     if (!auth.isAuthenticated) {

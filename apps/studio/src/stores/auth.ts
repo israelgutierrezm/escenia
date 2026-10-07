@@ -48,10 +48,16 @@ export const useAuthStore = defineStore('auth', () => {
     syncDefaultTenant()
   }
 
-  async function logout(): Promise<void> {
-    await api.logout()
+  /**
+   * Ends the session. Returns where to send the browser when SSO opened it and
+   * the IdP session must end too (SAML single logout), else null.
+   */
+  async function logout(): Promise<string | null> {
+    const result = await api.logout(`${window.location.origin}/login`)
     user.value = null
     selectTenant(null)
+
+    return result?.data.sso_logout_url ?? null
   }
 
   return { user, ready, activeTenantId, isAuthenticated, tenants, activeTenant, selectTenant, fetchUser, login, logout }

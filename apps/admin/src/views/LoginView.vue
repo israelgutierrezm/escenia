@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { ApiError } from '@escenia/api-client'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ApiError, redirectToSso } from '@escenia/api-client'
 import type { SsoDiscovery } from '@escenia/types'
 
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import AuthWaves from '@/components/AuthWaves.vue'
 
+const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+
+// Vuelta del cierre de sesión único (SAML): el IdP confirmó el cierre o no.
+const cierreSso = computed(() => route.query.logout)
 
 const email = ref('')
 const password = ref('')
@@ -69,9 +73,7 @@ async function iniciarSso(conexion: SsoDiscovery): Promise<void> {
   ssoError.value = null
 
   try {
-    const redirectUri = `${window.location.origin}/sso/${conexion.id}/callback`
-    const inicio = (await api.ssoStart(conexion.id, redirectUri)).data
-    window.location.assign(inicio.authorization_url)
+    await redirectToSso(api, conexion, window.location.origin, (url) => window.location.assign(url))
   } catch (e) {
     ssoError.value = e instanceof ApiError ? e.message : 'No se pudo iniciar sesión con SSO.'
   }
@@ -83,6 +85,14 @@ async function iniciarSso(conexion: SsoDiscovery): Promise<void> {
     <template #subtitulo>
       <p class="sub muted">Panel de administración</p>
     </template>
+
+    <p v-if="cierreSso === 'ok'" class="ok-text cierre" role="status">
+      Cerraste sesión también en tu proveedor de identidad.
+    </p>
+    <p v-else-if="cierreSso === 'partial'" class="aviso cierre" role="alert">
+      Cerraste sesión en Escenia, pero tu proveedor de identidad no confirmó el cierre. Si el equipo es compartido,
+      cierra también tu sesión allí.
+    </p>
 
     <form class="fields" @submit.prevent="onSubmit">
       <div class="campo">
@@ -156,6 +166,15 @@ async function iniciarSso(conexion: SsoDiscovery): Promise<void> {
 .sub {
   margin: 6px 0 0;
   font-size: 0.85rem;
+}
+
+.cierre {
+  margin: 0 0 var(--escenia-space-4);
+}
+
+.aviso {
+  color: var(--escenia-color-warning);
+  font-size: 0.875rem;
 }
 
 .fields {
