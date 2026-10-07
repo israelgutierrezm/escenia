@@ -24,6 +24,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@escenia/studio", "dev"],
       "port": 5184
+    },
+    {
+      "name": "sso-demo",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/sso-interop/demo.mjs"],
+      "port": 8010
     }
   ]
 }
