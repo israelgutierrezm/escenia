@@ -16,3 +16,4 @@ Accepted (2026-09-08)
 
 - Los proveedores se testean con fakes; la suite normal no requiere Internet.
 - El pipeline de CI ejecuta ambos conjuntos (ver `.github/workflows/ci.yml`).
+- Las dependencias PHP se auditan aparte (`.github/workflows/audit.yml`): `composer audit` en push, PR y a diario (añadido el 2026-10-22).

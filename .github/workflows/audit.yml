@@ -1,0 +1,33 @@
+name: Security audit
+
+# Known vulnerabilities in the PHP dependencies (composer.lock) fail the check.
+# It also runs daily: a new advisory can affect a release without any code
+# change. Abandoned packages are reported, not failed.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  composer:
+    name: Composer audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: Audit composer.lock
+        run: composer audit --locked --abandoned=report --no-interaction
