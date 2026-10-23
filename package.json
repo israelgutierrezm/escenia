@@ -13,5 +13,10 @@
         "test": "pnpm -r --if-present test",
         "build": "pnpm -r --if-present build",
         "dev:admin": "pnpm --filter @escenia/admin dev"
+    },
+    "pnpm": {
+        "overrides": {
+            "postcss-selector-parser": "^7.1.7"
+        }
     }
 }
