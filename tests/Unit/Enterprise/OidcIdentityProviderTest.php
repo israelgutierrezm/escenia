@@ -26,10 +26,10 @@ function oidcBase64Url(string $bytes): string
  *
  * @return array{private: string, public: string, jwk: array<string, string>}
  */
-function oidcRsaKey(string $kid = 'key-1'): array
+function oidcRsaKey(string $kid = 'key-1', int $bits = 2048): array
 {
     $config = opensslTestConfig();
-    $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA, 'config' => $config]);
+    $key = openssl_pkey_new(['private_key_bits' => $bits, 'private_key_type' => OPENSSL_KEYTYPE_RSA, 'config' => $config]);
     openssl_pkey_export($key, $private, null, ['config' => $config]);
     $details = openssl_pkey_get_details($key);
 
@@ -123,6 +123,19 @@ function fakeOidcIdp(string $idToken, array $jwks): void
         'idp.test/jwks' => Http::response(['keys' => $jwks]),
     ]);
 }
+
+it('refuses an id_token signed with an RSA key shorter than 2048 bits', function () {
+    $weak = oidcRsaKey('weak-1', bits: 1024);
+
+    // The JWT library refuses to sign with such a key, so sign it by hand, as an
+    // IdP still on a weak key would.
+    $signingInput = oidcBase64Url((string) json_encode(['alg' => 'RS256', 'typ' => 'JWT', 'kid' => 'weak-1']))
+        .'.'.oidcBase64Url((string) json_encode(oidcClaims()));
+    openssl_sign($signingInput, $signature, $weak['private'], OPENSSL_ALGO_SHA256);
+    fakeOidcIdp($signingInput.'.'.oidcBase64Url($signature), [$weak['jwk']]);
+
+    app(OidcIdentityProvider::class)->verifyCallback(oidcConnection(), oidcCallback());
+})->throws(SsoAuthenticationException::class);
 
 it('builds the authorization URL with state, nonce and an S256 PKCE challenge', function () {
     $url = app(OidcIdentityProvider::class)->authorizationUrl(oidcConnection(), new SsoAuthorizationRequest(

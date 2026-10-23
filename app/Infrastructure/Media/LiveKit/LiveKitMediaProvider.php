@@ -17,6 +17,8 @@ use App\Domain\Media\ValueObjects\StreamOutput;
 use Firebase\JWT\JWT;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
+use SensitiveParameter;
 use Throwable;
 
 /**
@@ -24,16 +26,28 @@ use Throwable;
  * without a running server). Rooms are auto-created by LiveKit on first join, so
  * provisioning returns a handle; room teardown / participant removal hit the
  * LiveKit RoomService API best-effort (see technical-debt.md).
+ *
+ * Tokens are HS256-signed with the API secret, which must be at least as long
+ * as the hash (RFC 7518 §3.2): a shorter one is refused here, at configuration
+ * time, instead of failing (or minting forgeable tokens) on the first join.
  */
 final class LiveKitMediaProvider implements MediaEgressProvider, MediaProviderContract
 {
+    public const MIN_SECRET_BYTES = 32;
+
     public function __construct(
         private readonly string $apiKey,
-        private readonly string $apiSecret,
+        #[SensitiveParameter] private readonly string $apiSecret,
         private readonly string $url,
         private readonly string $host,
         private readonly int $tokenTtlSeconds = 3600,
-    ) {}
+    ) {
+        if (strlen($apiSecret) < self::MIN_SECRET_BYTES) {
+            throw new InvalidArgumentException(
+                'LIVEKIT_API_SECRET must be at least '.self::MIN_SECRET_BYTES.' bytes: LiveKit tokens are HS256-signed.'
+            );
+        }
+    }
 
     public function name(): string
     {

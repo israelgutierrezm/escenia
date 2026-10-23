@@ -34,11 +34,13 @@ it('issues a host media token for a live studio', function () {
     expect($response->json('data.access.identity'))->toStartWith('host-');
 });
 
+const LIVEKIT_TEST_SECRET = 'test-livekit-secret-0123456789abcdef';
+
 it('mints a valid LiveKit JWT with full host grants', function () {
     config([
         'media.provider' => 'livekit',
         'media.livekit.api_key' => 'devkey',
-        'media.livekit.api_secret' => 'secret',
+        'media.livekit.api_secret' => LIVEKIT_TEST_SECRET,
         'media.livekit.url' => 'wss://livekit.test',
     ]);
     app()->forgetInstance(MediaProviderContract::class);
@@ -57,7 +59,7 @@ it('mints a valid LiveKit JWT with full host grants', function () {
 
     expect($access['url'])->toBe('wss://livekit.test');
 
-    $claims = (array) JWT::decode($access['token'], new Key('secret', 'HS256'));
+    $claims = (array) JWT::decode($access['token'], new Key(LIVEKIT_TEST_SECRET, 'HS256'));
     expect($claims['iss'])->toBe('devkey');
     expect($claims['sub'])->toBe($access['identity']);
 
@@ -67,3 +69,14 @@ it('mints a valid LiveKit JWT with full host grants', function () {
     expect($video['canPublish'])->toBeTrue();
     expect($video['canSubscribe'])->toBeTrue();
 });
+
+it('refuses a LiveKit secret too short to sign HS256 tokens', function () {
+    config([
+        'media.provider' => 'livekit',
+        'media.livekit.api_key' => 'devkey',
+        'media.livekit.api_secret' => 'secret',
+    ]);
+    app()->forgetInstance(MediaProviderContract::class);
+
+    app(MediaProviderContract::class);
+})->throws(InvalidArgumentException::class, 'LIVEKIT_API_SECRET must be at least 32 bytes');
