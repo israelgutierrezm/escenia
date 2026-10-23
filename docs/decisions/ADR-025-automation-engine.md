@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-09-08)
+Accepted (2026-09-08). Su deuda de SSRF y de validación por tipo de paso la resuelve ADR-037.
 
 ## Context
 

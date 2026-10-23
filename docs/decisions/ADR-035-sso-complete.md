@@ -20,7 +20,8 @@ siempre aunque cambiara de dueño, y el usuario se resolvía solo por email.
   loopback, link-local/metadata de nube, CGNAT, reservadas) y **fija** la
   conexión a la IP validada (`CURLOPT_RESOLVE`), de modo que un DNS que cambia
   entre la validación y la conexión no sirve (rebinding). Sin redirecciones.
-  `ENTERPRISE_EGRESS_ALLOW_PRIVATE` existe solo para un IdP local en desarrollo.
+  `ENTERPRISE_EGRESS_ALLOW_PRIVATE` existe solo para un IdP local en desarrollo
+  (ADR-037 lo generaliza como `EGRESS_ALLOW_PRIVATE` e ignorado en producción).
 - **Descubrimiento OIDC**: basta issuer + client id/secret; los endpoints que
   falten salen de `{issuer}/.well-known/openid-configuration` (vía el guard,
   cacheado 1 h, aceptado solo si declara el **mismo** issuer — OIDC Discovery

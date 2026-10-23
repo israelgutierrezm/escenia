@@ -21,7 +21,7 @@ con email `dev@acme.com`, **Email verified** activado y una contraseña.
 ```dotenv
 ENTERPRISE_IDENTITY_PROVIDER=real
 ENTERPRISE_DOMAIN_VERIFIER=fake        # en dev el TXT se da por publicado
-ENTERPRISE_EGRESS_ALLOW_PRIVATE=true   # Keycloak está en localhost; NUNCA en producción
+EGRESS_ALLOW_PRIVATE=true   # Keycloak está en localhost; se ignora en producción
 SANCTUM_STATEFUL_DOMAINS=localhost,localhost:5180,127.0.0.1,127.0.0.1:5180
 ```
 
