@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-09-08)
+Accepted (2026-09-08). Actualizado el 2026-10-22: con `firebase/php-jwt` 7 el secreto de LiveKit debe tener al menos 32 bytes.
 
 ## Context
 
@@ -22,3 +22,9 @@ ADR-002 y ADR-008 exigen que el dominio hable con un `MediaProviderContract` y n
 - El dominio nunca importa tipos del SDK; el proveedor es intercambiable/combinable.
 - La emisión de tokens es determinista y testeable; la suite usa el fake.
 - Deuda: las llamadas a la RoomService API de LiveKit no se prueban contra infraestructura real (`technical-debt.md`).
+- Desde `firebase/php-jwt` 7 (2026-10-22, CVE-2025-45769) la librería rechaza
+  claves HMAC más cortas que el hash (RFC 7518 §3.2): el secreto de LiveKit debe
+  tener al menos 32 bytes. `LiveKitMediaProvider` lo comprueba al construirse,
+  así que una configuración débil falla de inmediato en vez de en la primera
+  unión a una sala. `livekit-server --dev` usa `secret`: en local hay que darle
+  una clave larga con `--keys`.
