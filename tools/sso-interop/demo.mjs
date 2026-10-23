@@ -5,6 +5,7 @@
 // SSO" flows in a browser. Test-only credentials: owner@acme.com /
 // interop-password-123; SSO user dev@acme.com.
 // Usage: node demo.mjs [escenia repo, default ../..]   (Ctrl+C to stop)
+// DEMO_API_PORT moves the API off :8010 (point vite at it with VITE_API_PROXY).
 import { spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import http from 'node:http'
@@ -20,6 +21,7 @@ const SPA = 'http://localhost:5180'
 const STUDIO = 'http://localhost:5184'
 const OP = 'http://127.0.0.1:8032'
 const SAML_IDP = 'http://127.0.0.1:8033'
+const API = `127.0.0.1:${process.env.DEMO_API_PORT ?? '8010'}`
 
 // The SPAs reach the API through vite's proxy, so the API's public URL (and with
 // it the SAML ACS, where the binding cookie must arrive) is the admin origin.
@@ -41,7 +43,7 @@ const env = {
   CERTIFICATE_PREGENERATE: 'false',
   ENTERPRISE_IDENTITY_PROVIDER: 'real',
   ENTERPRISE_DOMAIN_VERIFIER: 'fake',
-  ENTERPRISE_EGRESS_ALLOW_PRIVATE: 'true',
+  EGRESS_ALLOW_PRIVATE: 'true',
   SANCTUM_STATEFUL_DOMAINS: 'localhost:5180,127.0.0.1:5180,localhost:5184,127.0.0.1:5184',
 }
 
@@ -57,7 +59,7 @@ for (const seeder of ['PlanSeeder', 'RolePermissionSeeder', 'EventTemplateSeeder
 }
 const seed = JSON.parse(php([path.join(here, 'setup.php'), repo, here]).trim().split('\n').pop())
 
-const api = spawn('php', ['-S', '127.0.0.1:8010', path.join(repo, 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')], {
+const api = spawn('php', ['-S', API, path.join(repo, 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')], {
   cwd: path.join(repo, 'public'), env, stdio: 'inherit',
 })
 
@@ -111,7 +113,7 @@ const idp = samlify.IdentityProvider({
 let sp = null
 const serviceProvider = async () => {
   sp ??= samlify.ServiceProvider({
-    metadata: await (await fetch(`http://127.0.0.1:8010/api/v1/sso/${seed.saml}/saml/metadata`)).text(),
+    metadata: await (await fetch(`http://${API}/api/v1/sso/${seed.saml}/saml/metadata`)).text(),
     wantLogoutRequestSigned: true,
     wantLogoutResponseSigned: true,
   })

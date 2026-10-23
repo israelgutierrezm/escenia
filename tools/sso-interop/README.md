@@ -37,6 +37,9 @@ de punta a punta, y «Salir» tras entrar con SAML recorre el cierre de sesión
 Enterprise › SSO se ven las identidades vinculadas y el certificado del SP. Su
 base es nueva en cada arranque.
 
+Si `:8010` está ocupado, `DEMO_API_PORT` mueve el API (por ejemplo a `8012`);
+arranca entonces el Vite con `VITE_API_PROXY=http://127.0.0.1:8012`.
+
 ## Lo que encontró (y quedó corregido o documentado)
 
 - Escenia enviaba siempre el secreto en el cuerpo (`client_secret_post`). OIDC usa
