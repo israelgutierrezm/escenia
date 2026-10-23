@@ -15,5 +15,5 @@ Accepted (2026-09-08)
 ## Consequences
 
 - Los proveedores se testean con fakes; la suite normal no requiere Internet.
-- El pipeline de CI ejecuta ambos conjuntos (ver `.github/workflows/ci.yml`).
-- Las dependencias PHP se auditan aparte (`.github/workflows/audit.yml`): `composer audit` en push, PR y a diario (añadido el 2026-10-22).
+- El pipeline de CI ejecuta ambos conjuntos (ver `.github/workflows/ci.yml`). Corrección del 2026-10-23: hasta esa fecha el job de frontend fallaba en «Setup pnpm» (versión de pnpm declarada dos veces) y nunca llegó a ejecutarse; desde entonces corre y hace typecheck, lint y build de todas las apps, y los tests del admin.
+- Las dependencias se auditan aparte (`.github/workflows/audit.yml`) en push, PR y a diario: `composer audit` (desde el 2026-10-22) y `pnpm audit`, que incluye las devDependencies (desde el 2026-10-23).
