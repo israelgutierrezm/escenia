@@ -18,4 +18,21 @@ enum AutomationStepType: string
     {
         return array_map(static fn (self $t): string => $t->value, self::cases());
     }
+
+    /**
+     * The `config` keys this step's handler reads; anything else is dropped when
+     * the step is saved. A webhook keeps its URL and secret in the encrypted
+     * `credentials` instead (ADR-037).
+     *
+     * @return list<string>
+     */
+    public function configKeys(): array
+    {
+        return match ($this) {
+            self::Webhook => [],
+            self::TagContact => ['tag'],
+            self::Notify => ['subject', 'body'],
+            self::Wait => ['seconds'],
+        };
+    }
 }

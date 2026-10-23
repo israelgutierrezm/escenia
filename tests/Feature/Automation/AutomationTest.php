@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 use App\Application\Automation\ResumeAutomationRunsAction;
 use App\Application\Outbox\DispatchOutboxAction;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+
+// Webhook hosts resolve to a public address unless a test says otherwise.
+beforeEach(fn () => resolveHostsTo('93.184.216.34'));
 
 /**
  * @param  array<string, string>  $headers
@@ -124,7 +129,139 @@ it('delivers a signed outbound webhook', function () {
     drainOutbox();
 
     Http::assertSent(fn ($request): bool => $request->url() === 'https://hooks.example.com/x'
-        && $request->hasHeader('X-Escenia-Signature'));
+        && $request->hasHeader('X-Escenia-Signature', hash_hmac('sha256', $request->body(), 'shh')));
+    expect(automationRunSummaries())->toBe(['webhook_sent 200']);
+});
+
+/**
+ * @return list<string> the step summaries of every run's log
+ */
+function automationRunSummaries(): array
+{
+    return DB::table('automation_runs')->pluck('log')
+        ->flatMap(fn (string $log): array => array_column(json_decode($log, true), 'summary'))
+        ->values()
+        ->all();
+}
+
+it('never calls a webhook whose host now resolves to an internal address', function () {
+    Http::fake();
+
+    [, , $event, $headers] = makeWebinarHost();
+
+    createAutomation($headers, [
+        'name' => 'CRM sync',
+        'trigger' => 'registration.completed',
+        'steps' => [['type' => 'webhook', 'config' => ['url' => 'https://hooks.example.com/x']]],
+    ]);
+
+    // Public when saved; rebound to the cloud metadata address when it runs.
+    resolveHostsTo('169.254.169.254');
+    registerAttendee($event->ulid);
+    drainOutbox();
+
+    Http::assertNothingSent();
+    expect(automationRunSummaries())->toBe(['webhook_blocked (destination not allowed)']);
+});
+
+it('refuses webhook destinations the server must not call', function (string $url, string $resolvesTo) {
+    resolveHostsTo($resolvesTo);
+
+    [, , , $headers] = makeWebinarHost();
+
+    $this->withHeaders($headers)->postJson('/api/v1/automations', [
+        'name' => 'Bad hook',
+        'trigger' => 'registration.completed',
+        'steps' => [['type' => 'webhook', 'config' => ['url' => $url]]],
+    ])->assertUnprocessable()->assertJsonValidationErrors('steps.0.config.url');
+
+    $this->assertDatabaseCount('automations', 0);
+})->with([
+    'plain http' => ['http://hooks.example.com/x', '93.184.216.34'],
+    'cloud metadata address' => ['https://169.254.169.254/latest/meta-data/', '93.184.216.34'],
+    'host on the internal network' => ['https://intranet.example.com/hook', '10.0.0.7'],
+    'loopback' => ['https://localhost/hook', '127.0.0.1'],
+    'not a URL' => ['hooks', '93.184.216.34'],
+]);
+
+it('keeps a webhook URL and secret encrypted and out of the API', function () {
+    [, , , $headers] = makeWebinarHost();
+
+    createAutomation($headers, [
+        'name' => 'Chat alert',
+        'trigger' => 'registration.completed',
+        'steps' => [
+            ['type' => 'webhook', 'config' => ['url' => 'https://hooks.example.com/services/T0/B0/k3yInTheUrl', 'secret' => 'shh-s3cret']],
+            ['type' => 'tag_contact', 'config' => ['tag' => 'alerted', 'unused' => 'dropped']],
+        ],
+    ]);
+
+    $listing = $this->withHeaders($headers)->getJson('/api/v1/automations')
+        ->assertOk()
+        ->assertJsonPath('data.0.steps.0.config', ['target' => 'https://hooks.example.com'])
+        ->assertJsonPath('data.0.steps.0.has_secret', true)
+        ->assertJsonPath('data.0.steps.1.config', ['tag' => 'alerted'])
+        ->assertJsonMissingPath('data.0.steps.1.has_secret');
+
+    expect($listing->getContent())->not->toContain('k3yInTheUrl')->not->toContain('shh-s3cret');
+
+    $row = DB::table('automation_steps')->where('type', 'webhook')->sole();
+
+    expect($row->config)->toBeNull()
+        ->and($row->credentials)->not->toContain('shh-s3cret')
+        ->and(json_decode(Crypt::decryptString($row->credentials), true))
+        ->toBe(['url' => 'https://hooks.example.com/services/T0/B0/k3yInTheUrl', 'secret' => 'shh-s3cret']);
+});
+
+it('validates the settings of each step type and the conditions', function (array $step, string $error) {
+    [, , , $headers] = makeWebinarHost();
+
+    $this->withHeaders($headers)->postJson('/api/v1/automations', [
+        'name' => 'Invalid',
+        'trigger' => 'registration.completed',
+        'steps' => [$step],
+    ])->assertUnprocessable()->assertJsonValidationErrors($error);
+})->with([
+    'webhook without a URL' => [['type' => 'webhook', 'config' => ['secret' => 'x']], 'steps.0.config.url'],
+    'tag without a tag' => [['type' => 'tag_contact', 'config' => []], 'steps.0.config.tag'],
+    'notification without a subject' => [['type' => 'notify', 'config' => ['body' => 'Hi']], 'steps.0.config.subject'],
+    'wait of zero seconds' => [['type' => 'wait', 'config' => ['seconds' => 0]], 'steps.0.config.seconds'],
+    'unknown condition operator' => [[
+        'type' => 'tag_contact',
+        'config' => ['tag' => 'x'],
+        'conditions' => [['field' => 'event.type', 'op' => 'matches', 'value' => 'x']],
+    ], 'steps.0.conditions.0.op'],
+]);
+
+it('moves webhook credentials out of the plain config, reversibly', function () {
+    Http::fake();
+
+    [, , $event, $headers] = makeWebinarHost();
+
+    createAutomation($headers, [
+        'name' => 'Legacy hook',
+        'trigger' => 'registration.completed',
+        'steps' => [['type' => 'webhook', 'config' => ['url' => 'https://hooks.example.com/x', 'secret' => 'shh']]],
+    ]);
+
+    $migration = require database_path('migrations/2026_10_22_000000_move_automation_webhook_credentials.php');
+
+    // Rolled back: the step looks like one saved before ADR-037.
+    $migration->down();
+    expect(json_decode((string) DB::table('automation_steps')->sole()->config, true))
+        ->toBe(['url' => 'https://hooks.example.com/x', 'secret' => 'shh']);
+
+    $migration->up();
+    $row = DB::table('automation_steps')->sole();
+
+    expect($row->config)->toBeNull()
+        ->and(json_decode(Crypt::decryptString($row->credentials), true))
+        ->toBe(['url' => 'https://hooks.example.com/x', 'secret' => 'shh']);
+
+    registerAttendee($event->ulid);
+    drainOutbox();
+
+    Http::assertSent(fn ($request): bool => $request->hasHeader('X-Escenia-Signature', hash_hmac('sha256', $request->body(), 'shh')));
 });
 
 it('triggers an automation on a paid order', function () {

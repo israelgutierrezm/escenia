@@ -17,12 +17,8 @@ return [
     // (`oidc` is accepted as an alias). Fakes are refused in production (ADR-034).
     'identity_provider' => env('ENTERPRISE_IDENTITY_PROVIDER', 'fake'),
 
-    /*
-    | Server-side calls to tenant-configured URLs (IdP endpoints) are pinned to
-    | public addresses (SSRF guard). Allowing private networks is only for local
-    | development against an IdP on localhost — never in production.
-    */
-    'egress_allow_private_networks' => (bool) env('ENTERPRISE_EGRESS_ALLOW_PRIVATE', false),
+    // Server-side calls to IdP endpoints go through the platform egress guard:
+    // see config/egress.php.
 
     /*
     | Verified SSO domains are re-checked daily; one that keeps failing its DNS

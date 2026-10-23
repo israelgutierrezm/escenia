@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace App\Infrastructure\Http;
 
 /**
- * Guards server-side requests to URLs a tenant configured (e.g. its IdP's
- * endpoints) against SSRF. The host must resolve only to public addresses —
- * no private, loopback, link-local (cloud metadata), CGNAT or reserved ranges —
- * and the request is pinned to the address that was checked, so DNS cannot be
- * rebound between the check and the connection. Redirects are never followed.
+ * Guards server-side requests to URLs a tenant configured (its IdP's endpoints,
+ * automation webhooks) against SSRF. The host must resolve only to public
+ * addresses — no private, loopback, link-local (cloud metadata), CGNAT or
+ * reserved ranges — and the request is pinned to the address that was checked,
+ * so DNS cannot be rebound between the check and the connection. Redirects are
+ * never followed.
  *
- * `allowPrivateNetworks` exists for local development against an IdP on
- * localhost; it is off unless configured.
+ * `allowPrivateNetworks` exists for local development against a service on
+ * localhost; it is off unless configured and never honoured in production
+ * (config/egress.php).
  */
 final class OutboundUrlGuard
 {

@@ -9,28 +9,11 @@ use App\Domain\Enterprise\Exceptions\SsoAuthenticationException;
 use App\Domain\Enterprise\Models\SsoConnection;
 use App\Domain\Tenancy\Enums\TenantRole;
 use App\Infrastructure\Enterprise\Sso\OidcIdentityProvider;
-use App\Infrastructure\Http\HostResolver;
 use Firebase\JWT\JWT;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
-/**
- * Points every host at a fixed address for the egress guard (no live DNS).
- */
-function resolveOidcHostsTo(string $address): void
-{
-    app()->instance(HostResolver::class, new class($address) implements HostResolver
-    {
-        public function __construct(private readonly string $address) {}
-
-        public function resolve(string $host): array
-        {
-            return [$this->address];
-        }
-    });
-}
-
-beforeEach(fn () => resolveOidcHostsTo('93.184.216.34'));
+beforeEach(fn () => resolveHostsTo('93.184.216.34'));
 
 function oidcBase64Url(string $bytes): string
 {
@@ -337,7 +320,7 @@ it('ignores a discovery document that names another issuer', function () {
 })->throws(SsoAuthenticationException::class);
 
 it('never calls an IdP endpoint that resolves to a private address', function (string $address) {
-    resolveOidcHostsTo($address);
+    resolveHostsTo($address);
     Http::fake();
 
     try {

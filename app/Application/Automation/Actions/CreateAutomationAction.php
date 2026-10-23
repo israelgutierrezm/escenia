@@ -6,14 +6,18 @@ namespace App\Application\Automation\Actions;
 
 use App\Application\Automation\DTOs\CreateAutomationData;
 use App\Domain\Audit\Contracts\AuditLogger;
+use App\Domain\Automation\Enums\AutomationStepType;
 use App\Domain\Automation\Models\Automation;
 use App\Domain\Automation\Models\AutomationStep;
+use App\Domain\Automation\ValueObjects\WebhookEndpoint;
 use App\Domain\Identity\Models\User;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Creates an automation with its ordered steps. Step positions follow the
- * submitted order.
+ * submitted order. Each step keeps only the settings its type reads; a
+ * webhook's URL and secret go to the encrypted `credentials` (ADR-037).
  */
 final class CreateAutomationAction
 {
@@ -33,11 +37,13 @@ final class CreateAutomationAction
             ]);
 
             foreach ($data->steps as $position => $step) {
+                $type = AutomationStepType::from($step['type']);
+
                 AutomationStep::query()->create([
                     'automation_id' => $automation->getKey(),
                     'position' => $position,
-                    'type' => $step['type'],
-                    'config' => $step['config'],
+                    'type' => $type,
+                    ...$this->settings($type, $step['config']),
                     'conditions' => $step['conditions'],
                 ]);
             }
@@ -48,5 +54,18 @@ final class CreateAutomationAction
 
             return $automation->load('steps');
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     * @return array{config: array<string, mixed>|null, credentials: array<string, string>|null}
+     */
+    private function settings(AutomationStepType $type, array $config): array
+    {
+        if ($type === AutomationStepType::Webhook) {
+            return ['config' => null, 'credentials' => WebhookEndpoint::fromArray($config)?->toArray()];
+        }
+
+        return ['config' => Arr::only($config, $type->configKeys()), 'credentials' => null];
     }
 }

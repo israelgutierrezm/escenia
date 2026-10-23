@@ -74,3 +74,15 @@ it('allows private networks only when configured for local development', functio
 
     expect($options['curl'][CURLOPT_RESOLVE])->toBe(['localhost:8080:127.0.0.1']);
 });
+
+it('ignores the private-network escape hatch in production', function () {
+    resolveHostsTo('127.0.0.1');
+    config(['egress.allow_private_networks' => true]);
+
+    expect(app(OutboundUrlGuard::class)->pinnedOptions('http://localhost:8080/hook')['curl'][CURLOPT_RESOLVE])
+        ->toBe(['localhost:8080:127.0.0.1']);
+
+    app()['env'] = 'production';
+
+    app(OutboundUrlGuard::class)->pinnedOptions('http://localhost:8080/hook');
+})->throws(UnsafeOutboundUrlException::class);

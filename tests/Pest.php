@@ -10,6 +10,7 @@ use App\Domain\Events\Models\Event;
 use App\Domain\Identity\Models\User;
 use App\Domain\Tenancy\Context\TenantContext;
 use App\Domain\Tenancy\Models\Tenant;
+use App\Infrastructure\Http\HostResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
@@ -17,6 +18,23 @@ use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class)->in('Feature');
 uses(TestCase::class)->in('Unit');
+
+/**
+ * Points every host at one address for the egress guard, so outbound URLs are
+ * checked without live DNS.
+ */
+function resolveHostsTo(string $address): void
+{
+    app()->instance(HostResolver::class, new class($address) implements HostResolver
+    {
+        public function __construct(private readonly string $address) {}
+
+        public function resolve(string $host): array
+        {
+            return [$this->address];
+        }
+    });
+}
 
 /**
  * Register a brand new user together with their first tenant (owner), returning
