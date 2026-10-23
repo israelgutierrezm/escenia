@@ -1,8 +1,11 @@
 name: Security audit
 
-# Known vulnerabilities in the PHP dependencies (composer.lock) fail the check.
-# It also runs daily: a new advisory can affect a release without any code
-# change. Abandoned packages are reported, not failed.
+# Known vulnerabilities in the locked dependencies fail the check: PHP
+# (composer.lock) and JavaScript (pnpm-lock.yaml, devDependencies included,
+# since the dev server and test runner also run on developer machines). It
+# also runs daily: a new advisory can affect a release without any code change.
+# Abandoned Composer packages are reported, not failed. An advisory that has to
+# be accepted goes to pnpm.auditConfig.ignoreGhsas with a technical-debt entry.
 on:
   push:
     branches: [main]
@@ -31,3 +34,22 @@ jobs:
 
       - name: Audit composer.lock
         run: composer audit --locked --abandoned=report --no-interaction
+
+  pnpm:
+    name: pnpm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm's version comes from "packageManager" in package.json.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Reads pnpm-lock.yaml and the workspace manifests: nothing is installed.
+      - name: Audit pnpm-lock.yaml
+        run: pnpm audit

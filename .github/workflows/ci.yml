@@ -71,10 +71,11 @@ jobs:
         run: pnpm -r typecheck
 
       - name: Lint
-        run: pnpm --filter @escenia/admin lint
+        run: pnpm -r --if-present lint
 
+      # Only admin has specs so far (the other apps' `vitest run` finds none).
       - name: Test
         run: pnpm --filter @escenia/admin test
 
       - name: Build
-        run: pnpm --filter @escenia/admin build
+        run: pnpm -r --if-present build
