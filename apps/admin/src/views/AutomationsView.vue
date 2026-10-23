@@ -69,7 +69,24 @@ function nuevoPaso(): PasoForm {
   return { type: 'notify', url: '', secret: '', tag: '', subject: '', body: '', seconds: '60' }
 }
 
+// Qué falló en un paso al guardar (422 por campo de `steps.N.config.*`).
+const errorDeCampo: Record<string, string> = {
+  url: 'la URL del webhook debe ser https:// y apuntar a una dirección pública de internet.',
+  secret: 'el secreto admite hasta 255 caracteres.',
+  tag: 'escribe la etiqueta.',
+  subject: 'escribe el asunto.',
+  body: 'escribe el mensaje.',
+  seconds: 'la espera debe ir de 1 segundo a 365 días.',
+}
+
 function message(e: unknown): string {
+  if (e instanceof ApiError && e.status === 422 && e.errors !== undefined) {
+    for (const campo of Object.keys(e.errors)) {
+      const [, paso, clave] = /^steps\.(\d+)\.config\.(\w+)$/.exec(campo) ?? []
+      const texto = clave === undefined ? undefined : errorDeCampo[clave]
+      if (paso !== undefined && texto !== undefined) return `Paso ${Number(paso) + 1}: ${texto}`
+    }
+  }
   return e instanceof ApiError ? e.message : 'Algo salió mal.'
 }
 
@@ -158,7 +175,8 @@ function detallePaso(step: AutomationStep): string {
   const c = step.config ?? {}
   switch (step.type) {
     case 'webhook':
-      return typeof c.url === 'string' ? c.url : ''
+      // Solo el origen: la URL completa y el secreto nunca vuelven del servidor.
+      return typeof c.target === 'string' ? c.target : ''
     case 'tag_contact':
       return typeof c.tag === 'string' ? c.tag : ''
     case 'notify':
@@ -209,8 +227,9 @@ onMounted(load)
 
         <div class="paso__cfg">
           <template v-if="p.type === 'webhook'">
-            <label class="field grow"><span>URL</span><input v-model="p.url" class="control" placeholder="https://…" /></label>
-            <label class="field grow"><span>Secreto (opcional)</span><input v-model="p.secret" class="control" placeholder="Firma HMAC" /></label>
+            <label class="field grow"><span>URL</span><input v-model="p.url" type="url" inputmode="url" class="control" placeholder="https://…" autocomplete="off" /></label>
+            <label class="field grow"><span>Secreto (opcional)</span><input v-model="p.secret" type="password" class="control" placeholder="Firma HMAC" autocomplete="new-password" /></label>
+            <p class="muted small hint">Solo URLs https públicas. La URL y el secreto se guardan cifrados y no se vuelven a mostrar.</p>
           </template>
           <template v-else-if="p.type === 'tag_contact'">
             <label class="field grow"><span>Etiqueta</span><input v-model="p.tag" class="control" placeholder="vip" /></label>
@@ -259,6 +278,7 @@ onMounted(load)
           <li v-for="s in a.steps" :key="s.id">
             <span class="chip chip--primary">{{ tipoPasoLabel[s.type] }}</span>
             <span v-if="detallePaso(s)" class="muted small flow__detail">{{ detallePaso(s) }}</span>
+            <span v-if="s.has_secret" class="chip" title="Cada envío lleva la firma HMAC en X-Escenia-Signature">Firmado</span>
           </li>
         </ol>
 
@@ -296,6 +316,7 @@ onMounted(load)
 .paso__head .control { max-width: 220px; }
 .paso__num { display: grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; background: color-mix(in srgb, var(--escenia-color-primary) 18%, transparent); color: var(--escenia-color-primary); font-weight: 700; font-size: 0.78rem; }
 .paso__cfg { display: flex; gap: var(--escenia-space-3); flex-wrap: wrap; padding-left: 32px; }
+.hint { flex-basis: 100%; }
 .mini { width: 28px; height: 28px; margin-left: auto; font: inherit; color: var(--escenia-color-text-muted); background: transparent; border: 1px solid var(--escenia-color-border); border-radius: 6px; cursor: pointer; }
 .mini:hover:not(:disabled) { color: var(--escenia-color-danger, #ff6b6b); border-color: var(--escenia-color-border-strong); }
 .mini:disabled { opacity: 0.4; cursor: not-allowed; }

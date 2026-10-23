@@ -613,7 +613,10 @@ export interface AutomationStep {
   id: string
   position: number
   type: AutomationStepType
+  /** For a webhook only `target` (the origin): its URL and secret are never returned. */
   config: Record<string, unknown> | null
+  /** Webhooks only: whether the payload is HMAC-signed. */
+  has_secret?: boolean
   conditions: Condition[] | null
 }
 
