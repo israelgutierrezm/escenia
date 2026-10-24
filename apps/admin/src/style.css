@@ -34,7 +34,7 @@ summary:focus-visible,
   border-radius: var(--escenia-radius-sm);
 }
 
-/* Respeta la preferencia de movimiento reducido en toda la app (hero Vanta,
+/* Respeta la preferencia de movimiento reducido en toda la app (olas del login,
    hovers de tarjetas, animaciones). */
 @media (prefers-reduced-motion: reduce) {
   *,

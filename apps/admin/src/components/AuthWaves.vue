@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
-import * as THREE from 'three'
-import WAVES from 'vanta/dist/vanta.waves.min'
+import { defineAsyncComponent } from 'vue'
 
 import BrandMark from '@/components/BrandMark.vue'
 
@@ -9,9 +7,9 @@ import BrandMark from '@/components/BrandMark.vue'
  * Marco de las pantallas de acceso — mismo diseño que Acadion, recoloreado a la
  * marca escenia.
  *
- * Escritorio: FORMULARIO a la izquierda; a la DERECHA un panel completo con el
- * efecto animado de vanta.js «Waves» en tonos navy de escenia.
- * Móvil: solo el formulario.
+ * Escritorio: FORMULARIO a la izquierda; a la DERECHA un panel completo con olas
+ * animadas en tonos navy de escenia (WavesBackground, TD-050).
+ * Móvil: solo el formulario, sin descargar three.
  */
 const FRASES = [
   'Experiencias que unen.',
@@ -22,67 +20,17 @@ const FRASES = [
 ]
 const frase = FRASES[Math.floor(Math.random() * FRASES.length)]
 
-const fondo = ref<HTMLElement | null>(null)
-let efecto: { destroy: () => void; resize: () => void } | null = null
-let observador: ResizeObserver | null = null
-
-onMounted(() => {
-  if (fondo.value === null) return
-  if (!window.matchMedia('(min-width: 1024px)').matches) return
-
-  try {
-    efecto = WAVES({
-      el: fondo.value,
-      THREE,
-      mouseControls: true,
-      touchControls: true,
-      gyroControls: false,
-      minHeight: 200,
-      minWidth: 200,
-      scale: 1,
-      scaleMobile: 1,
-      color: 0x0e2a4a,
-      shininess: 40,
-      waveHeight: 15,
-      waveSpeed: 0.85,
-      zoom: 0.92,
-    })
-  } catch {
-    return // sin WebGL queda el fondo neutro
-  }
-
-  const reajustar = (): void => {
-    try {
-      efecto?.resize()
-    } catch {
-      /* nada */
-    }
-  }
-
-  requestAnimationFrame(reajustar)
-  setTimeout(reajustar, 300)
-
-  if (typeof ResizeObserver !== 'undefined') {
-    observador = new ResizeObserver(reajustar)
-    observador.observe(fondo.value)
-  }
-})
-
-onBeforeUnmount(() => {
-  observador?.disconnect()
-  try {
-    efecto?.destroy()
-  } catch {
-    /* nada */
-  }
-})
+// Las olas solo se muestran en escritorio (decidido al montar, como antes), y se
+// cargan aparte: en móvil nunca se descarga three.
+const escritorio = typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 1024px)').matches
+const WavesBackground = defineAsyncComponent(() => import('@/components/WavesBackground.vue'))
 </script>
 
 <template>
   <div class="wrap">
-    <!-- Panel Vanta: solo escritorio (columna derecha). -->
+    <!-- Panel de olas: solo escritorio (columna derecha). -->
     <div class="vanta">
-      <div ref="fondo" class="vanta__bg"></div>
+      <WavesBackground v-if="escritorio" />
       <div class="vanta__velo"></div>
 
       <div class="vanta__overlay">
@@ -129,7 +77,7 @@ onBeforeUnmount(() => {
   }
 }
 
-/* Panel Vanta (derecha en escritorio) */
+/* Panel de olas (derecha en escritorio) */
 .vanta {
   position: relative;
   display: none;
@@ -144,11 +92,6 @@ onBeforeUnmount(() => {
     width: 52%;
     height: 100vh;
   }
-}
-
-.vanta__bg {
-  position: absolute;
-  inset: 0;
 }
 
 .vanta__velo {
