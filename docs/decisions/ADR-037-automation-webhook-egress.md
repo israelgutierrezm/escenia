@@ -3,7 +3,8 @@
 ## Status
 
 Accepted (2026-10-22). Resuelve la deuda de ADR-025 (TD-023, TD-025) y extiende
-a toda la plataforma el guard de egress de ADR-035.
+a toda la plataforma el guard de egress de ADR-035. Su deuda de firma (TD-048)
+y de reintentos (TD-024) la resuelve ADR-038.
 
 ## Context
 

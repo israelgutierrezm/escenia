@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-09-08). Su deuda de SSRF y de validación por tipo de paso la resuelve ADR-037.
+Accepted (2026-09-08). Su deuda de SSRF y de validación por tipo de paso la resuelve ADR-037; la de reintentos de paso y run, y la firma con marca de tiempo, ADR-038.
 
 ## Context
 
