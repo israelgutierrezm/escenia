@@ -18,7 +18,8 @@
 - Vite
 - Pinia
 - Vue Router
-- Tailwind CSS
+- Tailwind CSS 4 (plugin de Vite `@tailwindcss/vite`, sin PostCSS ni autoprefixer; ADR-039)
+- Navegadores soportados: Safari/iOS 16.4+, Chrome/Edge 111+, Firefox 128+ (ESR 115 con mejor esfuerzo)
 
 ## Media
 
