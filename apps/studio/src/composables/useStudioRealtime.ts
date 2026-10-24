@@ -47,7 +47,6 @@ function obtenerEcho(): Promise<RealtimeEcho | null> {
       const [echoMod, pusherMod] = await Promise.all([import('laravel-echo'), import('pusher-js')])
       ;(window as unknown as { Pusher: unknown }).Pusher = pusherMod.default
       const EchoCtor = echoMod.default as unknown as new (options: Record<string, unknown>) => unknown
-      const xsrf = leerCookie('XSRF-TOKEN')
       const echo = new EchoCtor({
         broadcaster: 'reverb',
         key: import.meta.env.VITE_REVERB_APP_KEY ?? '',
@@ -57,9 +56,17 @@ function obtenerEcho(): Promise<RealtimeEcho | null> {
         forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
         enabledTransports: ['ws', 'wss'],
         // Private channels authorize over the SPA origin (proxied to Laravel),
-        // carrying the Sanctum session cookie + CSRF token.
-        authEndpoint: '/broadcasting/auth',
-        auth: { headers: xsrf !== null ? { 'X-XSRF-TOKEN': xsrf } : {} },
+        // carrying the Sanctum session cookie + CSRF token. Echo is built once
+        // per page, so the token is read on every authorization request
+        // (pusher-js `headersProvider`): the CSRF cookie rotates on login/logout.
+        channelAuthorization: {
+          endpoint: '/broadcasting/auth',
+          transport: 'ajax',
+          headersProvider: (): Record<string, string> => {
+            const xsrf = leerCookie('XSRF-TOKEN')
+            return xsrf !== null ? { 'X-XSRF-TOKEN': xsrf } : {}
+          },
+        },
       })
       return echo as RealtimeEcho
     })()

@@ -49,12 +49,15 @@ export function useStudioRoom() {
   }
 
   async function conectar(url: string, token: string): Promise<void> {
-    if (room !== null) return
+    // One room per console: ignore the call while connecting or connected.
+    if (room !== null || estado.value === 'conectando') return
     estado.value = 'conectando'
     error.value = null
     try {
       const { Room, RoomEvent, Track } = await import('livekit-client')
       const sala = new Room({ adaptiveStream: true })
+      // Held before connecting, so a failed connect is released by `desconectar`.
+      room = sala
       sala.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _pub: RemoteTrackPublication, participant: RemoteParticipant) => {
         if (track.kind !== Track.Kind.Video) return
         pistas.set(participant.identity, track)
@@ -75,7 +78,6 @@ export function useStudioRoom() {
         estado.value = 'idle'
       })
       await sala.connect(url, token)
-      room = sala
       estado.value = 'conectado'
     } catch {
       estado.value = 'error'

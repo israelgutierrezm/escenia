@@ -52,9 +52,18 @@ function obtenerEcho(): Promise<RealtimeEcho | null> {
         wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? '443'),
         forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
         enabledTransports: ['ws', 'wss'],
-        // Presence channels authorize via the attendee token (no Sanctum session).
-        authEndpoint: '/api/v1/attend/broadcasting/auth',
-        auth: { headers: { 'X-Attendee-Token': getAttendeeToken() ?? '' } },
+        // Presence/private channels authorize via the attendee token (no Sanctum
+        // session). Echo is built once per page, so the token is read on every
+        // authorization request (pusher-js `headersProvider`): opening another
+        // event's live room in the same tab switches the token.
+        channelAuthorization: {
+          endpoint: '/api/v1/attend/broadcasting/auth',
+          transport: 'ajax',
+          headersProvider: (): Record<string, string> => {
+            const token = getAttendeeToken()
+            return token !== null ? { 'X-Attendee-Token': token } : {}
+          },
+        },
       })
       return echo as RealtimeEcho
     })()
