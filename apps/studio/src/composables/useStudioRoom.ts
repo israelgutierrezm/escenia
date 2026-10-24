@@ -80,9 +80,10 @@ export function useStudioRoom() {
       await sala.connect(url, token)
       estado.value = 'conectado'
     } catch {
+      // Release the failed room first: its Disconnected event must not hide the error.
+      await desconectar()
       estado.value = 'error'
       error.value = 'No se pudo conectar al vídeo del estudio.'
-      await desconectar()
     }
   }
 

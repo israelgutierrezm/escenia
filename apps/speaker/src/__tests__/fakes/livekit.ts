@@ -71,7 +71,11 @@ export class FakeRoom {
   readonly connect = vi.fn<(url: string, token: string) => Promise<void>>(() =>
     FakeRoom.connectWith(),
   )
-  readonly disconnect = vi.fn<() => Promise<void>>(() => Promise.resolve())
+  // Like LiveKit, disconnecting fires `Disconnected` on the room's own handlers.
+  readonly disconnect = vi.fn<() => Promise<void>>(() => {
+    this.emit(RoomEvent.Disconnected)
+    return Promise.resolve()
+  })
 
   constructor(options: unknown) {
     this.options = options

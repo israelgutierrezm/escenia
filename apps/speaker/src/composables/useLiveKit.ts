@@ -62,9 +62,10 @@ export function useLiveKit() {
       adjuntarPreview()
       estado.value = 'conectado'
     } catch {
+      // Release the failed room first: its Disconnected event must not hide the error.
+      await desconectar()
       estado.value = 'error'
       error.value = 'No se pudo conectar al vídeo en directo del evento.'
-      await desconectar()
     }
   }
 
