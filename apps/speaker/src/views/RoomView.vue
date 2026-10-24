@@ -48,8 +48,10 @@ function alternarMicro(): void {
 async function irEnVivo(): Promise<void> {
   const acc = store.session?.access
   if (acc === undefined || !puedeIrEnVivo.value) return
+  // Go live with the green-room choice: a muted device stays off the air.
+  const dispositivos = { camara: dc.camaraOn.value, micro: dc.microOn.value }
   dc.detener()
-  await lk.conectar(acc.url, acc.token, video.value)
+  await lk.conectar(acc.url, acc.token, video.value, dispositivos)
 }
 
 function salir(): void {

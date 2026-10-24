@@ -3,6 +3,12 @@ import { Room, RoomEvent, Track } from 'livekit-client'
 
 type Estado = 'idle' | 'conectando' | 'conectado' | 'error'
 
+/** The devices the speaker left on in the green room. */
+export interface Dispositivos {
+  camara: boolean
+  micro: boolean
+}
+
 /**
  * Publishes the speaker's camera/mic into the event's media room (LiveKit).
  * Activates against a real media server; in dev the provider is fake, so the
@@ -14,21 +20,46 @@ export function useLiveKit() {
   const camaraOn = ref(true)
   const microOn = ref(true)
   let room: Room | null = null
+  let preview: HTMLVideoElement | null = null
 
-  async function conectar(url: string, token: string, videoEl: HTMLVideoElement | null): Promise<void> {
+  /** Shows the published camera in the speaker's own preview, when there is one. */
+  function adjuntarPreview(): void {
+    const pub = room?.localParticipant.getTrackPublication(Track.Source.Camera)
+    if (preview !== null && pub?.videoTrack !== undefined) {
+      pub.videoTrack.attach(preview)
+    }
+  }
+
+  /**
+   * Goes live publishing only the devices the speaker left on: a camera or
+   * microphone muted in the green room stays off the air until turned on here.
+   */
+  async function conectar(
+    url: string,
+    token: string,
+    videoEl: HTMLVideoElement | null,
+    dispositivos: Dispositivos,
+  ): Promise<void> {
     estado.value = 'conectando'
     error.value = null
+    camaraOn.value = dispositivos.camara
+    microOn.value = dispositivos.micro
+    preview = videoEl
     try {
       room = new Room({ adaptiveStream: true, dynacast: true })
       room.on(RoomEvent.Disconnected, () => {
         estado.value = 'idle'
       })
       await room.connect(url, token)
-      await room.localParticipant.enableCameraAndMicrophone()
-      const pub = room.localParticipant.getTrackPublication(Track.Source.Camera)
-      if (videoEl !== null && pub?.videoTrack !== undefined) {
-        pub.videoTrack.attach(videoEl)
+      if (dispositivos.camara && dispositivos.micro) {
+        // One device prompt for both.
+        await room.localParticipant.enableCameraAndMicrophone()
+      } else if (dispositivos.camara) {
+        await room.localParticipant.setCameraEnabled(true)
+      } else if (dispositivos.micro) {
+        await room.localParticipant.setMicrophoneEnabled(true)
       }
+      adjuntarPreview()
       estado.value = 'conectado'
     } catch {
       estado.value = 'error'
@@ -40,6 +71,8 @@ export function useLiveKit() {
   async function toggleCamara(): Promise<void> {
     camaraOn.value = !camaraOn.value
     await room?.localParticipant.setCameraEnabled(camaraOn.value)
+    // A camera first published after going live is a new track for the preview.
+    if (camaraOn.value) adjuntarPreview()
   }
 
   async function toggleMicro(): Promise<void> {
