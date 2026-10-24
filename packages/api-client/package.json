@@ -9,12 +9,15 @@
         ".": "./src/index.ts"
     },
     "scripts": {
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run"
     },
     "dependencies": {
         "@escenia/types": "workspace:*"
     },
     "devDependencies": {
-        "typescript": "^5.6.3"
+        "typescript": "^5.6.3",
+        "vite": "^6.4.5",
+        "vitest": "^4.1.12"
     }
 }
