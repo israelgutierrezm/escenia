@@ -1,6 +1,25 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss' source(none);
+/* Mismas fuentes que el `content` de Tailwind 3 (rutas relativas a este archivo). */
+@source '../index.html';
+@source '../src/**/*.{vue,ts}';
+@source '../../../packages/ui/src/**/*.{vue,ts}';
+
+/* Tailwind 4 ya no pone `cursor: pointer` a los botones en Preflight (v3 sí):
+   se conserva la convención. En @layer base, así que cualquier regla nuestra
+   (sin capa) sigue mandando. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  /* También de Tailwind 3: sin esto Safari dibuja el buscador nativo. */
+  [type='search'] {
+    -webkit-appearance: textfield;
+    appearance: textfield;
+    outline-offset: -2px;
+  }
+}
 
 :root {
   color-scheme: dark;
@@ -170,6 +189,16 @@ summary:focus-visible,
   outline: none;
   border-color: var(--escenia-color-primary);
   box-shadow: var(--escenia-ring);
+}
+
+/* Deshabilitados: atenuados igual en todos los navegadores (Tailwind 4 anula la
+   opacidad con la que Chrome atenuaba los <select> deshabilitados). */
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled,
+.control:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .actions {
