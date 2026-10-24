@@ -13,6 +13,9 @@ import { api, setActiveTenant } from '@/lib/api'
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const ready = ref(false)
+  // The last session check could not reach the API (network error or 5xx):
+  // the producer is treated as signed out and the login screen says why.
+  const unreachable = ref(false)
   const activeTenantId = ref<string | null>(null)
 
   const isAuthenticated = computed(() => user.value !== null)
@@ -31,13 +34,19 @@ export const useAuthStore = defineStore('auth', () => {
     if (!stillValid) selectTenant(tenants.value[0]?.id ?? null)
   }
 
+  /**
+   * Resolves the session. Never throws: a 401 is a guest, and any other failure
+   * leaves the producer signed out with `unreachable` set, so the router still
+   * reaches the login screen instead of a blank page.
+   */
   async function fetchUser(): Promise<void> {
     try {
       user.value = (await api.me()).data
+      unreachable.value = false
       syncDefaultTenant()
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) user.value = null
-      else throw error
+      user.value = null
+      unreachable.value = !(error instanceof ApiError && error.status === 401)
     } finally {
       ready.value = true
     }
@@ -45,6 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function login(email: string, password: string): Promise<void> {
     user.value = (await api.login({ email, password })).data
+    unreachable.value = false
     syncDefaultTenant()
   }
 
@@ -60,5 +70,17 @@ export const useAuthStore = defineStore('auth', () => {
     return result?.data.sso_logout_url ?? null
   }
 
-  return { user, ready, activeTenantId, isAuthenticated, tenants, activeTenant, selectTenant, fetchUser, login, logout }
+  return {
+    user,
+    ready,
+    unreachable,
+    activeTenantId,
+    isAuthenticated,
+    tenants,
+    activeTenant,
+    selectTenant,
+    fetchUser,
+    login,
+    logout,
+  }
 })

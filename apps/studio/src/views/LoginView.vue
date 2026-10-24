@@ -90,6 +90,9 @@ async function iniciarSso(conexion: SsoDiscovery): Promise<void> {
         Cerraste sesión en Escenia, pero tu proveedor de identidad no confirmó el cierre. Si el equipo es compartido,
         cierra también tu sesión allí.
       </p>
+      <p v-if="auth.unreachable" class="aviso" role="alert">
+        No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo en unos segundos.
+      </p>
 
       <form class="campos" @submit.prevent="entrar">
         <label class="field"><span>Correo electrónico</span><input v-model="email" type="email" class="control" autocomplete="username" required /></label>

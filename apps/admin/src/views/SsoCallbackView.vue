@@ -33,7 +33,9 @@ onMounted(async () => {
     error.value =
       e instanceof ApiError && e.status !== 401
         ? e.message
-        : 'No se pudo iniciar sesión con SSO. El intento expiró o no es válido; vuelve a intentarlo.'
+        : auth.unreachable
+          ? 'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo en unos segundos.'
+          : 'No se pudo iniciar sesión con SSO. El intento expiró o no es válido; vuelve a intentarlo.'
   }
 })
 </script>
