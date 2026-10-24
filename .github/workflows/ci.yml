@@ -73,9 +73,8 @@ jobs:
       - name: Lint
         run: pnpm -r --if-present lint
 
-      # Only admin has specs so far (the other apps' `vitest run` finds none).
       - name: Test
-        run: pnpm --filter @escenia/admin test
+        run: pnpm -r --if-present test
 
       - name: Build
         run: pnpm -r --if-present build
