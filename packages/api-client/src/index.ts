@@ -92,6 +92,7 @@ import type {
   CustomDomain,
   DataRegion,
   IssuedApiKey,
+  IssuedWebhookSecret,
   LogoutResult,
   SsoConnection,
   SsoDiscovery,
@@ -473,9 +474,13 @@ export function createApiClient(options: ApiClientOptions = {}) {
       trigger: Automation['trigger']
       conditions?: Condition[]
       steps: AutomationStepInput[]
-    }) => request<ApiResource<Automation>>('POST', '/automations', data),
+    }) =>
+      // webhook_secrets: the signing secrets issued for its webhook steps, shown once.
+      request<ApiResource<Automation> & { webhook_secrets: IssuedWebhookSecret[] }>('POST', '/automations', data),
     setAutomationActive: (automationId: string, isActive: boolean) =>
       request<ApiResource<Automation>>('POST', `/automations/${automationId}/active`, { is_active: isActive }),
+    rotateWebhookSecret: (automationId: string, stepId: string) =>
+      request<ApiResource<IssuedWebhookSecret>>('POST', `/automations/${automationId}/steps/${stepId}/secret`),
     automationRuns: (automationId: string) =>
       request<ApiCollection<AutomationRun>>('GET', `/automations/${automationId}/runs`),
 

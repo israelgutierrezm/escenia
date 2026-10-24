@@ -8,6 +8,7 @@ import type {
   AutomationRunStatus,
   AutomationStep,
   AutomationStepType,
+  IssuedWebhookSecret,
   TriggerEvent,
 } from '@escenia/types'
 
@@ -31,6 +32,9 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const busy = ref(false)
 const creando = ref(false)
+// Secretos de firma recién emitidos: el servidor solo los devuelve esta vez (ADR-038).
+const secretosNuevos = ref<IssuedWebhookSecret[]>([])
+const copiado = ref<string | null>(null)
 
 const nombre = ref('')
 const disparador = ref<TriggerEvent>('registration.completed')
@@ -72,7 +76,7 @@ function nuevoPaso(): PasoForm {
 // Qué falló en un paso al guardar (422 por campo de `steps.N.config.*`).
 const errorDeCampo: Record<string, string> = {
   url: 'la URL del webhook debe ser https:// y apuntar a una dirección pública de internet.',
-  secret: 'el secreto admite hasta 255 caracteres.',
+  secret: 'el secreto propio debe tener formato whsec_… (Standard Webhooks) o dejarse vacío para que lo genere Escenia.',
   tag: 'escribe la etiqueta.',
   subject: 'escribe el asunto.',
   body: 'escribe el mensaje.',
@@ -138,11 +142,12 @@ function configDePaso(p: PasoForm): Record<string, unknown> {
 function crear(): void {
   if (nombre.value.trim() === '') return
   run(async () => {
-    await api.createAutomation({
+    const creada = await api.createAutomation({
       name: nombre.value,
       trigger: disparador.value,
       steps: pasos.value.map((p) => ({ type: p.type, config: configDePaso(p) })),
     })
+    secretosNuevos.value = creada.webhook_secrets
     nombre.value = ''
     disparador.value = 'registration.completed'
     pasos.value = [nuevoPaso()]
@@ -169,6 +174,71 @@ function verEjecuciones(a: Automation): void {
   run(async () => {
     runs.value[a.id] = (await api.automationRuns(a.id)).data
   })
+}
+
+async function copiar(texto: string, id: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(texto)
+    copiado.value = id
+    setTimeout(() => {
+      if (copiado.value === id) copiado.value = null
+    }, 1600)
+  } catch {
+    error.value = 'No se pudo copiar al portapapeles.'
+  }
+}
+
+function rotarSecreto(a: Automation, s: AutomationStep): void {
+  const aviso = s.has_secret
+    ? 'Se generará un secreto nuevo. El anterior seguirá firmando 24 h para que actualices tu receptor.' +
+      (s.previous_secret_expires_at ? ' Como ya hay una rotación en curso, el secreto más antiguo dejará de firmar ahora.' : '') +
+      ' ¿Continuar?'
+    : 'Se generará un secreto para firmar los envíos de este webhook. ¿Continuar?'
+  if (!confirm(aviso)) return
+  run(async () => {
+    const emitido = (await api.rotateWebhookSecret(a.id, s.id)).data
+    secretosNuevos.value = [emitido]
+    const i = a.steps?.findIndex((x) => x.id === s.id) ?? -1
+    if (a.steps && i !== -1) a.steps[i] = emitido.step
+  })
+}
+
+function webhooks(a: Automation): AutomationStep[] {
+  return (a.steps ?? []).filter((s) => s.type === 'webhook')
+}
+
+function firma(s: AutomationStep): { label: string; clase: string; title: string } {
+  if (!s.has_secret) {
+    return { label: 'Sin firma', clase: 'chip--danger', title: 'Los envíos no van firmados: genera un secreto.' }
+  }
+  if (s.legacy_signature && !s.previous_secret_expires_at) {
+    return {
+      label: 'Firma heredada',
+      clase: 'chip--accent',
+      title: 'Firma X-Escenia-Signature sin marca de tiempo: rota el secreto para pasar a Standard Webhooks.',
+    }
+  }
+  return { label: 'Firmado', clase: 'chip--live', title: 'Standard Webhooks: webhook-id, webhook-timestamp y webhook-signature.' }
+}
+
+function fechaHora(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
+// Un run en espera con intentos fallidos está reintentando su paso actual.
+function estadoRun(r: AutomationRun): { label: string; clase: string } {
+  if (r.status === 'waiting' && r.step_attempts > 0) return { label: 'Reintentando', clase: 'chip--accent' }
+  return estadoEjecucion[r.status]
+}
+
+function conErrores(r: AutomationRun): boolean {
+  return (r.log ?? []).some((l) => l.outcome === 'failed' || l.outcome === 'gave_up')
+}
+
+function resumenLog(r: AutomationRun): string {
+  const partes = (r.log ?? []).map((l) => ((l.attempt ?? 1) > 1 ? `${l.summary} (intento ${l.attempt})` : l.summary))
+  return partes.join(' · ') || '—'
 }
 
 function detallePaso(step: AutomationStep): string {
@@ -202,6 +272,23 @@ onMounted(load)
       <AppButton @click="creando = !creando">{{ creando ? 'Cerrar' : '+ Nueva automatización' }}</AppButton>
     </div>
 
+    <!-- Secretos de firma: se muestran una sola vez -->
+    <div v-if="secretosNuevos.length" class="panel stack token-panel" role="status">
+      <h2>Secretos de firma</h2>
+      <p class="small">
+        Cópialos ahora y configúralos en tu receptor: no se volverán a mostrar. Cada envío lleva
+        <code>webhook-id</code>, <code>webhook-timestamp</code> y <code>webhook-signature</code> (Standard Webhooks).
+      </p>
+      <div v-for="s in secretosNuevos" :key="s.step.id" class="stack-xs">
+        <span class="muted small">Paso {{ s.step.position + 1 }} · {{ detallePaso(s.step) }}</span>
+        <div class="token-row">
+          <code class="token">{{ s.secret }}</code>
+          <AppButton @click="copiar(s.secret, s.step.id)">{{ copiado === s.step.id ? 'Copiado' : 'Copiar' }}</AppButton>
+        </div>
+      </div>
+      <div class="actions"><AppButton variant="ghost" @click="secretosNuevos = []">Entendido</AppButton></div>
+    </div>
+
     <!-- Crear -->
     <div v-if="creando" class="panel stack">
       <h2>Nueva automatización</h2>
@@ -228,8 +315,11 @@ onMounted(load)
         <div class="paso__cfg">
           <template v-if="p.type === 'webhook'">
             <label class="field grow"><span>URL</span><input v-model="p.url" type="url" inputmode="url" class="control" placeholder="https://…" autocomplete="off" /></label>
-            <label class="field grow"><span>Secreto (opcional)</span><input v-model="p.secret" type="password" class="control" placeholder="Firma HMAC" autocomplete="new-password" /></label>
-            <p class="muted small hint">Solo URLs https públicas. La URL y el secreto se guardan cifrados y no se vuelven a mostrar.</p>
+            <label class="field grow"><span>Secreto propio (opcional)</span><input v-model="p.secret" type="password" class="control" placeholder="whsec_… (vacío: lo genera Escenia)" autocomplete="new-password" /></label>
+            <p class="muted small hint">
+              Solo URLs https públicas. Escenia firma cada envío (Standard Webhooks) y reintenta los fallos temporales; la URL y el
+              secreto se guardan cifrados y el secreto se muestra una sola vez.
+            </p>
           </template>
           <template v-else-if="p.type === 'tag_contact'">
             <label class="field grow"><span>Etiqueta</span><input v-model="p.tag" class="control" placeholder="vip" /></label>
@@ -278,9 +368,17 @@ onMounted(load)
           <li v-for="s in a.steps" :key="s.id">
             <span class="chip chip--primary">{{ tipoPasoLabel[s.type] }}</span>
             <span v-if="detallePaso(s)" class="muted small flow__detail">{{ detallePaso(s) }}</span>
-            <span v-if="s.has_secret" class="chip" title="Cada envío lleva la firma HMAC en X-Escenia-Signature">Firmado</span>
           </li>
         </ol>
+
+        <ul v-if="webhooks(a).length" class="hooks">
+          <li v-for="s in webhooks(a)" :key="s.id">
+            <span class="muted small">Webhook · paso {{ s.position + 1 }} · {{ detallePaso(s) }}</span>
+            <span class="chip" :class="firma(s).clase" :title="firma(s).title">{{ firma(s).label }}</span>
+            <span v-if="s.previous_secret_expires_at" class="muted small">El secreto anterior firma hasta {{ fechaHora(s.previous_secret_expires_at) }}</span>
+            <AppButton variant="ghost" :disabled="busy" @click="rotarSecreto(a, s)">{{ s.has_secret ? 'Rotar secreto' : 'Generar secreto' }}</AppButton>
+          </li>
+        </ul>
 
         <div v-if="runsAbiertos === a.id" class="runs">
           <p v-if="(runs[a.id]?.length ?? 0) === 0" class="muted small">Sin ejecuciones registradas.</p>
@@ -290,10 +388,18 @@ onMounted(load)
             </thead>
             <tbody>
               <tr v-for="r in runs[a.id] ?? []" :key="r.id">
-                <td><span class="chip" :class="estadoEjecucion[r.status].clase">{{ estadoEjecucion[r.status].label }}</span></td>
-                <td class="muted">{{ r.current_position }}</td>
+                <td>
+                  <span class="chip" :class="estadoRun(r).clase">{{ estadoRun(r).label }}</span>
+                  <span v-if="conErrores(r)" class="chip chip--danger">Con errores</span>
+                </td>
+                <td class="muted">
+                  {{ r.current_position }}
+                  <span v-if="r.status === 'waiting' && r.step_attempts > 0" class="small">
+                    · intento {{ r.step_attempts + 1 }}, próximo {{ fechaHora(r.resume_at) }}
+                  </span>
+                </td>
                 <td class="muted">{{ fecha(r.created_at) }}</td>
-                <td class="muted small">{{ (r.log ?? []).map((l) => l.summary).join(' · ') || '—' }}</td>
+                <td class="muted small">{{ resumenLog(r) }}</td>
               </tr>
             </tbody>
           </table>
@@ -330,4 +436,12 @@ onMounted(load)
 .flow__detail { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .runs { border-top: 1px solid var(--escenia-color-border); padding-top: var(--escenia-space-3); overflow-x: auto; }
+
+.hooks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--escenia-space-2); }
+.hooks li { display: flex; align-items: center; gap: var(--escenia-space-2); flex-wrap: wrap; }
+
+.token-panel { border-color: color-mix(in srgb, var(--escenia-color-primary) 45%, transparent); }
+.token-row { display: flex; gap: var(--escenia-space-2); align-items: center; }
+.token { flex: 1; font-family: ui-monospace, monospace; font-size: 0.85rem; padding: 10px 12px; background: rgba(4, 16, 29, 0.6); border: 1px solid var(--escenia-color-border); border-radius: var(--escenia-radius-sm); word-break: break-all; }
+.stack-xs { display: flex; flex-direction: column; gap: 6px; }
 </style>

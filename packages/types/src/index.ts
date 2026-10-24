@@ -615,8 +615,12 @@ export interface AutomationStep {
   type: AutomationStepType
   /** For a webhook only `target` (the origin): its URL and secret are never returned. */
   config: Record<string, unknown> | null
-  /** Webhooks only: whether the payload is HMAC-signed. */
+  /** Webhooks only: whether the payload is signed. */
   has_secret?: boolean
+  /** Webhooks only: still signs the pre-ADR-038 X-Escenia-Signature header. */
+  legacy_signature?: boolean
+  /** Webhooks only: until when the previous secret also signs, after a rotation. */
+  previous_secret_expires_at?: string | null
   conditions: Condition[] | null
 }
 
@@ -629,15 +633,41 @@ export interface Automation {
   steps?: AutomationStep[]
 }
 
+/** What happened to a step attempt (ADR-038; entries before it only have a summary). */
+export type AutomationStepOutcome = 'done' | 'failed' | 'skipped' | 'wait' | 'retry' | 'gave_up'
+
+export interface AutomationRunLogEntry {
+  position: number
+  type: string
+  summary: string
+  outcome?: AutomationStepOutcome
+  attempt?: number
+  max_attempts?: number
+  /** HTTP status of a webhook attempt. */
+  status?: number
+  /** Stable across a webhook's retries (receivers deduplicate on it). */
+  webhook_id?: string
+  next_attempt_at?: string
+  at?: string
+}
+
 export interface AutomationRun {
   id: string
   trigger: TriggerEvent
   status: AutomationRunStatus
   current_position: number
+  /** Failed attempts of the step at current_position; > 0 while waiting means "retrying". */
+  step_attempts: number
   resume_at: string | null
-  log: Array<{ position: number; type: string; summary: string }> | null
+  log: AutomationRunLogEntry[] | null
   completed_at: string | null
   created_at: string | null
+}
+
+/** A webhook signing secret, returned only when issued (creation or rotation). */
+export interface IssuedWebhookSecret {
+  secret: string
+  step: AutomationStep
 }
 
 /** A step in a create-automation request. */
