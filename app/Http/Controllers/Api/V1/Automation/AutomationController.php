@@ -5,21 +5,25 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Automation;
 
 use App\Application\Automation\Actions\CreateAutomationAction;
+use App\Application\Automation\Actions\RotateWebhookSecretAction;
 use App\Application\Automation\Actions\SetAutomationActiveAction;
 use App\Application\Automation\DTOs\CreateAutomationData;
 use App\Domain\AccessControl\Enums\Permission;
 use App\Domain\Automation\Models\Automation;
+use App\Domain\Automation\Models\AutomationStep;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Automation\CreateAutomationRequest;
 use App\Http\Requests\Automation\SetAutomationActiveRequest;
 use App\Http\Resources\AutomationResource;
+use App\Http\Resources\IssuedWebhookSecretResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
  * Tenant-level management of automations. Automations are not event-scoped;
- * their conditions can filter by event attributes.
+ * their conditions can filter by event attributes. Webhook signing secrets are
+ * returned only when issued (creation, rotation), never cached (ADR-038).
  */
 class AutomationController extends Controller
 {
@@ -36,11 +40,13 @@ class AutomationController extends Controller
     {
         $this->authorizePermission($request, Permission::AutomationsManage);
 
-        $automation = $action->execute($request->user(), CreateAutomationData::fromArray($request->validated()));
+        $created = $action->execute($request->user(), CreateAutomationData::fromArray($request->validated()));
 
-        return AutomationResource::make($automation)
+        return AutomationResource::make($created->automation)
+            ->additional(['webhook_secrets' => IssuedWebhookSecretResource::collection($created->webhookSecrets)->resolve($request)])
             ->response()
-            ->setStatusCode(JsonResponse::HTTP_CREATED);
+            ->setStatusCode(JsonResponse::HTTP_CREATED)
+            ->header('Cache-Control', 'no-store');
     }
 
     public function setActive(SetAutomationActiveRequest $request, SetAutomationActiveAction $action, string $automation): AutomationResource
@@ -52,6 +58,21 @@ class AutomationController extends Controller
         return AutomationResource::make(
             $action->execute($request->user(), $model, (bool) $request->validated('is_active'))->load('steps')
         );
+    }
+
+    public function rotateWebhookSecret(Request $request, RotateWebhookSecretAction $action, string $automation, string $step): JsonResponse
+    {
+        $this->authorizePermission($request, Permission::AutomationsManage);
+
+        $model = Automation::query()->where('ulid', $automation)->firstOrFail();
+        $stepModel = AutomationStep::query()
+            ->where('automation_id', $model->getKey())
+            ->where('ulid', $step)
+            ->firstOrFail();
+
+        return IssuedWebhookSecretResource::make($action->execute($request->user(), $stepModel))
+            ->response()
+            ->header('Cache-Control', 'no-store');
     }
 
     private function authorizePermission(Request $request, Permission $permission): void

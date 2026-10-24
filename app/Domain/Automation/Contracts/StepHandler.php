@@ -10,9 +10,10 @@ use App\Domain\Automation\ValueObjects\StepOutcome;
 
 /**
  * Executes one type of automation step. Runs inside the run's tenant context.
- * A handler should be side-effect-idempotent where practical (steps can be
- * re-attempted after a wait), and must not throw for merely-flaky external
- * calls — return `done` with a summary instead so the sequence keeps moving.
+ * A step can run more than once (a retry, or a worker that died mid-step), so
+ * handlers should be idempotent where practical. For an external call, return
+ * `retry` on a transient failure and `failed` on a permanent one instead of
+ * throwing (ADR-038); a throw is retried a few times, then fails the run.
  */
 interface StepHandler
 {

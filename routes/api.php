@@ -339,6 +339,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('automations', [AutomationController::class, 'index']);
             Route::post('automations', [AutomationController::class, 'store']);
             Route::post('automations/{automation}/active', [AutomationController::class, 'setActive']);
+            Route::post('automations/{automation}/steps/{step}/secret', [AutomationController::class, 'rotateWebhookSecret']);
             Route::get('automations/{automation}/runs', [AutomationRunController::class, 'index']);
 
             // ---- Content: recordings, transcripts, clips (Fase 9) ----

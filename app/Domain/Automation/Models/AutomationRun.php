@@ -14,8 +14,13 @@ use Illuminate\Support\Carbon;
 
 /**
  * A single execution of an automation for one trigger occurrence. `context` is
- * the snapshot conditions and steps read from; `resume_at` parks the run
- * between a wait step and its continuation.
+ * the snapshot conditions and steps read from.
+ *
+ * `resume_at` has two meanings (ADR-038): while `waiting` it is when the run
+ * continues (after a wait step, or the next attempt of a failed step, counted
+ * by `step_attempts`); while `running` it is the lease of the worker executing
+ * it — the worker only writes while its lease is unchanged, and a run whose
+ * lease expired (the worker died) is picked up again from its last checkpoint.
  *
  * @property int $id
  * @property string $ulid
@@ -26,6 +31,7 @@ use Illuminate\Support\Carbon;
  * @property array<string, mixed>|null $context
  * @property AutomationRunStatus $status
  * @property int $current_position
+ * @property int $step_attempts
  * @property Carbon|null $resume_at
  * @property array<int, array<string, mixed>>|null $log
  * @property string|null $failed_reason
@@ -38,6 +44,9 @@ class AutomationRun extends Model
     use BelongsToTenant;
     use HasPublicId;
 
+    /** How long a worker holds a run; renewed at every checkpoint. */
+    public const LEASE_SECONDS = 600;
+
     /**
      * @var list<string>
      */
@@ -49,6 +58,7 @@ class AutomationRun extends Model
         'context',
         'status',
         'current_position',
+        'step_attempts',
         'resume_at',
         'log',
         'failed_reason',
@@ -65,6 +75,7 @@ class AutomationRun extends Model
             'context' => 'array',
             'status' => AutomationRunStatus::class,
             'current_position' => 'integer',
+            'step_attempts' => 'integer',
             'resume_at' => 'datetime',
             'log' => 'array',
             'completed_at' => 'datetime',

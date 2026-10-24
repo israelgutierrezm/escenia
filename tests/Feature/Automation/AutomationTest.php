@@ -3,30 +3,12 @@
 declare(strict_types=1);
 
 use App\Application\Automation\ResumeAutomationRunsAction;
-use App\Application\Outbox\DispatchOutboxAction;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 // Webhook hosts resolve to a public address unless a test says otherwise.
 beforeEach(fn () => resolveHostsTo('93.184.216.34'));
-
-/**
- * @param  array<string, string>  $headers
- * @param  array<string, mixed>  $payload
- */
-function createAutomation(array $headers, array $payload): string
-{
-    return test()->withHeaders($headers)
-        ->postJson('/api/v1/automations', $payload)
-        ->assertCreated()
-        ->json('data.id');
-}
-
-function drainOutbox(): int
-{
-    return app(DispatchOutboxAction::class)->execute();
-}
 
 it('runs a registration automation: tag the contact and notify', function () {
     [, , $event, $headers] = makeWebinarHost();
@@ -119,30 +101,19 @@ it('delivers a signed outbound webhook', function () {
 
     [, , $event, $headers] = makeWebinarHost();
 
-    createAutomation($headers, [
+    $secret = $this->withHeaders($headers)->postJson('/api/v1/automations', [
         'name' => 'CRM sync',
         'trigger' => 'registration.completed',
-        'steps' => [['type' => 'webhook', 'config' => ['url' => 'https://hooks.example.com/x', 'secret' => 'shh']]],
-    ]);
+        'steps' => [['type' => 'webhook', 'config' => ['url' => 'https://hooks.example.com/x']]],
+    ])->assertCreated()->json('webhook_secrets.0.secret');
 
     registerAttendee($event->ulid);
     drainOutbox();
 
     Http::assertSent(fn ($request): bool => $request->url() === 'https://hooks.example.com/x'
-        && $request->hasHeader('X-Escenia-Signature', hash_hmac('sha256', $request->body(), 'shh')));
+        && $request->hasHeader('webhook-signature', standardWebhookSignature($secret, $request)));
     expect(automationRunSummaries())->toBe(['webhook_sent 200']);
 });
-
-/**
- * @return list<string> the step summaries of every run's log
- */
-function automationRunSummaries(): array
-{
-    return DB::table('automation_runs')->pluck('log')
-        ->flatMap(fn (string $log): array => array_column(json_decode($log, true), 'summary'))
-        ->values()
-        ->all();
-}
 
 it('never calls a webhook whose host now resolves to an internal address', function () {
     Http::fake();
@@ -187,14 +158,14 @@ it('refuses webhook destinations the server must not call', function (string $ur
 it('keeps a webhook URL and secret encrypted and out of the API', function () {
     [, , , $headers] = makeWebinarHost();
 
-    createAutomation($headers, [
+    $secret = $this->withHeaders($headers)->postJson('/api/v1/automations', [
         'name' => 'Chat alert',
         'trigger' => 'registration.completed',
         'steps' => [
-            ['type' => 'webhook', 'config' => ['url' => 'https://hooks.example.com/services/T0/B0/k3yInTheUrl', 'secret' => 'shh-s3cret']],
+            ['type' => 'webhook', 'config' => ['url' => 'https://hooks.example.com/services/T0/B0/k3yInTheUrl']],
             ['type' => 'tag_contact', 'config' => ['tag' => 'alerted', 'unused' => 'dropped']],
         ],
-    ]);
+    ])->assertCreated()->json('webhook_secrets.0.secret');
 
     $listing = $this->withHeaders($headers)->getJson('/api/v1/automations')
         ->assertOk()
@@ -203,14 +174,14 @@ it('keeps a webhook URL and secret encrypted and out of the API', function () {
         ->assertJsonPath('data.0.steps.1.config', ['tag' => 'alerted'])
         ->assertJsonMissingPath('data.0.steps.1.has_secret');
 
-    expect($listing->getContent())->not->toContain('k3yInTheUrl')->not->toContain('shh-s3cret');
+    expect($listing->getContent())->not->toContain('k3yInTheUrl')->not->toContain($secret);
 
     $row = DB::table('automation_steps')->where('type', 'webhook')->sole();
 
     expect($row->config)->toBeNull()
-        ->and($row->credentials)->not->toContain('shh-s3cret')
+        ->and($row->credentials)->not->toContain($secret)
         ->and(json_decode(Crypt::decryptString($row->credentials), true))
-        ->toBe(['url' => 'https://hooks.example.com/services/T0/B0/k3yInTheUrl', 'secret' => 'shh-s3cret']);
+        ->toBe(['url' => 'https://hooks.example.com/services/T0/B0/k3yInTheUrl', 'secret' => $secret, 'legacy' => false]);
 });
 
 it('validates the settings of each step type and the conditions', function (array $step, string $error) {
@@ -241,15 +212,15 @@ it('moves webhook credentials out of the plain config, reversibly', function () 
     createAutomation($headers, [
         'name' => 'Legacy hook',
         'trigger' => 'registration.completed',
-        'steps' => [['type' => 'webhook', 'config' => ['url' => 'https://hooks.example.com/x', 'secret' => 'shh']]],
+        'steps' => [['type' => 'webhook', 'config' => ['url' => 'https://hooks.example.com/x']]],
     ]);
 
     $migration = require database_path('migrations/2026_10_22_000000_move_automation_webhook_credentials.php');
 
-    // Rolled back: the step looks like one saved before ADR-037.
+    // Rolled back: the step looks like one saved before ADR-037, with the
+    // free-form secret tenants could choose back then.
     $migration->down();
-    expect(json_decode((string) DB::table('automation_steps')->sole()->config, true))
-        ->toBe(['url' => 'https://hooks.example.com/x', 'secret' => 'shh']);
+    DB::table('automation_steps')->update(['config' => json_encode(['url' => 'https://hooks.example.com/x', 'secret' => 'shh'])]);
 
     $migration->up();
     $row = DB::table('automation_steps')->sole();
@@ -261,6 +232,7 @@ it('moves webhook credentials out of the plain config, reversibly', function () 
     registerAttendee($event->ulid);
     drainOutbox();
 
+    // A pre-ADR-038 secret keeps signing the old header (ADR-038).
     Http::assertSent(fn ($request): bool => $request->hasHeader('X-Escenia-Signature', hash_hmac('sha256', $request->body(), 'shh')));
 });
 

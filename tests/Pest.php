@@ -6,18 +6,63 @@ use App\Application\Events\Actions\CreateEventAction;
 use App\Application\Events\DTOs\CreateEventData;
 use App\Application\Identity\Actions\RegisterUserAction;
 use App\Application\Identity\DTOs\RegisterUserData;
+use App\Application\Outbox\DispatchOutboxAction;
 use App\Domain\Events\Models\Event;
 use App\Domain\Identity\Models\User;
 use App\Domain\Tenancy\Context\TenantContext;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Infrastructure\Http\HostResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request as ClientRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class)->in('Feature');
 uses(TestCase::class)->in('Unit');
+
+/**
+ * @param  array<string, string>  $headers
+ * @param  array<string, mixed>  $payload
+ */
+function createAutomation(array $headers, array $payload): string
+{
+    return test()->withHeaders($headers)
+        ->postJson('/api/v1/automations', $payload)
+        ->assertCreated()
+        ->json('data.id');
+}
+
+function drainOutbox(): int
+{
+    return app(DispatchOutboxAction::class)->execute();
+}
+
+/**
+ * @return list<string> the step summaries of every run's log
+ */
+function automationRunSummaries(): array
+{
+    return DB::table('automation_runs')->pluck('log')
+        ->flatMap(fn (string $log): array => array_column(json_decode($log, true), 'summary'))
+        ->values()
+        ->all();
+}
+
+/**
+ * What a Standard Webhooks receiver expects in `webhook-signature` for a
+ * request signed with `$secret` (whsec_…): `v1,` + base64 HMAC-SHA256 of
+ * "id.timestamp.body", keyed with the decoded secret.
+ */
+function standardWebhookSignature(string $secret, ClientRequest $request): string
+{
+    $id = $request->header('webhook-id')[0] ?? '';
+    $timestamp = $request->header('webhook-timestamp')[0] ?? '';
+    $key = (string) base64_decode(substr($secret, strlen('whsec_')), true);
+
+    return 'v1,'.base64_encode(hash_hmac('sha256', "{$id}.{$timestamp}.{$request->body()}", $key, true));
+}
 
 /**
  * Points every host at one address for the egress guard, so outbound URLs are

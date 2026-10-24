@@ -54,6 +54,10 @@ final class HandleAutomationTrigger implements OutboxHandler
                     'context' => $context,
                     'status' => AutomationRunStatus::Running,
                     'current_position' => 0,
+                    'step_attempts' => 0,
+                    // Leased to this worker: if it dies mid-run, automations:resume
+                    // picks the run up again from its last checkpoint (ADR-038).
+                    'resume_at' => now()->addSeconds(AutomationRun::LEASE_SECONDS),
                 ],
             );
 

@@ -28,7 +28,7 @@ final class OutboundUrlGuard
      *
      * @return array<string, mixed>
      *
-     * @throws UnsafeOutboundUrlException
+     * @throws UnsafeOutboundUrlException (an UnresolvableHostException when the host does not resolve)
      */
     public function pinnedOptions(string $url): array
     {
@@ -45,7 +45,7 @@ final class OutboundUrlGuard
         $addresses = $isLiteral ? [$literal] : $this->resolver->resolve($host);
 
         if ($addresses === []) {
-            throw new UnsafeOutboundUrlException("Host [{$host}] does not resolve.");
+            throw new UnresolvableHostException("Host [{$host}] does not resolve.");
         }
 
         if (! $this->allowPrivateNetworks) {

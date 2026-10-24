@@ -47,10 +47,12 @@ return new class extends Migration
                 $credentials = json_decode(Crypt::decryptString((string) $step->credentials), true);
                 $config = json_decode((string) $step->config, true);
 
+                // Only the shape that existed before: ADR-038's rotation fields
+                // (previous secret, legacy marker) do not survive a rollback.
                 DB::table('automation_steps')->where('id', $step->id)->update([
                     'config' => json_encode(array_merge(
                         is_array($config) ? $config : [],
-                        is_array($credentials) ? $credentials : [],
+                        is_array($credentials) ? array_intersect_key($credentials, ['url' => true, 'secret' => true]) : [],
                     )),
                 ]);
             }
